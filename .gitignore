@@ -6,6 +6,9 @@
 *.lo
 *.o
 *.obj
+*.pdb
+*.exp
+*.idb
 
 # Precompiled Headers
 *.gch
@@ -30,3 +33,7 @@
 *.exe
 *.out
 *.app
+
+/data/*.txt
+/data/*.ini
+/data/FILTERS

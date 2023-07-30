@@ -1,0 +1,54 @@
+================ NOTES 
+
+
+================ Backlog
+
+// Support to listen from a websocket?
+
+================ Next
+
+// Make function to handle the scratch allocator easier?
+// Show context, if a line is selected? pretty hard
+// If press saved in a filter that already exist Modify it instead of append
+// Filter Only the new lines after the cache
+
+// add relative time?
+// Click transforms the view into input field, it should allocate all the text?
+// Support through multiple logs
+
+https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-the-directory-c
+// Make smarter allocations/copy/reserve/resize
+// Implement modes
+
+================ InProgress
+
+// Setup silly repo
+
+================ Done
+
+// Context menu in the output view?
+// Paste from clipboard - GetClipboardText
+// Add line number
+// Have the ability to remove one of your saved filters
+// Test filters, how to reselect the filter after we deleted manually
+// When we save a filter automatically trigger a reload
+// Can we catch the lines that we should show?
+// Time to optimize, the filter is getting slow
+// Increase font size of the filter log
+// Make dropdown selectable
+// Have the ability to Save MultipleFilters
+// Store/Load Filter
+// Extrate the Example log to our own app
+// Make a method that it does not try to append to the previous buffer and crash.
+// Load an specific file give the path
+// Have multiple filters instead of only one
+// Store permanent memory to use instead of an struct throwed in the Platform context;
+// Mantain Platform code in the platform layer (ImGUI win32 d3d11)
+// Simple Setup imgui
+// Pass to the hotreload call so we can modify the ImGUI from the application
+// Cleanup the memcpy it's just terrible
+// build the game.dll and reload
+// Setup hot reload
+
+
+
