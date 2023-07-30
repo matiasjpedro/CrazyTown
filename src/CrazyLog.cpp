@@ -29,14 +29,20 @@ struct CrazyLog
 	CrazyLog()
 	{
 		bAutoScroll = true;
+		bAlreadyCached = true;
+		FilterRefreshCooldown = -1.f;
+		
 		Clear();
 	}
 
 	void Clear()
 	{
 		bAlreadyCached = false;
+		bWantsToSave = false;
+		FilterRefreshCooldown = -1;
 		
 		Buf.clear();
+		vFiltredLinesCached.clear();
 		vLineOffsets.clear();
 		vLineOffsets.push_back(0);
 	}
@@ -65,18 +71,20 @@ struct CrazyLog
 	}
 	
 	void LoadFilter(PlatformContext* pPlatformCtx)
-	{
+	{	
+		const char* NoneFilterName = "NONE";
+		NamedFilter NoneFilter = { 0 };
+		strcpy_s(NoneFilter.aName, sizeof(NoneFilter.aName), NoneFilterName);
+		
 		FileContent File = pPlatformCtx->pReadFileFunc(FILTERS_FILE_NAME);
 		if (File.pFile) 
 		{
 			// TODO(matiasp): Store this at the beggining of the file
 			LoadedFilters.reserve_discard(10);
-			LoadedFilters.resize(10);
+			LoadedFilters.resize(0);
 			
 			//Add dummy so we can reset the selection
-			memcpy(LoadedFilters[0].aName, "NONE", 4);
-			LoadedFilters[0].aName[4] = '\0';
-			memset(LoadedFilters[0].Filter.InputBuf, 0, 1);
+			LoadedFilters.push_back(NoneFilter);
 			
 			unsigned TokenCounter = 2;
 			unsigned CurrentStringSize = 0;
@@ -90,17 +98,24 @@ struct CrazyLog
 					if (bIsIteratingName) 
 					{	
 						char* pNameBegin = pCurrentChar - CurrentStringSize;
+						
 						int FilterIdx = TokenCounter / 2;
+						
+						LoadedFilters.resize(FilterIdx + 1);
 						memcpy(LoadedFilters[FilterIdx].aName, pNameBegin, CurrentStringSize);
 						LoadedFilters[FilterIdx].aName[CurrentStringSize] = '\0';
+						
 						CurrentStringSize = 0;
 					}
 					else 
 					{
 						char* pFilterBegin = pCurrentChar - CurrentStringSize;
+						
 						int FilterIdx = TokenCounter / 2;
+						
 						memcpy(LoadedFilters[FilterIdx].Filter.InputBuf, pFilterBegin, CurrentStringSize);
 						LoadedFilters[FilterIdx].Filter.InputBuf[CurrentStringSize] = '\0';
+						
 						CurrentStringSize = 0;
 					}
 				
@@ -112,18 +127,14 @@ struct CrazyLog
 				}
 			}
 		
-			LoadedFilters.resize(TokenCounter / 2);
 			pPlatformCtx->pFreeFileContentFunc(&File);
 		}
 		else
 		{
-			// TODO(matiasp): Store this at the beggining of the file
 			LoadedFilters.reserve_discard(1);
-			LoadedFilters.resize(1);
+			LoadedFilters.resize(0);
 			
-			memcpy(LoadedFilters[0].aName, "NONE", 4);
-			LoadedFilters[0].aName[4] = '\0';
-			memset(LoadedFilters[0].Filter.InputBuf, 0, 1);
+			LoadedFilters.push_back(NoneFilter);
 		}
 	}
 	
@@ -188,8 +199,13 @@ struct CrazyLog
 
 	void SimpleAddLog(const char* pFileContent, int file_size) 
 	{
+		// Reserve new file size,
+		// if's bigger then free the old allocation.
 		Buf.Buf.reserve_discard(file_size);
+		
+		// Reset the head
 		Buf.Buf.resize(0);
+		
 		Buf.append(pFileContent, pFileContent + file_size);
 		vLineOffsets.clear();
 		vLineOffsets.push_back(0);
@@ -398,8 +414,6 @@ struct CrazyLog
 				}
 				else
 				{
-					
-					
 					for (int i = 0; i < vFiltredLinesCached.Size; i++) {
 						
 						int line_no = vFiltredLinesCached[i];

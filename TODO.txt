@@ -14,18 +14,25 @@
 
 // add relative time?
 // Click transforms the view into input field, it should allocate all the text?
+
+
+// Implement WebSocket 
+https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-the-directory-c
+// Implement ListenForLatestFile
+
 // Support through multiple logs
 
-https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-the-directory-c
-// Make smarter allocations/copy/reserve/resize
-// Implement modes
+// Refresh Mode:
+// Keep listening to the Target file changes
+// Only filter the new lines
 
 ================ InProgress
 
-// Setup silly repo
+// Make smarter allocations/copy/reserve/resize
 
 ================ Done
 
+// Setup silly repo
 // Context menu in the output view?
 // Paste from clipboard - GetClipboardText
 // Add line number
