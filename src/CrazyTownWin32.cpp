@@ -164,16 +164,8 @@ bool Win32WriteFile(FileContent* pFileContent, char* pPath)
 			// File write success
 			Result = (BytesWritten == pFileContent->Size);
 		}
-		else
-		{
-			// TODO(MatiasP): log
-		}
 
 		CloseHandle(FileHandle);
-	}
-	else
-	{
-		// TODO(MatiasP): log error
 	}
 
 	return Result;
@@ -191,7 +183,7 @@ void Win32FreeFile(FileContent* pFileContent)
 
 FileContent Win32ReadFile(char* pPath) 
 {
-	FileContent Result = {};
+	FileContent Result = {0};
 	HANDLE FileHandle =	CreateFileA(pPath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 	if(FileHandle != INVALID_HANDLE_VALUE)
 	{
@@ -210,26 +202,13 @@ FileContent Win32ReadFile(char* pPath)
 				}
 				else
 				{
-					// TODO(MatiasP): log
 					Win32FreeFile(&Result);
 					Result.pFile = 0;
 				}
 			}
-			else
-			{
-				// TODO(MatiasP): log error
-			}
 		}
-		else
-		{
-			// TODO(MatiasP): log error
-		}	
-
+			
 		CloseHandle(FileHandle);
-	}
-	else
-	{
-		// TODO(MatiasP): log error
 	}
 	
 	return Result;

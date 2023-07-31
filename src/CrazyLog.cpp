@@ -2,6 +2,7 @@
 #define FILTERS_FILE_NAME "FILTERS"
 #define FILTER_TOKEN ';'
 #define FILTER_INTERVAL 1.f
+#define FILE_FETCH_INTERVAL 1.f
 
 struct NamedFilter {
 	char aName[256];
@@ -14,58 +15,63 @@ struct CrazyLog
 	ImGuiTextFilter Filter;
 	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
 	ImVector<int> vFiltredLinesCached;
-	bool bAlreadyCached;
-	bool bAutoScroll;  // Keep scrolling if already at the bottom.
-	bool bShowLineNum;
-	
 	ImVector<NamedFilter> LoadedFilters;
-	
 	char aFilePathToLoad[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
 	int FilterSelectedIdx;
+	int FiltredLinesCount;
+	bool bAlreadyCached;
+	bool bAutoScroll;  // Keep scrolling if already at the bottom.
+	bool bStreamMode;
+	bool bShowLineNum;
 	bool bWantsToSave;
+	
 	float FilterRefreshCooldown;
+	float FileContentFetchCooldown;
+	void* FileHandle;
 
 	CrazyLog()
 	{
+		FileHandle = nullptr;
 		bAutoScroll = true;
-		bAlreadyCached = true;
+		bAlreadyCached = false;
+		FiltredLinesCount = 0;
 		FilterRefreshCooldown = -1.f;
+		FileContentFetchCooldown = -1.f;
 		
 		Clear();
 	}
 
 	void Clear()
 	{
-		bAlreadyCached = false;
 		bWantsToSave = false;
 		FilterRefreshCooldown = -1;
 		
 		Buf.clear();
-		vFiltredLinesCached.clear();
 		vLineOffsets.clear();
 		vLineOffsets.push_back(0);
+		ClearCache();
 	}
 	
 	void LoadClipboard() 
 	{
-		bAlreadyCached = false;
-		
 		const char* pClipboardText = ImGui::GetClipboardText();
 		if (pClipboardText) {
 			size_t TextSize = StringUtils::Length(pClipboardText);
-			SimpleAddLog(pClipboardText, (int)TextSize);
+			SetLog(pClipboardText, (int)TextSize);
 		}
 	}
 	
-	void LoadFile(PlatformContext* pPlatformCtx) 
+	void LoadFile(PlatformContext* pPlatformCtx, bool bAppend) 
 	{
-		bAlreadyCached = false;
-		
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
 		if(File.pFile)
 		{
-			SimpleAddLog((const char*)File.pFile, (int)File.Size);
+			if(bAppend)
+				AddLog((const char*)File.pFile, (int)File.Size);
+			else
+				SetLog((const char*)File.pFile, (int)File.Size);
+				
 			pPlatformCtx->pFreeFileContentFunc(&File);
 		}
 	}
@@ -181,6 +187,7 @@ struct CrazyLog
 			FilterSelectedIdx = 0;
 			Filter.Clear();
 			bAlreadyCached = false;
+			FiltredLinesCount = 0;
 		}
 	}
 	
@@ -197,17 +204,28 @@ struct CrazyLog
 		FilterSelectedIdx = LoadedFilters.size() - 1;
 	}
 
-	void SimpleAddLog(const char* pFileContent, int file_size) 
+	// This method will append to the buffer
+	void AddLog(const char* pFileContent, int FileSize) 
 	{
-		// Reserve new file size,
-		// if's bigger then free the old allocation.
-		Buf.Buf.reserve_discard(file_size);
+		int old_size = Buf.size();
 		
-		// Reset the head
-		Buf.Buf.resize(0);
+		Buf.Buf.reserve(Buf.Buf.Size + FileSize);
+		Buf.append(pFileContent, pFileContent + FileSize);
 		
-		Buf.append(pFileContent, pFileContent + file_size);
+		for (int new_size = Buf.size(); old_size < new_size; old_size++)
+			if (Buf[old_size] == '\n')
+				vLineOffsets.push_back(old_size + 1);
+		
+		bAlreadyCached = false;
+	}
+	
+	// This method will stomp the old buffer;
+	void SetLog(const char* pFileContent, int FileSize) 
+	{
+		Buf.Buf.clear();
 		vLineOffsets.clear();
+		
+		Buf.append(pFileContent, pFileContent + FileSize);
 		vLineOffsets.push_back(0);
 		
 		int old_size = 0;
@@ -215,7 +233,15 @@ struct CrazyLog
 			if (Buf[old_size] == '\n')
 				vLineOffsets.push_back(old_size + 1);
 		
+		// Reset the cache and reserve the max amount needed
+		ClearCache();
 		vFiltredLinesCached.reserve_discard(vLineOffsets.Size);
+	}
+	
+	void ClearCache() {
+		vFiltredLinesCached.clear();
+		FiltredLinesCount = 0;
+		bAlreadyCached = false;
 	}
 
 	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL)
@@ -233,7 +259,13 @@ struct CrazyLog
 		
 		if (ImGui::SmallButton("LoadFile")) 
 		{
-			LoadFile(pPlatformCtx);
+			LoadFile(pPlatformCtx, false);
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::SmallButton("AppendFile")) 
+		{
+			LoadFile(pPlatformCtx, true);
 		}
 		
 		// Modes 
@@ -246,6 +278,7 @@ struct CrazyLog
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(-100);
 		bool value_changed = ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH);
+		ImGui::Checkbox("StreamMode", &bStreamMode);
 		//ImGui::SetNextItemWidth(-100);
 		//bool value_changed2 = ImGui::InputText("FindPath", aFilePathToLoad, MAX_PATH);
 		
@@ -324,7 +357,6 @@ struct CrazyLog
 					LoadFilter(pPlatformCtx);
 				}
 					
-					
 			}
 		}
 	
@@ -338,6 +370,7 @@ struct CrazyLog
 			// If we are selecting from the drop down do it right away
 			} else if (bSelectedFilterChanged) {
 				bAlreadyCached = false;
+				FiltredLinesCount = 0;
 			}
 		}
 			
@@ -346,6 +379,7 @@ struct CrazyLog
 			FilterRefreshCooldown -= DeltaTime;
 			if (FilterRefreshCooldown <= 0.f) {
 				bAlreadyCached = false;
+				FiltredLinesCount = 0;
 			}
 		}
 
@@ -360,7 +394,7 @@ struct CrazyLog
 			bool bWantsToCopy = false;
 			if (ImGui::BeginPopupContextWindow())
 			{
-				if (ImGui::Selectable("Edit")) 
+				if (ImGui::Selectable("Edit", false, ImGuiSelectableFlags_Disabled)) 
 				{
 				
 				}
@@ -396,9 +430,10 @@ struct CrazyLog
 			{
 				if (!bAlreadyCached) 
 				{
-					vFiltredLinesCached.resize(0);
+					if(FiltredLinesCount == 0)
+						vFiltredLinesCached.resize(0);
 					
-					for (int line_no = 0; line_no < vLineOffsets.Size; line_no++)
+					for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
 					{
 						const char* line_start = buf + vLineOffsets[line_no];
 						const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
@@ -410,12 +445,13 @@ struct CrazyLog
 						}
 					}
 					
+					FiltredLinesCount = vLineOffsets.Size;
 					bAlreadyCached = true;
 				}
 				else
 				{
-					for (int i = 0; i < vFiltredLinesCached.Size; i++) {
-						
+					for (int i = 0; i < vFiltredLinesCached.Size; i++) 
+					{
 						int line_no = vFiltredLinesCached[i];
 						char* line_start = const_cast<char*>(buf + vLineOffsets[line_no]);
 						char* line_end = const_cast<char*>((line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end);
@@ -423,7 +459,7 @@ struct CrazyLog
 					
 						if (bShowLineNum) {
 							char aLineNumberName[10] = { 0 };
-							int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i ", line_no);
+							int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
 						
 							ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
 							ImGui::SameLine();
@@ -436,19 +472,6 @@ struct CrazyLog
 			}
 			else
 			{
-				// The simplest and easy way to display the entire buffer:
-				//   ImGui::TextUnformatted(buf_begin, buf_end);
-				// And it'll just work. TextUnformatted() has specialization for large blob of text and will fast-forward
-				// to skip non-visible lines. Here we instead demonstrate using the clipper to only process lines that are
-				// within the visible area.
-				// If you have tens of thousands of items and their processing cost is non-negligible, coarse clipping them
-				// on your side is recommended. Using ImGuiListClipper requires
-				// - A) random access into your data
-				// - B) items all being the  same height,
-				// both of which we can handle since we have an array pointing to the beginning of each line of text.
-				// When using the filter (in the block of code above) we don't have random access into the data to display
-				// anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
-				// it possible (and would be recommended if you want to search through tens of thousands of entries).
 				ImGuiListClipper clipper;
 				clipper.Begin(vLineOffsets.Size);
 				while (clipper.Step())
@@ -457,6 +480,13 @@ struct CrazyLog
 					{
 						const char* line_start = buf + vLineOffsets[line_no];
 						const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+						if (bShowLineNum) {
+							char aLineNumberName[10] = { 0 };
+							int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
+						
+							ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
+							ImGui::SameLine();
+						}
 						ImGui::TextUnformatted(line_start, line_end);
 					}
 				}
@@ -483,3 +513,4 @@ struct CrazyLog
 #undef FILTERS_FILE_NAME
 #undef FILTER_TOKEN
 #undef FILTER_INTERVAL
+#undef FILE_FETCH_INTERVAL

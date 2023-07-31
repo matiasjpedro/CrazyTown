@@ -76,5 +76,5 @@ void AppOnDrop(PlatformContext* pPlatformCtx, char* FileName)
 {
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	memcpy(pMem->Log.aFilePathToLoad, FileName, ArrayCount(pMem->Log.aFilePathToLoad));
-	pMem->Log.LoadFile(pPlatformCtx);
+	pMem->Log.LoadFile(pPlatformCtx, false);
 }

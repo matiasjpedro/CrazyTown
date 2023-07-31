@@ -24,14 +24,17 @@ https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-th
 
 // Refresh Mode:
 // Keep listening to the Target file changes
-// Only filter the new lines
 
 ================ InProgress
 
-// Make smarter allocations/copy/reserve/resize
+// Reading interval?
+// Dont keep the file open, just mark from which byte and reread it;
+// Do I need virtual alloc for it?
 
 ================ Done
 
+// Only filter the new lines
+// Make smarter allocations/copy/reserve/resize
 // Setup silly repo
 // Context menu in the output view?
 // Paste from clipboard - GetClipboardText
