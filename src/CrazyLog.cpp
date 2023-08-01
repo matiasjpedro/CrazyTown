@@ -69,6 +69,9 @@ struct CrazyLog
 
 	void FetchFile(PlatformContext* pPlatformCtx) 
 	{
+		// IMP(matiasp): 
+		// Avoid virtual alloc, use scratch alloc.
+		// keep the file open to avoid read/alloc the entire content.
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
 		if(File.pFile)
 		{
@@ -81,6 +84,7 @@ struct CrazyLog
 			LastFetchFileSize = (int)File.Size;
 		}
 	}
+	
 	void LoadFile(PlatformContext* pPlatformCtx) 
 	{
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
@@ -279,30 +283,26 @@ struct CrazyLog
 		
 		ImGui::SeparatorText("Target");
 		
-		if (ImGui::SmallButton("LoadFile")) 
+		
+		ImGui::SetNextItemWidth(-200);
+		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			LoadFile(pPlatformCtx);
 		}
 		
-		// Modes 
-		// WebSocket
-		// Folder
-		// File
-		//     Static
-		//     Dynamic
-	
 		ImGui::SameLine();
 		bool bStreamModeChanged = ImGui::Checkbox("StreamMode", &bStreamMode);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
+			ImGui::SetTooltip("StreamMode:\n"
+			                  "Indicates if we should refetch the content of the file periodically,\n"
+			                  "looking for new content added, like a log. \n");
+		
 		if (bStreamModeChanged) {
 			if(bStreamMode)
 				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 			else
 				FileContentFetchCooldown = -1.f;
 		}
-		
-		ImGui::SameLine();
-		ImGui::SetNextItemWidth(-100);
-		bool value_changed = ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH);
 		
 		if (FileContentFetchCooldown > 0 && bFileLoaded) {
 			FileContentFetchCooldown -= DeltaTime;
@@ -312,15 +312,13 @@ struct CrazyLog
 				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 			}
 		}
-		//ImGui::SetNextItemWidth(-100);
-		//bool value_changed2 = ImGui::InputText("FindPath", aFilePathToLoad, MAX_PATH);
 		
 		//=============================================================
 		// Filters 
 		
 		ImGui::SeparatorText("Filters");
 		
-		bool bFilterChanged = Filter.Draw("Filter", -150.0f);
+		bool bFilterChanged = Filter.Draw("Filter", -200.0f);
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
 			ImGui::SetTooltip("Filter usage:\n"
 			            "  \"\"         display all lines\n"
@@ -342,7 +340,7 @@ struct CrazyLog
 		{
 			if (bWantsToSave) 
 			{
-				ImGui::SetNextItemWidth(-150);
+				ImGui::SetNextItemWidth(-200);
 				ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH);
 			}
 			
@@ -498,7 +496,6 @@ struct CrazyLog
 							ImGui::SameLine();
 						}
 						
-						//https://github.com/ocornut/imgui/issues/950
 						ImGui::TextUnformatted(line_start, line_end);
 					}
 				}
@@ -544,6 +541,9 @@ struct CrazyLog
 };
 
 #undef FILTERS_FILE_NAME
+#undef FILTER_TOKEN
+#undef FILTER_INTERVAL
+#undef FILE_FETCH_INTERVAL
 #undef FILTER_TOKEN
 #undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVAL
