@@ -20,19 +20,21 @@ struct CrazyLog
 	char aFilterNameToSave[MAX_PATH];
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
+	int LastFetchFileSize;
 	bool bAlreadyCached;
-	bool bAutoScroll;  // Keep scrolling if already at the bottom.
+	bool bFileLoaded;
 	bool bStreamMode;
-	bool bShowLineNum;
 	bool bWantsToSave;
+	// Output options
+	bool bAutoScroll;  // Keep scrolling if already at the bottom.
+	bool bShowLineNum;
 	
 	float FilterRefreshCooldown;
 	float FileContentFetchCooldown;
-	void* FileHandle;
 
 	CrazyLog()
 	{
-		FileHandle = nullptr;
+		bFileLoaded = false;
 		bAutoScroll = true;
 		bAlreadyCached = false;
 		FiltredLinesCount = 0;
@@ -44,6 +46,7 @@ struct CrazyLog
 
 	void Clear()
 	{
+		bFileLoaded = false;
 		bWantsToSave = false;
 		FilterRefreshCooldown = -1;
 		
@@ -55,24 +58,43 @@ struct CrazyLog
 	
 	void LoadClipboard() 
 	{
+		bFileLoaded = false;
+		
 		const char* pClipboardText = ImGui::GetClipboardText();
 		if (pClipboardText) {
 			size_t TextSize = StringUtils::Length(pClipboardText);
 			SetLog(pClipboardText, (int)TextSize);
 		}
 	}
-	
-	void LoadFile(PlatformContext* pPlatformCtx, bool bAppend) 
+
+	void FetchFile(PlatformContext* pPlatformCtx) 
 	{
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
 		if(File.pFile)
 		{
-			if(bAppend)
-				AddLog((const char*)File.pFile, (int)File.Size);
-			else
-				SetLog((const char*)File.pFile, (int)File.Size);
-				
+			int NewContentSize = (int)File.Size - LastFetchFileSize;
+			if (NewContentSize > 0) {
+				AddLog((const char*)File.pFile + LastFetchFileSize, (int)File.Size - LastFetchFileSize);
+			}
+			
 			pPlatformCtx->pFreeFileContentFunc(&File);
+			LastFetchFileSize = (int)File.Size;
+		}
+	}
+	void LoadFile(PlatformContext* pPlatformCtx) 
+	{
+		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
+		if(File.pFile)
+		{
+			bFileLoaded = true;
+			
+			SetLog((const char*)File.pFile, (int)File.Size);
+			pPlatformCtx->pFreeFileContentFunc(&File);
+			
+			LastFetchFileSize = (int)File.Size;
+			
+			if (bStreamMode)
+				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 		}
 	}
 	
@@ -259,13 +281,7 @@ struct CrazyLog
 		
 		if (ImGui::SmallButton("LoadFile")) 
 		{
-			LoadFile(pPlatformCtx, false);
-		}
-		
-		ImGui::SameLine();
-		if (ImGui::SmallButton("AppendFile")) 
-		{
-			LoadFile(pPlatformCtx, true);
+			LoadFile(pPlatformCtx);
 		}
 		
 		// Modes 
@@ -276,9 +292,26 @@ struct CrazyLog
 		//     Dynamic
 	
 		ImGui::SameLine();
+		bool bStreamModeChanged = ImGui::Checkbox("StreamMode", &bStreamMode);
+		if (bStreamModeChanged) {
+			if(bStreamMode)
+				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+			else
+				FileContentFetchCooldown = -1.f;
+		}
+		
+		ImGui::SameLine();
 		ImGui::SetNextItemWidth(-100);
 		bool value_changed = ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH);
-		ImGui::Checkbox("StreamMode", &bStreamMode);
+		
+		if (FileContentFetchCooldown > 0 && bFileLoaded) {
+			FileContentFetchCooldown -= DeltaTime;
+			if (FileContentFetchCooldown <= 0.f) {
+				FetchFile(pPlatformCtx);
+				bAlreadyCached = false;
+				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+			}
+		}
 		//ImGui::SetNextItemWidth(-100);
 		//bool value_changed2 = ImGui::InputText("FindPath", aFilePathToLoad, MAX_PATH);
 		
