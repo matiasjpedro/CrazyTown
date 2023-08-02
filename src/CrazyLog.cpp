@@ -1,8 +1,10 @@
-
 #define FILTERS_FILE_NAME "FILTERS"
 #define FILTER_TOKEN ';'
 #define FILTER_INTERVAL 1.f
 #define FILE_FETCH_INTERVAL 1.f
+
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
 
 struct NamedFilter {
 	char aName[256];
@@ -21,6 +23,7 @@ struct CrazyLog
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
 	int LastFetchFileSize;
+	float PreviewSize;
 	bool bAlreadyCached;
 	bool bFileLoaded;
 	bool bStreamMode;
@@ -34,6 +37,7 @@ struct CrazyLog
 
 	CrazyLog()
 	{
+		PreviewSize = 10;
 		bFileLoaded = false;
 		bAutoScroll = true;
 		bAlreadyCached = false;
@@ -420,7 +424,12 @@ struct CrazyLog
 		
 		ImGui::SeparatorText("Output");
 		const char* pOutputName = "Output";
-		if (ImGui::BeginChild(pOutputName, ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
+		
+		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
+		bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
+		unsigned ExtraFlags = bIsShiftPressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
+		
+		if (ImGui::BeginChild(pOutputName, ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
 			if (ImGui::BeginPopupContextWindow())
@@ -472,7 +481,6 @@ struct CrazyLog
 							vFiltredLinesCached.push_back(line_no);
 							
 							ImGui::TextUnformatted(line_start, line_end);
-							
 						}
 					}
 					
@@ -497,6 +505,69 @@ struct CrazyLog
 						}
 						
 						ImGui::TextUnformatted(line_start, line_end);
+						
+						// Peek Full Version
+						if (bIsAltPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
+							PreviewSize += ImGui::GetIO().MouseWheel;
+							PreviewSize = max(PreviewSize, 0);
+							
+							int BottomLine = max(line_no - (int)PreviewSize, 0);
+							int TopLine = min(line_no + (int)PreviewSize, vLineOffsets.Size - 1);
+							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
+							
+							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+							if (pPlatformCtx->ScratchSize + Size + 1 < pPlatformCtx->ScratchMemoryCapacity) {
+								memcpy(pScratchStart, buf + vLineOffsets[BottomLine], Size);
+								memset(pScratchStart + Size, '\0', 1);
+								ImGui::SetTooltip(pScratchStart);
+								ImGui::SetClipboardText(pScratchStart);
+								pPlatformCtx->ScratchSize += Size + 1;
+							}
+							
+							if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+							{
+								ImGui::SetClipboardText(pScratchStart);
+							}
+						}
+					
+						// Select from Filtered Version
+						if (bIsShiftPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
+							PreviewSize += ImGui::GetIO().MouseWheel;
+							PreviewSize = max(PreviewSize, 0);
+							
+							int BottomLine = max(i - (int)PreviewSize, 0);
+							int TopLine = min(i + (int)PreviewSize, vFiltredLinesCached.Size - 1);
+							
+							bool bWroteOnScratch = false;
+							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+							for (int j = BottomLine; j < TopLine; j++) {
+								
+								int FilteredLineNo = vFiltredLinesCached[j];
+								char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
+								char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
+								
+								int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
+								if (pPlatformCtx->ScratchSize + Size < pPlatformCtx->ScratchMemoryCapacity) {
+									memcpy((char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize, pFilteredLineStart, Size);
+									
+									pPlatformCtx->ScratchSize += Size;
+									bWroteOnScratch = true;
+								}
+								
+							}
+							
+							if (bWroteOnScratch) {
+								memset((char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize, '\0', 1);
+								ImGui::SetTooltip(pScratchStart);
+								
+								if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+								{
+									ImGui::SetClipboardText(pScratchStart);
+								}
+							}
+							
+						}
+							
 					}
 				}
 			}
@@ -517,6 +588,7 @@ struct CrazyLog
 							ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
 							ImGui::SameLine();
 						}
+						
 						ImGui::TextUnformatted(line_start, line_end);
 					}
 				}
