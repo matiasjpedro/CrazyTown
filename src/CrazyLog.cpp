@@ -276,7 +276,7 @@ struct CrazyLog
 
 	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL)
 	{
-		if (!ImGui::Begin(title, pOpen))
+		if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar))
 		{
 			ImGui::End();
 			return;
@@ -519,8 +519,8 @@ struct CrazyLog
 							if (pPlatformCtx->ScratchSize + Size + 1 < pPlatformCtx->ScratchMemoryCapacity) {
 								memcpy(pScratchStart, buf + vLineOffsets[BottomLine], Size);
 								memset(pScratchStart + Size, '\0', 1);
+								ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
 								ImGui::SetTooltip(pScratchStart);
-								ImGui::SetClipboardText(pScratchStart);
 								pPlatformCtx->ScratchSize += Size + 1;
 							}
 							
@@ -558,6 +558,7 @@ struct CrazyLog
 							
 							if (bWroteOnScratch) {
 								memset((char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize, '\0', 1);
+								ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
 								ImGui::SetTooltip(pScratchStart);
 								
 								if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
@@ -590,6 +591,30 @@ struct CrazyLog
 						}
 						
 						ImGui::TextUnformatted(line_start, line_end);
+						
+						// Select full view
+						if (bIsShiftPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
+							PreviewSize += ImGui::GetIO().MouseWheel;
+							PreviewSize = max(PreviewSize, 0);
+							
+							int BottomLine = max(line_no - (int)PreviewSize, 0);
+							int TopLine = min(line_no + (int)PreviewSize, vLineOffsets.Size - 1);
+							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
+							
+							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+							if (pPlatformCtx->ScratchSize + Size + 1 < pPlatformCtx->ScratchMemoryCapacity) {
+								memcpy(pScratchStart, buf + vLineOffsets[BottomLine], Size);
+								memset(pScratchStart + Size, '\0', 1);
+								ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
+								ImGui::SetTooltip(pScratchStart);
+								pPlatformCtx->ScratchSize += Size + 1;
+							}
+							
+							if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+							{
+								ImGui::SetClipboardText(pScratchStart);
+							}
+						}
 					}
 				}
 				clipper.End();
