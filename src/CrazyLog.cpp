@@ -34,22 +34,25 @@ struct CrazyLog
 	
 	float FilterRefreshCooldown;
 	float FileContentFetchCooldown;
+	bool bIsPeeking;
+	float PeekScrollValue;
+	float FiltredScrollValue;
 
 	CrazyLog()
 	{
 		PreviewSize = 10;
-		bFileLoaded = false;
 		bAutoScroll = true;
-		bAlreadyCached = false;
-		FiltredLinesCount = 0;
 		FilterRefreshCooldown = -1.f;
 		FileContentFetchCooldown = -1.f;
+		PeekScrollValue = -1.f;
+		FiltredScrollValue = -1.f;
 		
 		Clear();
 	}
 
 	void Clear()
 	{
+		bIsPeeking = false;
 		bFileLoaded = false;
 		bWantsToSave = false;
 		FilterRefreshCooldown = -1;
@@ -62,6 +65,7 @@ struct CrazyLog
 	
 	void LoadClipboard() 
 	{
+		bIsPeeking = false;
 		bFileLoaded = false;
 		
 		const char* pClipboardText = ImGui::GetClipboardText();
@@ -91,6 +95,8 @@ struct CrazyLog
 	
 	void LoadFile(PlatformContext* pPlatformCtx) 
 	{
+		bIsPeeking = false;
+		
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
 		if(File.pFile)
 		{
@@ -421,23 +427,28 @@ struct CrazyLog
 		//=============================================================
 		// Output
 		
-		
-		ImGui::SeparatorText("Output");
-		const char* pOutputName = "Output";
+		if (bIsPeeking)
+		{
+			ImGui::SeparatorText("OUTPUT / PEEKING");
+		} 
+		else if (Filter.IsActive())
+		{
+			ImGui::SeparatorText("OUTPUT / FILTRED");
+		} 
+		else 
+		{
+			ImGui::SeparatorText("OUTPUT / FULLVIEW");
+		}
 		
 		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
-		bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
-		unsigned ExtraFlags = bIsShiftPressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
+		bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
+		unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 		
-		if (ImGui::BeginChild(pOutputName, ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
+		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
 			if (ImGui::BeginPopupContextWindow())
 			{
-				if (ImGui::Selectable("Edit", false, ImGuiSelectableFlags_Disabled)) 
-				{
-				
-				}
 				if (ImGui::Selectable("Copy")) 
 				{
 					bWantsToCopy = true;
@@ -461,12 +472,30 @@ struct CrazyLog
 				ImGui::EndPopup();
 			}
 			
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			//ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 10));
 			const char* buf = Buf.begin();
 			const char* buf_end = Buf.end();
 			if (bWantsToCopy)
 				ImGui::LogToClipboard();
-			if (Filter.IsActive())
+			
+			float OneTimeScrollValue = -1.f;
+			
+			if (bIsPeeking) 
+			{
+				if (PeekScrollValue > -1.f) 
+				{
+					OneTimeScrollValue = PeekScrollValue;
+					PeekScrollValue = -1.f;
+				}
+				
+				if (ImGui::IsKeyReleased(ImGuiKey_MouseX1)) 
+				{
+					OneTimeScrollValue = FiltredScrollValue;
+					bIsPeeking = false;
+				}
+			}
+			
+			if (Filter.IsActive() && !bIsPeeking)
 			{
 				if (!bAlreadyCached) 
 				{
@@ -507,7 +536,7 @@ struct CrazyLog
 						ImGui::TextUnformatted(line_start, line_end);
 						
 						// Peek Full Version
-						if (bIsAltPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
+						if (bIsCtrlressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
 							PreviewSize += ImGui::GetIO().MouseWheel;
 							PreviewSize = max(PreviewSize, 0);
 							
@@ -524,9 +553,19 @@ struct CrazyLog
 								pPlatformCtx->ScratchSize += Size + 1;
 							}
 							
-							if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+							if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
 							{
-								ImGui::SetClipboardText(pScratchStart);
+								float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
+								float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
+								
+								// TODO(Matiasp): Why it does not work when I scale the font?
+								
+								// We apply the same offset to maintain the same scroll position
+								// between peeking and filtred view.
+								PeekScrollValue = ItemPosY - TopOffset;
+								FiltredScrollValue = ImGui::GetScrollY();
+								
+								bIsPeeking = true;
 							}
 						}
 					
@@ -623,8 +662,12 @@ struct CrazyLog
 			if (bWantsToCopy)
 				ImGui::LogFinish();
 			
-			ImGui::PopStyleVar();
+			//ImGui::PopStyleVar();
 
+			if (OneTimeScrollValue > -1.f) {
+				ImGui::SetScrollY(OneTimeScrollValue);
+			}
+			
 			// Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
 			// Using a scrollbar or mouse-wheel will take away from the bottom edge.
 			if (bAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
