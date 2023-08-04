@@ -11,7 +11,7 @@ rem del *.pdb
 cd. > building_marker
 
 cl  %CommonCompilerFlags% ..\src\CrazyTownApp.cpp /LD /link %CommonLinkerFlags% /EXPORT:AppUpdate /EXPORT:AppInit /EXPORT:AppShutdown /EXPORT:AppOnHotReload /EXPORT:AppOnDrop 
-cl  %CommonCompilerFlags% ..\src\CrazyTownWin32.cpp /link %CommonLinkerFlags% user32.lib d3d11.lib d3dcompiler.lib winmm.lib Shell32.lib 
+cl  %CommonCompilerFlags% ..\src\CrazyTownWin32.cpp /link %CommonLinkerFlags% user32.lib d3d11.lib d3dcompiler.lib winmm.lib Shell32.lib ../data/app_icon.res
 
 del building_marker
 
