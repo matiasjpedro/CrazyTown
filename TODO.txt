@@ -27,6 +27,8 @@ https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-th
 
 ================ InProgress
 
+// Improve selection
+// New font in the binary using base85 and D:\Dev\imgui\misc\fonts\binary_to_compressed_c.cpp
 // Make possible to select as flags the different filters of your preset
 
 ================ Done

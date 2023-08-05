@@ -23,33 +23,31 @@ struct CrazyLog
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
 	int LastFetchFileSize;
-	float PreviewSize;
 	bool bAlreadyCached;
 	bool bFileLoaded;
 	bool bStreamMode;
 	bool bWantsToSave;
+	bool bIsPeeking;
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
 	bool bShowLineNum;
 	
+	float SelectionSize;
 	float FilterRefreshCooldown;
 	float FileContentFetchCooldown;
-	bool bIsPeeking;
 	float PeekScrollValue;
 	float FiltredScrollValue;
 
-	CrazyLog()
+	void Init()
 	{
-		PreviewSize = 10;
 		bAutoScroll = true;
+		SelectionSize = 1.f;
 		FilterRefreshCooldown = -1.f;
 		FileContentFetchCooldown = -1.f;
 		PeekScrollValue = -1.f;
 		FiltredScrollValue = -1.f;
-		
-		Clear();
 	}
-
+	
 	void Clear()
 	{
 		bIsPeeking = false;
@@ -444,6 +442,10 @@ struct CrazyLog
 		bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
 		unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 		
+		if (!bIsShiftPressed && SelectionSize > 1.f) {
+			SelectionSize = 1.f;
+		}
+		
 		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
@@ -555,11 +557,11 @@ struct CrazyLog
 					
 						// Select from Filtered Version
 						if (bIsShiftPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
-							PreviewSize += ImGui::GetIO().MouseWheel;
-							PreviewSize = max(PreviewSize, 0);
+							SelectionSize += ImGui::GetIO().MouseWheel;
+							SelectionSize = max(SelectionSize, 1);
 							
-							int BottomLine = max(i - (int)PreviewSize, 0);
-							int TopLine = min(i + (int)PreviewSize, vFiltredLinesCached.Size - 1);
+							int BottomLine = max(i - (int)SelectionSize + 1, 0);
+							int TopLine = min(i + (int)SelectionSize, vFiltredLinesCached.Size - 1);
 							
 							bool bWroteOnScratch = false;
 							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
@@ -617,11 +619,11 @@ struct CrazyLog
 						
 						// Select full view
 						if (bIsShiftPressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
-							PreviewSize += ImGui::GetIO().MouseWheel;
-							PreviewSize = max(PreviewSize, 0);
+							SelectionSize += ImGui::GetIO().MouseWheel;
+							SelectionSize = max(SelectionSize, 1);
 							
-							int BottomLine = max(line_no - (int)PreviewSize, 0);
-							int TopLine = min(line_no + (int)PreviewSize, vLineOffsets.Size - 1);
+							int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
+							int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
 							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
 							
 							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;

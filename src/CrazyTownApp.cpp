@@ -57,7 +57,9 @@ void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformRelo
 	
 	ASSERT(sizeof(AppMemory) <= pPlatformCtx->PermanentMemoryCapacity);
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
+	pMem->Log.Init();
 	pMem->Log.LoadFilter(pPlatformCtx);
+	
 }
 
 void AppShutdown(PlatformReloadContext* pPlatformReloadCtx)
