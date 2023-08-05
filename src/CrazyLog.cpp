@@ -11,6 +11,8 @@ struct NamedFilter {
 	ImGuiTextFilter Filter;
 };
 
+
+
 struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
@@ -37,6 +39,9 @@ struct CrazyLog
 	float FileContentFetchCooldown;
 	float PeekScrollValue;
 	float FiltredScrollValue;
+	
+	uint64_t FilterFlags;
+	int LastFrameFiltersCount;
 
 	void Init()
 	{
@@ -46,6 +51,7 @@ struct CrazyLog
 		FileContentFetchCooldown = -1.f;
 		PeekScrollValue = -1.f;
 		FiltredScrollValue = -1.f;
+		FilterFlags = 0xFFFFFFFF;
 	}
 	
 	void Clear()
@@ -334,7 +340,16 @@ struct CrazyLog
 			            "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n"
 			            "  \"-xxx\"     hide lines containing \"xxx\"");
 		
+		// If the size of the filters changed, make sure to start with those filters enabled.
+		if (LastFrameFiltersCount < Filter.Filters.Size) 
+		{
+			for (int i = LastFrameFiltersCount; i < Filter.Filters.Size; i++) 
+			{
+				FilterFlags |= 1ull << i;
+			}
+		}
 		
+		LastFrameFiltersCount = Filter.Filters.Size;
 	
 		size_t FilterLen = StringUtils::Length(Filter.InputBuf);
 		
@@ -400,6 +415,30 @@ struct CrazyLog
 		}
 	
 		if (Filter.IsActive() ) {
+			if (ImGui::TreeNode("Cherrypick"))
+			{
+				bool bAnyFlagChanged = false;
+				for (int i = 0; i != Filter.Filters.Size; i++)
+				{
+					char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+					size_t FilterSize = Filter.Filters[i].e - Filter.Filters[i].b;
+					memcpy(pScratchStart, Filter.Filters[i].e - FilterSize, FilterSize);
+					memset(pScratchStart + FilterSize, '\0', 1);
+					
+					pPlatformCtx->ScratchSize += FilterSize + 1;
+					
+					bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
+					if (bChanged)
+						bAnyFlagChanged = true;
+				}
+				
+				if (bAnyFlagChanged) {
+					bAlreadyCached = false;
+					FiltredLinesCount = 0;
+				}
+				
+				ImGui::TreePop();
+			}
 			
 			// If we are typing set the refresh interval
 			if (bFilterChanged) {
@@ -410,6 +449,7 @@ struct CrazyLog
 			} else if (bSelectedFilterChanged) {
 				bAlreadyCached = false;
 				FiltredLinesCount = 0;
+				FilterFlags = 0xFFFFFFFF;
 			}
 		}
 			
@@ -509,7 +549,8 @@ struct CrazyLog
 					{
 						const char* line_start = buf + vLineOffsets[line_no];
 						const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-						if (Filter.PassFilter(line_start, line_end)) {
+						// TODO(Make a custom pass filter)
+						if (CustomPassFilter(line_start, line_end)) {
 							vFiltredLinesCached.push_back(line_no);
 							
 							ImGui::TextUnformatted(line_start, line_end);
@@ -665,6 +706,47 @@ struct CrazyLog
 		ImGui::EndChild();
 		ImGui::End();
 	}
+	
+	bool CustomPassFilter(const char* text, const char* text_end) const
+	{
+		if (Filter.Filters.empty())
+			return true;
+
+		if (text == NULL)
+			text = "";
+
+		for (int i = 0; i != Filter.Filters.Size; i++)
+		{
+			
+			bool bFilterEnabled = (FilterFlags & (1ull << i));
+			if (!bFilterEnabled)
+				continue;
+			
+		
+			const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
+			if (f.empty())
+				continue;
+		
+			if (f.b[0] == '-')
+			{
+				// Subtract
+				if (ImStristr(text, text_end, f.b + 1, f.e) != NULL)
+					return false;
+			}
+			else
+			{
+				// Grep
+				if (ImStristr(text, text_end, f.b, f.e) != NULL)
+					return true;
+			}
+		}
+
+		// Implicit * grep
+		if (Filter.CountGrep == 0)
+			return true;
+
+		return false;
+	}
 };
 
 #undef FILTERS_FILE_NAME
@@ -673,4 +755,5 @@ struct CrazyLog
 #undef FILE_FETCH_INTERVAL
 #undef FILTER_TOKEN
 #undef FILTER_INTERVAL
+#undef FILE_FETCH_INTERVALERVAL
 #undef FILE_FETCH_INTERVAL

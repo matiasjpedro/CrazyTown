@@ -9,6 +9,7 @@
 #include "../vendor/imgui_widgets.cpp"
 
 #include "CrazyLog.cpp"
+#include "ConsolaTTF.cpp"
 
 
 
@@ -44,21 +45,40 @@ void AppUpdate(float DeltaTime, PlatformContext* pPlatformCtx)
 #endif
 }
 
+void AddEmbeddedConsolaTTF() {
+	ImFontConfig font_cfg = ImFontConfig();
+	font_cfg.OversampleH = font_cfg.OversampleV = 1;
+	font_cfg.PixelSnapH = true;
+	
+	float FontSize = 16.f;
+	
+	if (font_cfg.SizePixels <= 0.0f)
+		font_cfg.SizePixels = FontSize * 1.0f;
+	if (font_cfg.Name[0] == '\0')
+		ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "Consola.ttf, %dpx", (int)font_cfg.SizePixels);
+	font_cfg.EllipsisChar = (ImWchar)0x0085;
+	font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / FontSize);  
+
+	const char* ttf_compressed_base85 = ConsolaTTF_compressed_data_base85;
+	const ImWchar* glyph_ranges = ImGui::GetIO().Fonts->GetGlyphRangesDefault();
+	ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(ttf_compressed_base85, font_cfg.SizePixels, &font_cfg, glyph_ranges);
+}
+
 void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformReloadCtx) 
 {
 	ImGui::SetCurrentContext(pPlatformReloadCtx->pImGuiCtx);
 	ImGui::SetAllocatorFunctions(pPlatformReloadCtx->pImGuiAllocFunc, pPlatformReloadCtx->pImGuiFreeFunc);
 	
-	const char* fontFilePath = "consola.ttf"; 
 
-	float fontSize = 20.0f; 
 	ImGui::GetIO().Fonts->AddFontDefault();
-	ImGui::GetIO().Fonts->AddFontFromFileTTF(fontFilePath, fontSize);
+	AddEmbeddedConsolaTTF();
 	
 	ASSERT(sizeof(AppMemory) <= pPlatformCtx->PermanentMemoryCapacity);
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	pMem->Log.Init();
 	pMem->Log.LoadFilter(pPlatformCtx);
+	
+	
 	
 }
 
