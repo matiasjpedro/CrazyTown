@@ -444,6 +444,7 @@ struct CrazyLog
 		bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
 		unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 		
+		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
@@ -537,28 +538,11 @@ struct CrazyLog
 						
 						// Peek Full Version
 						if (bIsCtrlressed && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone)) {
-							PreviewSize += ImGui::GetIO().MouseWheel;
-							PreviewSize = max(PreviewSize, 0);
-							
-							int BottomLine = max(line_no - (int)PreviewSize, 0);
-							int TopLine = min(line_no + (int)PreviewSize, vLineOffsets.Size - 1);
-							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
-							
-							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
-							if (pPlatformCtx->ScratchSize + Size + 1 < pPlatformCtx->ScratchMemoryCapacity) {
-								memcpy(pScratchStart, buf + vLineOffsets[BottomLine], Size);
-								memset(pScratchStart + Size, '\0', 1);
-								ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
-								ImGui::SetTooltip(pScratchStart);
-								pPlatformCtx->ScratchSize += Size + 1;
-							}
-							
 							if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
 							{
+								// TODO(Matiasp): Why it does not work when I scale the font?
 								float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
 								float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
-								
-								// TODO(Matiasp): Why it does not work when I scale the font?
 								
 								// We apply the same offset to maintain the same scroll position
 								// between peeking and filtred view.
@@ -675,6 +659,7 @@ struct CrazyLog
 			
 			
 		}
+		ImGui::PopFont();
 		ImGui::EndChild();
 		ImGui::End();
 	}

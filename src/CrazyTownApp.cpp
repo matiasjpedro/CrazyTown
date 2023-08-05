@@ -49,6 +49,12 @@ void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformRelo
 	ImGui::SetCurrentContext(pPlatformReloadCtx->pImGuiCtx);
 	ImGui::SetAllocatorFunctions(pPlatformReloadCtx->pImGuiAllocFunc, pPlatformReloadCtx->pImGuiFreeFunc);
 	
+	const char* fontFilePath = "consola.ttf"; 
+
+	float fontSize = 20.0f; 
+	ImGui::GetIO().Fonts->AddFontDefault();
+	ImGui::GetIO().Fonts->AddFontFromFileTTF(fontFilePath, fontSize);
+	
 	ASSERT(sizeof(AppMemory) <= pPlatformCtx->PermanentMemoryCapacity);
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	pMem->Log.LoadFilter(pPlatformCtx);

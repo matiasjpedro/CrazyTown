@@ -4,6 +4,7 @@
 ================ Backlog
 
 // Support to listen from a websocket?
+// Fix peeking not working when scaling the font
 
 ================ Next
 
@@ -26,11 +27,11 @@ https://stackoverflow.com/questions/29880039/finding-the-last-created-file-in-th
 
 ================ InProgress
 
-// Improve font readibility on the output
-// Fix peeking not working when scaling the font
+// Make possible to select as flags the different filters of your preset
 
 ================ Done
 
+// Improve font readibility on the output
 // When peeking try mantain the line in the same part of the screen
 // Have a way of telling you're in peeking mode
 // Keep listening to the Target file changes
