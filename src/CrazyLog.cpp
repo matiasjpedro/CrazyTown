@@ -2,6 +2,7 @@
 #define FILTER_TOKEN ';'
 #define FILTER_INTERVAL 1.f
 #define FILE_FETCH_INTERVAL 1.f
+#define FOLDER_FETCH_INTERVAL 2.f
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -20,13 +21,16 @@ struct CrazyLog
 	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
+	unsigned long aWriteTime[2];
 	char aFilePathToLoad[MAX_PATH];
+	char aFolderPathToLoad[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	bool bAlreadyCached;
 	bool bFileLoaded;
+	bool bFolderQuery;
 	bool bStreamMode;
 	bool bWantsToSave;
 	bool bIsPeeking;
@@ -37,6 +41,7 @@ struct CrazyLog
 	float SelectionSize;
 	float FilterRefreshCooldown;
 	float FileContentFetchCooldown;
+	float FolderFetchCooldown;
 	float PeekScrollValue;
 	float FiltredScrollValue;
 	
@@ -49,6 +54,7 @@ struct CrazyLog
 		SelectionSize = 1.f;
 		FilterRefreshCooldown = -1.f;
 		FileContentFetchCooldown = -1.f;
+		FolderFetchCooldown = -1.f;
 		PeekScrollValue = -1.f;
 		FiltredScrollValue = -1.f;
 		FilterFlags = 0xFFFFFFFF;
@@ -71,6 +77,9 @@ struct CrazyLog
 	{
 		bIsPeeking = false;
 		bFileLoaded = false;
+		bStreamMode = false;
+		bFolderQuery = false;
+		memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		
 		const char* pClipboardText = ImGui::GetClipboardText();
 		if (pClipboardText) {
@@ -79,26 +88,56 @@ struct CrazyLog
 		}
 	}
 
-	void FetchFile(PlatformContext* pPlatformCtx) 
+	bool FetchFile(PlatformContext* pPlatformCtx) 
 	{
+		if (aFilePathToLoad[0] == 0)
+			return false;
+		
 		// IMP(matiasp): 
 		// Avoid virtual alloc, use scratch alloc.
 		// keep the file open to avoid read/alloc the entire content.
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
+		bool bNewContent = false;
 		if(File.pFile)
 		{
-			int NewContentSize = (int)File.Size - LastFetchFileSize;
-			if (NewContentSize > 0) {
+			bNewContent = ((int)File.Size - LastFetchFileSize) > 0;
+			if (bNewContent) {
 				AddLog((const char*)File.pFile + LastFetchFileSize, (int)File.Size - LastFetchFileSize);
+				LastFetchFileSize = (int)File.Size;
 			}
 			
 			pPlatformCtx->pFreeFileContentFunc(&File);
-			LastFetchFileSize = (int)File.Size;
 		}
+		
+		FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+		
+		return bNewContent;
+	}
+	
+	void SearchLatestFile(PlatformContext* pPlatformCtx)
+	{
+		if (aFolderPathToLoad[0] == 0)
+			return;
+		
+		LastFileFolder OutLastFileFolder = { 0 };
+		bool bNewerFile = pPlatformCtx->pFetchLastFileFolderFunc(aFolderPathToLoad, aWriteTime, &OutLastFileFolder);
+			
+		// There is a newer file
+		if (bNewerFile && strcmp(aFilePathToLoad, OutLastFileFolder.aFilePath) != 0) {
+			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), OutLastFileFolder.aFilePath);
+				
+			bStreamMode = true;
+			LoadFile(pPlatformCtx);
+		}
+		
+		FolderFetchCooldown = FOLDER_FETCH_INTERVAL;
 	}
 	
 	void LoadFile(PlatformContext* pPlatformCtx) 
 	{
+		if (aFilePathToLoad[0] == 0)
+			return;
+			
 		bIsPeeking = false;
 		
 		FileContent File = pPlatformCtx->pReadFileFunc(aFilePathToLoad);
@@ -297,11 +336,49 @@ struct CrazyLog
 		
 		ImGui::SeparatorText("Target");
 		
+		ImGui::SetNextItemWidth(-200);
+		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			bFolderQuery = true;
+			SearchLatestFile(pPlatformCtx);
+		}
+		else if (bFolderQuery)
+		{
+			if (FolderFetchCooldown > 0.f ) {
+				FolderFetchCooldown -= DeltaTime;
+				if (FolderFetchCooldown <= 0.f) {
+					SearchLatestFile(pPlatformCtx);
+				}
+			}
+		}
+		
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
+			ImGui::SetTooltip("It will automatically load the last written file that matches the query. \n"
+			                  "It will enable stream mode by default, since it will start streaming the last file into the output. \n"
+			                  "Expected format example: D:\\logs\\*.extension \n");
+		
+		ImGui::SameLine();
+		bool bFolderQueryChanged = ImGui::Checkbox("Enabled", &bFolderQuery);
+		if (bFolderQueryChanged) {
+			if (bFolderQuery)
+				SearchLatestFile(pPlatformCtx);
+			else
+				FolderFetchCooldown = -1.f;
+		}
 		
 		ImGui::SetNextItemWidth(-200);
 		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			LoadFile(pPlatformCtx);
+		}
+		else if(bStreamMode)
+		{
+			if (FileContentFetchCooldown > 0 && bFileLoaded) {
+				FileContentFetchCooldown -= DeltaTime;
+				if (FileContentFetchCooldown <= 0.f) {
+					bAlreadyCached = !FetchFile(pPlatformCtx);
+				}
+			}
 		}
 		
 		ImGui::SameLine();
@@ -312,19 +389,10 @@ struct CrazyLog
 			                  "looking for new content added, like a log. \n");
 		
 		if (bStreamModeChanged) {
-			if(bStreamMode)
-				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+			if (bStreamMode)
+				FetchFile(pPlatformCtx);
 			else
 				FileContentFetchCooldown = -1.f;
-		}
-		
-		if (FileContentFetchCooldown > 0 && bFileLoaded) {
-			FileContentFetchCooldown -= DeltaTime;
-			if (FileContentFetchCooldown <= 0.f) {
-				FetchFile(pPlatformCtx);
-				bAlreadyCached = false;
-				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
-			}
 		}
 		
 		//=============================================================
@@ -339,6 +407,7 @@ struct CrazyLog
 			            "  \"xxx\"      display lines containing \"xxx\"\n"
 			            "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n"
 			            "  \"-xxx\"     hide lines containing \"xxx\"");
+		
 		
 		// If the size of the filters changed, make sure to start with those filters enabled.
 		if (LastFrameFiltersCount < Filter.Filters.Size) 
@@ -747,6 +816,7 @@ struct CrazyLog
 
 		return false;
 	}
+	
 };
 
 #undef FILTERS_FILE_NAME
@@ -757,3 +827,4 @@ struct CrazyLog
 #undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVALERVAL
 #undef FILE_FETCH_INTERVAL
+#undef FOLDER_FETCH_INTERVAL

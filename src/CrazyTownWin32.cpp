@@ -214,6 +214,63 @@ FileContent Win32ReadFile(char* pPath)
 	return Result;
 }
 
+bool Win32FetchLastFileFolder(char* pFolderQuery, DWORD* pLastWriteTime, LastFileFolder* pOutLastFileFolder)
+{
+	// Check the proper format
+	// We expect to receive FolderPath\*.extension
+	char pExtensionToken = '.';
+	char pExtensionQueryToken = '*';
+	size_t FolderQueryLen = StringUtils::Length(pFolderQuery);
+	size_t FolderPathLen = 0;
+	bool bQueryWithExpectedFormat = false;
+	if (FolderQueryLen)
+	{
+		for (size_t i = FolderQueryLen; i != 0; i--) 
+		{
+			if (pFolderQuery[i] == pExtensionToken && pFolderQuery[i-1] == pExtensionQueryToken) {
+				
+				bQueryWithExpectedFormat = true;
+				
+				FolderPathLen = StringUtils::Concat(
+					pOutLastFileFolder->aFilePath, sizeof(pOutLastFileFolder->aFilePath),
+					pFolderQuery, i-1, 
+					0, 0);
+				
+				break;
+			}
+		}
+	}
+	
+	if (!bQueryWithExpectedFormat)
+		return false;
+		
+	FILETIME BestDate = *(FILETIME*)pLastWriteTime;
+	
+	WIN32_FIND_DATA FindData;
+	HANDLE hFind = FindFirstFile(pFolderQuery, &FindData);
+	bool bFoundNewFile = false;
+
+	if (hFind != INVALID_HANDLE_VALUE) {
+
+		do 
+		{
+			
+			if (CompareFileTime(&FindData.ftLastWriteTime, &BestDate) == 1) {
+				bFoundNewFile = true;
+				
+				BestDate = FindData.ftLastWriteTime;
+				memcpy(pOutLastFileFolder->aWriteTime, &FindData.ftLastWriteTime, sizeof(FILETIME));
+				strcpy_s(pOutLastFileFolder->aFilePath + FolderPathLen - 1, sizeof(pOutLastFileFolder->aFilePath), FindData.cFileName);
+			}
+			
+		} while (FindNextFile(hFind, &FindData));
+
+		FindClose(hFind);
+	}
+
+	return bFoundNewFile;
+}
+
 //==================================================
 // Time Section
 
@@ -353,6 +410,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pReadFileFunc = Win32ReadFile;
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
 	gPlatformContext.pFreeFileContentFunc = Win32FreeFile;
+	gPlatformContext.pFetchLastFileFolderFunc = Win32FetchLastFileFolder;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
 	gHotReloadableCode.pInitFunc(&gPlatformContext, &gPlatformReloadContext);
@@ -397,6 +455,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		gPlatformContext.ScratchSize = 0;
 		
 		FILETIME NewDLLWriteTime = GetLastWriteTime(aHotReloadDLLFullPath);
+		
 		// MSDOC: 1 means First file time is later than second file time.
 		if (CompareFileTime(&NewDLLWriteTime, &gHotReloadableCode.LastWriteTime) == 1) 
 		{
