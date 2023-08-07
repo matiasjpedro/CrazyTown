@@ -336,6 +336,7 @@ struct CrazyLog
 		
 		ImGui::SeparatorText("Target");
 		
+#if 0
 		ImGui::SetNextItemWidth(-200);
 		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -365,6 +366,7 @@ struct CrazyLog
 			else
 				FolderFetchCooldown = -1.f;
 		}
+#endif
 		
 		ImGui::SetNextItemWidth(-200);
 		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
@@ -403,10 +405,11 @@ struct CrazyLog
 		bool bFilterChanged = Filter.Draw("Filter", -200.0f);
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
 			ImGui::SetTooltip("Filter usage:\n"
-			            "  \"\"         display all lines\n"
-			            "  \"xxx\"      display lines containing \"xxx\"\n"
-			            "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n"
-			            "  \"-xxx\"     hide lines containing \"xxx\"");
+			            "  \"\"         	display all lines\n"
+			            "  \"xxx\"      	display lines containing \"xxx\"\n"
+			            "  \"xxx,yyy\"  	display lines containing \"xxx\" or \"yyy\"\n"
+			            "  \"xxx,yyy,+zzz\" display lines containing (\"xxx\" or \"yyy\") and \"+zzz\"\n"
+			            "  \"-xxx\"     	hide lines containing \"xxx\"");
 		
 		
 		// If the size of the filters changed, make sure to start with those filters enabled.
@@ -802,11 +805,27 @@ struct CrazyLog
 				if (ImStristr(text, text_end, f.b + 1, f.e) != NULL)
 					return false;
 			}
-			else
+			else if (f.b[0] != '+')
 			{
 				// Grep
-				if (ImStristr(text, text_end, f.b, f.e) != NULL)
+				if (ImStristr(text, text_end, f.b, f.e) != NULL) {
+					
+					// Append
+					for (int j = 0; j != Filter.Filters.Size; j++)
+					{
+						const ImGuiTextFilter::ImGuiTextRange& f2 = Filter.Filters[j];
+						if (f2.empty())
+							continue;
+						
+						if (f2.b[0] == '+')
+						{
+							if (ImStristr(text, text_end, f2.b + 1, f2.e) == NULL)
+								return false;
+						}
+					}
+					
 					return true;
+				}
 			}
 		}
 
