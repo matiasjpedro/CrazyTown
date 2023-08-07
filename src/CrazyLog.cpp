@@ -325,7 +325,7 @@ struct CrazyLog
 
 	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL)
 	{
-		if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar))
+		if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize))
 		{
 			ImGui::End();
 			return;
@@ -368,7 +368,7 @@ struct CrazyLog
 		}
 #endif
 		
-		ImGui::SetNextItemWidth(-200);
+		ImGui::SetNextItemWidth(-160);
 		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			LoadFile(pPlatformCtx);
@@ -402,7 +402,7 @@ struct CrazyLog
 		
 		ImGui::SeparatorText("Filters");
 		
-		bool bFilterChanged = Filter.Draw("Filter", -200.0f);
+		bool bFilterChanged = Filter.Draw("Filter", -160.0f);
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
 			ImGui::SetTooltip("Filter usage:\n"
 			            "  \"\"         	display all lines\n"
@@ -435,7 +435,7 @@ struct CrazyLog
 		{
 			if (bWantsToSave) 
 			{
-				ImGui::SetNextItemWidth(-200);
+				ImGui::SetNextItemWidth(-160);
 				ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH);
 			}
 			
@@ -465,6 +465,7 @@ struct CrazyLog
 					} 
 				};
 		
+				ImGui::SetNextItemWidth(-288);
 				bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter, (void*)&LoadedFilters, LoadedFilters.Size);
 				if (bSelectedFilterChanged)
 				{
@@ -562,6 +563,19 @@ struct CrazyLog
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
+			
+			if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
+			{
+				if (ImGui::IsWindowFocused())	
+					LoadClipboard();
+			}
+			
+			if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_C))
+			{
+				if (ImGui::IsWindowFocused())
+					bWantsToCopy = true;
+			}
+			
 			if (ImGui::BeginPopupContextWindow())
 			{
 				if (ImGui::Selectable("Copy")) 
