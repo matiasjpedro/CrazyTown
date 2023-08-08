@@ -831,6 +831,10 @@ struct CrazyLog
 						if (f2.empty())
 							continue;
 						
+						bool bFilterEnabled2 = (FilterFlags & (1ull << j));
+						if (!bFilterEnabled2)
+							continue;
+						
 						if (f2.b[0] == '+')
 						{
 							if (ImStristr(text, text_end, f2.b + 1, f2.e) == NULL)
