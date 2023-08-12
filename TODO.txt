@@ -26,13 +26,16 @@
 // Implement WebSocket 
 // Improve selection -> cap tooltip size
 
+// Support through multiple logs -> TabItemButton
+// Fix ListenForLatestFile
+
 ================ InProgress
 
-// Support through multiple logs -> TabItemButton
 // Add utility for scratch allocator and strings
 
 ================ Done
 
+// Added a way to copy individual characters Alt + Scroll
 // Implement ListenForLatestFile
 // Make possible to select as flags the different filters of your preset
 // New font in the binary using base85 and D:\Dev\imgui\misc\fonts\binary_to_compressed_c.cpp
@@ -66,6 +69,3 @@
 // Cleanup the memcpy it's just terrible
 // build the game.dll and reload
 // Setup hot reload
-
-
-
