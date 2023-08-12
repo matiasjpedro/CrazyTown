@@ -491,7 +491,7 @@ struct CrazyLog
 				{
 					char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 					size_t FilterSize = Filter.Filters[i].e - Filter.Filters[i].b;
-					pPlatformCtx->ScratchMem.PushBack((void*)(Filter.Filters[i].e - FilterSize), FilterSize);
+					pPlatformCtx->ScratchMem.PushBack(Filter.Filters[i].e - FilterSize, FilterSize);
 					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
 					
 					bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
@@ -531,18 +531,25 @@ struct CrazyLog
 
 		//=============================================================
 		// Output
+		ImVec4 BgColor;
+		ImGuiStyle& rStyle = ImGui::GetStyle();
 		
 		if (bIsPeeking)
 		{
 			ImGui::SeparatorText("OUTPUT / PEEKING");
+			BgColor = rStyle.Colors[ImGuiCol_Separator];
 		} 
-		else if (Filter.IsActive())
+		else if (AnyFilterActive())
 		{
 			ImGui::SeparatorText("OUTPUT / FILTRED");
+			
+			BgColor = rStyle.Colors[ImGuiCol_Button];
 		} 
 		else 
 		{
 			ImGui::SeparatorText("OUTPUT / FULLVIEW");
+			
+			BgColor = rStyle.Colors[ImGuiCol_WindowBg];
 		}
 		
 		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
@@ -555,6 +562,8 @@ struct CrazyLog
 		}
 		
 		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+		
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, BgColor);  // Change this color
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
@@ -618,13 +627,13 @@ struct CrazyLog
 					bIsPeeking = false;
 				}
 				
-				if (!Filter.IsActive()) 
+				if (!AnyFilterActive()) 
 				{
 					bIsPeeking = false;	
 				}
 			}
 			
-			if (Filter.IsActive() && !bIsPeeking)
+			if (!bIsPeeking && AnyFilterActive())
 			{
 				if (!bAlreadyCached) 
 				{
@@ -910,11 +919,23 @@ struct CrazyLog
 			if (bAutoScroll && !bIsPeeking && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 				ImGui::SetScrollHereY(1.0f);
 			
-			
+			ImGui::PopStyleColor();
 		}
 		ImGui::PopFont();
 		ImGui::EndChild();
 		ImGui::End();
+	}
+	
+	bool AnyFilterActive () const
+	{
+		for (int i = 0; i != Filter.Filters.Size; i++)
+		{
+			bool bFilterEnabled = (FilterFlags & (1ull << i));
+			if (bFilterEnabled)
+				return true;
+		}
+		
+		return false;
 	}
 	
 	bool CustomPassFilter(const char* text, const char* text_end) const
