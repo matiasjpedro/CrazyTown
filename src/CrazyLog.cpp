@@ -537,13 +537,13 @@ struct CrazyLog
 		if (bIsPeeking)
 		{
 			ImGui::SeparatorText("OUTPUT / PEEKING");
-			BgColor = rStyle.Colors[ImGuiCol_Separator];
+			BgColor = rStyle.Colors[ImGuiCol_FrameBg];
 		} 
 		else if (AnyFilterActive())
 		{
 			ImGui::SeparatorText("OUTPUT / FILTRED");
 			
-			BgColor = rStyle.Colors[ImGuiCol_Button];
+			BgColor = rStyle.Colors[ImGuiCol_DockingEmptyBg];
 		} 
 		else 
 		{
@@ -567,7 +567,6 @@ struct CrazyLog
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
-			
 			if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
 			{
 				if (ImGui::IsWindowFocused())	
@@ -605,9 +604,6 @@ struct CrazyLog
 				ImGui::EndPopup();
 			}
 			
-			//ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 10));
-			const char* buf = Buf.begin();
-			const char* buf_end = Buf.end();
 			if (bWantsToCopy)
 				ImGui::LogToClipboard();
 			
@@ -636,280 +632,19 @@ struct CrazyLog
 			if (!bIsPeeking && AnyFilterActive())
 			{
 				if (!bAlreadyCached) 
-				{
-					if(FiltredLinesCount == 0)
-						vFiltredLinesCached.resize(0);
-					
-					for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
-					{
-						const char* line_start = buf + vLineOffsets[line_no];
-						const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-						// TODO(Make a custom pass filter)
-						if (CustomPassFilter(line_start, line_end)) {
-							vFiltredLinesCached.push_back(line_no);
-							
-							ImGui::TextUnformatted(line_start, line_end);
-						}
-					}
-					
-					FiltredLinesCount = vLineOffsets.Size;
-					bAlreadyCached = true;
-				}
-				else
-				{
-					for (int i = 0; i < vFiltredLinesCached.Size; i++) 
-					{
-						int line_no = vFiltredLinesCached[i];
-						char* line_start = const_cast<char*>(buf + vLineOffsets[line_no]);
-						char* line_end = const_cast<char*>((line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end);
-						int64_t line_size = line_end - line_start;
-					
-						if (bShowLineNum) {
-							char aLineNumberName[10] = { 0 };
-							int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
-						
-							ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
-							ImGui::SameLine();
-						}
-						
-						ImGui::TextUnformatted(line_start, line_end);
-						
-						bool bIsItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-						
-						// Peek Full Version
-						if (bIsCtrlressed && bIsItemHovered) 
-						{
-							if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
-							{
-								// TODO(Matiasp): Why it does not work when I scale the font?
-								float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
-								float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
-								
-								// We apply the same offset to maintain the same scroll position
-								// between peeking and filtred view.
-								PeekScrollValue = ItemPosY - TopOffset;
-								FiltredScrollValue = ImGui::GetScrollY();
-								
-								bIsPeeking = true;
-							}
-						}
-						// Select lines from Filtered Version
-						else if (bIsShiftPressed && bIsItemHovered) 
-						{
-							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 1);
-							
-							int BottomLine = max(i - (int)SelectionSize + 1, 0);
-							int TopLine = min(i + (int)SelectionSize, vFiltredLinesCached.Size - 1);
-							
-							bool bWroteOnScratch = false;
-							char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-							for (int j = BottomLine; j < TopLine; j++) {
-								
-								int FilteredLineNo = vFiltredLinesCached[j];
-								char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
-								char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
-								
-								int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
-								bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
-							}
-							
-							if (bWroteOnScratch) {
-								pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
-								ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
-								ImGui::SetTooltip(pScratchStart);
-								
-								if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
-								{
-									ImGui::SetClipboardText(pScratchStart);
-								}
-							}
-							
-						}
-						// Select chars from Filtered Version
-						else if (bIsAltPressed && bIsItemHovered) 
-						{
-							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 1);
-							
-							int FilteredLineNo = vFiltredLinesCached[i];
-							char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
-							char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
-								
-							int64_t LineSize = pFilteredLineEnd - pFilteredLineStart;
-							
-							float TabSize = 0.f;
-							int TabCounter = 0;
-							for (int j = 0; j < LineSize; ++j)
-							{
-								if (pFilteredLineStart[j] == '\t')
-								{
-									TabCounter++;
-								}
-								else
-									break;
-							}
-						
-							float TabOffset = 0.f;
-							if (TabCounter > 0) 
-							{
-								TabOffset = ImGui::CalcTextSize(&pFilteredLineStart[0], &pFilteredLineStart[TabCounter]).x;
-							}
-							
-							TabOffset *= 0.75f;
-							
-							float MousePosX = ImGui::GetMousePos().x;
-							float TextOffset = ImGui::GetCursorScreenPos().x;
-							
-							for (int j = TabCounter; j < LineSize; ++j)
-							{
-								float CharSize = ImGui::CalcTextSize(&pFilteredLineStart[j], &pFilteredLineStart[j + 1]).x;
-								float CharStartPos = TextOffset + TabOffset + (CharSize * j);
-								float CharEndPos = CharStartPos + CharSize;
-								
-								if (MousePosX >= CharStartPos && MousePosX < CharEndPos)
-								{
-									int StartChar = j;
-									int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
-									
-									char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-									int64_t RequiredSize = EndChar - StartChar;
-									
-									if (pPlatformCtx->ScratchMem.PushBack(&pFilteredLineStart[StartChar], RequiredSize)
-										&& pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
-									{
-										if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
-										{
-											ImGui::SetClipboardText(pScratchStart);
-										}
-										
-										ImGui::SetTooltip(pScratchStart);
-									}
-									
-									break;
-								}
-							}
-						}
-							
-					}
-				}
+					FilterLines(pPlatformCtx);
+				
+				DoFiltredView(pPlatformCtx);
 			}
 			else
 			{
-				ImGuiListClipper clipper;
-				clipper.Begin(vLineOffsets.Size);
-				while (clipper.Step())
-				{
-					for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
-					{
-						const char* line_start = buf + vLineOffsets[line_no];
-						const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-						if (bShowLineNum) {
-							char aLineNumberName[10] = { 0 };
-							int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
-						
-							ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
-							ImGui::SameLine();
-						}
-						
-						ImGui::TextUnformatted(line_start, line_end);
-						
-						bool bIsItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-						
-						// Select lines full view
-						if (bIsShiftPressed && bIsItemHovered) 
-						{
-							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 1);
-							
-							int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
-							int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
-							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
-							
-							char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-							if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
-								pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
-							{
-							
-								ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
-								ImGui::SetTooltip(pScratchStart);
-							}
-							
-							if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
-							{
-								ImGui::SetClipboardText(pScratchStart);
-							}
-						}
-						// Select chars from Filtered Version
-						else if (bIsAltPressed && bIsItemHovered) 
-						{
-							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 1);
-							
-							int64_t LineSize = line_end - line_start;
-							
-							float TabSize = 0.f;
-							int TabCounter = 0;
-							for (int j = 0; j < LineSize; ++j)
-							{
-								if (line_start[j] == '\t')
-								{
-									TabCounter++;
-								}
-								else
-									break;
-							}
-						
-							float TabOffset = 0.f;
-							if (TabCounter > 0) 
-							{
-								TabOffset = ImGui::CalcTextSize(&line_start[0], &line_start[TabCounter]).x;
-							}
-							
-							TabOffset *= 0.75f;
-							
-							float MousePosX = ImGui::GetMousePos().x;
-							float TextOffset = ImGui::GetCursorScreenPos().x;
-							
-							for (int j = TabCounter; j < LineSize; ++j)
-							{
-								float CharSize = ImGui::CalcTextSize(&line_start[j], &line_start[j + 1]).x;
-								float CharStartPos = TextOffset + TabOffset + (CharSize * j);
-								float CharEndPos = CharStartPos + CharSize;
-								
-								if (MousePosX >= CharStartPos && MousePosX < CharEndPos)
-								{
-									int StartChar = j;
-									int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
-									
-									char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-									int64_t RequiredSize = EndChar+1 - StartChar;
-									if (pPlatformCtx->ScratchMem.PushBack(&line_start[StartChar], RequiredSize) &&
-										pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
-									{
-										if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
-										{
-											ImGui::SetClipboardText(pScratchStart);
-										}
-										
-										ImGui::SetTooltip(pScratchStart);
-									}
-									
-									break;
-								}
-							}
-						}
-						
-					}
-				}
-				clipper.End();
+				DoFullView(pPlatformCtx);
 			}
+			
 			
 			if (bWantsToCopy)
 				ImGui::LogFinish();
 			
-			//ImGui::PopStyleVar();
-
 			if (OneTimeScrollValue > -1.f) {
 				ImGui::SetScrollY(OneTimeScrollValue);
 			}
@@ -924,6 +659,237 @@ struct CrazyLog
 		ImGui::PopFont();
 		ImGui::EndChild();
 		ImGui::End();
+	}
+	
+	void FilterLines(PlatformContext* pPlatformCtx)
+	{
+		const char* buf = Buf.begin();
+		const char* buf_end = Buf.end();
+		
+		if(FiltredLinesCount == 0)
+			vFiltredLinesCached.resize(0);
+					
+		for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
+		{
+			const char* line_start = buf + vLineOffsets[line_no];
+			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+			// TODO(Make a custom pass filter)
+			if (CustomPassFilter(line_start, line_end)) {
+				vFiltredLinesCached.push_back(line_no);
+			}
+		}
+					
+		FiltredLinesCount = vLineOffsets.Size;
+		bAlreadyCached = true;
+	}
+	
+	void DoFiltredView(PlatformContext* pPlatformCtx)
+	{
+		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
+		bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
+		bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
+		
+		const char* buf = Buf.begin();
+		const char* buf_end = Buf.end();
+		for (int i = 0; i < vFiltredLinesCached.Size; i++)
+		{
+			int line_no = vFiltredLinesCached[i];
+			char* pLineStart = const_cast<char*>(buf + vLineOffsets[line_no]);
+			char* pLineEnd = const_cast<char*>((line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end);
+			int64_t line_size = pLineEnd - pLineStart;
+
+			if (bShowLineNum) {
+				char aLineNumberName[10] = { 0 };
+				int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
+
+				ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
+				ImGui::SameLine();
+			}
+
+			ImGui::TextUnformatted(pLineStart, pLineEnd);
+
+			bool bIsItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+
+			// Peek Full Version
+			if (bIsCtrlressed && bIsItemHovered) 
+			{
+				if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
+				{
+					// TODO(Matiasp): Why it does not work when I scale the font?
+					float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
+					float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
+		
+					// We apply the same offset to maintain the same scroll position
+					// between peeking and filtred view.
+					PeekScrollValue = ItemPosY - TopOffset;
+					FiltredScrollValue = ImGui::GetScrollY();
+		
+					bIsPeeking = true;
+				}
+			}
+			// Select lines from Filtered Version
+			else if (bIsShiftPressed && bIsItemHovered) 
+			{
+				SelectionSize += ImGui::GetIO().MouseWheel;
+				SelectionSize = max(SelectionSize, 1);
+	
+				int BottomLine = max(i - (int)SelectionSize + 1, 0);
+				int TopLine = min(i + (int)SelectionSize, vFiltredLinesCached.Size - 1);
+	
+				bool bWroteOnScratch = false;
+				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+				for (int j = BottomLine; j < TopLine; j++) {
+		
+					int FilteredLineNo = vFiltredLinesCached[j];
+					char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
+					char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
+		
+					int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
+					bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
+				}
+	
+				if (bWroteOnScratch) {
+					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
+					ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
+					ImGui::SetTooltip(pScratchStart);
+		
+					if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+					{
+						ImGui::SetClipboardText(pScratchStart);
+					}
+				}
+	
+			}
+			// Select chars from Filtered Version
+			else if (bIsAltPressed && bIsItemHovered) 
+			{
+				SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd);
+			}
+		}
+		
+		
+	}
+	
+	void DoFullView(PlatformContext* pPlatformCtx)
+	{
+		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
+		bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
+		
+		const char* buf = Buf.begin();
+		const char* buf_end = Buf.end();
+		
+		ImGuiListClipper clipper;
+		clipper.Begin(vLineOffsets.Size);
+		while (clipper.Step())
+		{
+			for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
+			{
+				const char* line_start = buf + vLineOffsets[line_no];
+				const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+				if (bShowLineNum) {
+					char aLineNumberName[10] = { 0 };
+					int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
+						
+					ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
+					ImGui::SameLine();
+				}
+						
+				ImGui::TextUnformatted(line_start, line_end);
+						
+				bool bIsItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+						
+				// Select lines full view
+				if (bIsShiftPressed && bIsItemHovered) 
+				{
+					SelectionSize += ImGui::GetIO().MouseWheel;
+					SelectionSize = max(SelectionSize, 1);
+							
+					int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
+					int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
+					int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
+							
+					char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+					if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
+						pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
+					{
+							
+						ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
+						ImGui::SetTooltip(pScratchStart);
+					}
+							
+					if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+					{
+						ImGui::SetClipboardText(pScratchStart);
+					}
+				}
+				else if (bIsAltPressed && bIsItemHovered) 
+				{
+					SelectCharsFromLine(pPlatformCtx, line_start, line_end);
+				}
+						
+			}
+		}
+		
+		clipper.End();
+	}
+	
+	void SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd)
+	{
+		SelectionSize += ImGui::GetIO().MouseWheel;
+		SelectionSize = max(SelectionSize, 1);
+		
+		int64_t LineSize = pLineEnd - pLineStart;
+		
+		float TabSize = 0.f;
+		int TabCounter = 0;
+		for (int j = 0; j < LineSize; ++j)
+		{
+			if (pLineStart[j] == '\t')
+			{
+				TabCounter++;
+			}
+			else
+				break;
+		}
+	
+		float TabOffset = 0.f;
+		if (TabCounter > 0) 
+		{
+			TabOffset = ImGui::CalcTextSize(&pLineStart[0], &pLineStart[TabCounter]).x;
+		}
+		
+		TabOffset *= 0.75f;
+		
+		float MousePosX = ImGui::GetMousePos().x;
+		float TextOffset = ImGui::GetCursorScreenPos().x;
+		
+		for (int j = TabCounter; j < LineSize; ++j)
+		{
+			float CharSize = ImGui::CalcTextSize(&pLineStart[j], &pLineStart[j + 1]).x;
+			float CharStartPos = TextOffset + TabOffset + (CharSize * j);
+			float CharEndPos = CharStartPos + CharSize;
+			
+			if (MousePosX >= CharStartPos && MousePosX < CharEndPos)
+			{
+				int StartChar = j;
+				int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
+				
+				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+				int64_t RequiredSize = EndChar+1 - StartChar;
+				if (pPlatformCtx->ScratchMem.PushBack(&pLineStart[StartChar], RequiredSize) &&
+					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
+				{
+					if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+					{
+						ImGui::SetClipboardText(pScratchStart);
+					}
+					
+					ImGui::SetTooltip(pScratchStart);
+				}
+				
+				break;
+			}
+		}
 	}
 	
 	bool AnyFilterActive () const
