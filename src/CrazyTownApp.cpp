@@ -8,16 +8,13 @@
 #include "../vendor/imgui_tables.cpp"
 #include "../vendor/imgui_widgets.cpp"
 
+#include "SharedDefinitions.cpp"
 #include "CrazyLog.cpp"
 #include "ConsolaTTF.cpp"
-
-
 
 struct AppMemory {
 	CrazyLog Log;
 };
-
-
 
 void AppUpdate(float DeltaTime, PlatformContext* pPlatformCtx)
 {

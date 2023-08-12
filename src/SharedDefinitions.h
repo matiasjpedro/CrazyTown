@@ -11,6 +11,16 @@ struct LastFileFolder {
 	char aFilePath[256];
 };
 
+struct StratchMemory {
+	uint64_t Capacity;
+	uint64_t Size;
+	void* pMemory;
+
+	void Reset ();
+	bool PushBack (const void* pSrc, size_t SrcSize);
+	void* Back ();
+};
+
 // Function signature for ImGui::SetAllocatorFunctions()
 typedef void*   (*AllocFunc)(size_t Size, void* pUserData);               
 typedef void    (*FreeFunc)(void* pLocation, void* pUserData); 
@@ -18,7 +28,7 @@ typedef void    (*FreeFunc)(void* pLocation, void* pUserData);
 typedef FileContent    (*ReadFileFunc)(char* pPath);
 typedef bool           (*WriteFileFunc)(FileContent* pFileContent, char* pPath);
 typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
-typedef bool (*FetchLastFileFolderFunc)(char* pFolderPath, unsigned long* pLastWriteTimem, LastFileFolder* pOutLastFileFolder);
+typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, unsigned long* pLastWriteTimem, LastFileFolder* pOutLastFileFolder);
 
 
 struct PlatformReloadContext {
@@ -31,13 +41,10 @@ struct PlatformContext {
 	uint64_t PermanentMemoryCapacity;
 	void* pPermanentMemory;
 	
-	uint64_t ScratchMemoryCapacity;
-	uint64_t ScratchSize;
-	void* pScratchMemory;
+	StratchMemory ScratchMem;
 	
 	ReadFileFunc pReadFileFunc;
 	WriteFileFunc pWriteFileFunc;
 	FreeFileContentFunc pFreeFileContentFunc;
 	FetchLastFileFolderFunc pFetchLastFileFolderFunc;
-
 };

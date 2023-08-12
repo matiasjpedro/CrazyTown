@@ -31,10 +31,10 @@
 
 ================ InProgress
 
-// Add utility for scratch allocator and strings
 
 ================ Done
 
+// Add utility for scratch allocator and strings
 // Added a way to copy individual characters Alt + Scroll
 // Implement ListenForLatestFile
 // Make possible to select as flags the different filters of your preset

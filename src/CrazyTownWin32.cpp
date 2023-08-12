@@ -399,13 +399,13 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformReloadContext.pImGuiFreeFunc = ImGUIMemFree;
 	
 	gPlatformContext.PermanentMemoryCapacity = Megabytes(100);
-	gPlatformContext.ScratchMemoryCapacity = Megabytes(100);
+	gPlatformContext.ScratchMem.Capacity= Megabytes(100);
 	
-	uint64_t MemorySize = gPlatformContext.PermanentMemoryCapacity + gPlatformContext.ScratchMemoryCapacity;
+	uint64_t MemorySize = gPlatformContext.PermanentMemoryCapacity + gPlatformContext.ScratchMem.Capacity;
 	void* p_AllocatedMemory = VirtualAlloc(0, (size_t)MemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 	gPlatformContext.pPermanentMemory = p_AllocatedMemory;
-	gPlatformContext.pScratchMemory = (uint8_t*)p_AllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
+	gPlatformContext.ScratchMem.pMemory = (uint8_t*)p_AllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
 	
 	gPlatformContext.pReadFileFunc = Win32ReadFile;
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
@@ -452,7 +452,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	bool IsRunning = true;
 	while (IsRunning)
 	{	
-		gPlatformContext.ScratchSize = 0;
+		gPlatformContext.ScratchMem.Size = 0;
 		
 		FILETIME NewDLLWriteTime = GetLastWriteTime(aHotReloadDLLFullPath);
 		

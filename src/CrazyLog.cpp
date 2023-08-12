@@ -12,7 +12,8 @@ struct NamedFilter {
 	ImGuiTextFilter Filter;
 };
 
-
+static char g_FilterToken = ';';
+static char g_NullTerminator = '\0';
 
 struct CrazyLog
 {
@@ -226,32 +227,27 @@ struct CrazyLog
 	void SaveLoadedFilters(PlatformContext* pPlatformCtx) 
 	{
 		FileContent OutFile = {0};
-		OutFile.pFile = (uint8_t*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+		OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
+		size_t PreviousSize = (size_t)pPlatformCtx->ScratchMem.Size;
 	
 		// Start from 1 to skip the NONE filter
 		for (unsigned i = 1; i < (unsigned)LoadedFilters.size(); ++i)
 		{
 			size_t LoadedFilterNameLen = StringUtils::Length(LoadedFilters[i].aName);
-			memcpy((uint8_t*)OutFile.pFile + OutFile.Size, LoadedFilters[i].aName, LoadedFilterNameLen);
-			OutFile.Size += LoadedFilterNameLen;
+			pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].aName, LoadedFilterNameLen);
 			
 			// Add the Token Separator
-			char* TokeDest = (char*)OutFile.pFile + OutFile.Size;
-			*TokeDest = FILTER_TOKEN;
-			OutFile.Size += 1; // Add one more for the token separator
+			pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
 			
 			// Copy the filter
 			size_t LoadedFilterContentLen = StringUtils::Length(LoadedFilters[i].Filter.InputBuf);
-			memcpy((uint8_t*)OutFile.pFile + OutFile.Size, LoadedFilters[i].Filter.InputBuf, LoadedFilterContentLen);
-			OutFile.Size += LoadedFilterContentLen;
+			pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].Filter.InputBuf, LoadedFilterContentLen);
 			
 			// Add the Token Separator
-			TokeDest = (char*)OutFile.pFile + OutFile.Size;
-			*TokeDest = FILTER_TOKEN;
-			OutFile.Size += 1; // Add one more for the token separator
+			pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
 		}
 		
-		pPlatformCtx->ScratchSize += OutFile.Size;
+		OutFile.Size = (size_t)pPlatformCtx->ScratchMem.Size - PreviousSize;
 		pPlatformCtx->pWriteFileFunc(&OutFile, FILTERS_FILE_NAME);
 	}
 	
@@ -493,12 +489,10 @@ struct CrazyLog
 				bool bAnyFlagChanged = false;
 				for (int i = 0; i != Filter.Filters.Size; i++)
 				{
-					char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+					char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 					size_t FilterSize = Filter.Filters[i].e - Filter.Filters[i].b;
-					memcpy(pScratchStart, Filter.Filters[i].e - FilterSize, FilterSize);
-					memset(pScratchStart + FilterSize, '\0', 1);
-					
-					pPlatformCtx->ScratchSize += FilterSize + 1;
+					pPlatformCtx->ScratchMem.PushBack((void*)(Filter.Filters[i].e - FilterSize), FilterSize);
+					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
 					
 					bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
 					if (bChanged)
@@ -623,6 +617,11 @@ struct CrazyLog
 					OneTimeScrollValue = FiltredScrollValue;
 					bIsPeeking = false;
 				}
+				
+				if (!Filter.IsActive()) 
+				{
+					bIsPeeking = false;	
+				}
 			}
 			
 			if (Filter.IsActive() && !bIsPeeking)
@@ -695,7 +694,7 @@ struct CrazyLog
 							int TopLine = min(i + (int)SelectionSize, vFiltredLinesCached.Size - 1);
 							
 							bool bWroteOnScratch = false;
-							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+							char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 							for (int j = BottomLine; j < TopLine; j++) {
 								
 								int FilteredLineNo = vFiltredLinesCached[j];
@@ -703,17 +702,11 @@ struct CrazyLog
 								char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
 								
 								int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
-								if (pPlatformCtx->ScratchSize + Size < pPlatformCtx->ScratchMemoryCapacity) {
-									memcpy((char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize, pFilteredLineStart, Size);
-									
-									pPlatformCtx->ScratchSize += Size;
-									bWroteOnScratch = true;
-								}
-								
+								bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
 							}
 							
 							if (bWroteOnScratch) {
-								memset((char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize, '\0', 1);
+								pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
 								ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
 								ImGui::SetTooltip(pScratchStart);
 								
@@ -728,7 +721,7 @@ struct CrazyLog
 						else if (bIsAltPressed && bIsItemHovered) 
 						{
 							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 5);
+							SelectionSize = max(SelectionSize, 1);
 							
 							int FilteredLineNo = vFiltredLinesCached[i];
 							char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
@@ -770,21 +763,18 @@ struct CrazyLog
 									int StartChar = j;
 									int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
 									
-									char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
-									int64_t RequiredSize = EndChar+1 - StartChar;
-									if (pPlatformCtx->ScratchSize + RequiredSize < pPlatformCtx->ScratchMemoryCapacity) 
+									char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+									int64_t RequiredSize = EndChar - StartChar;
+									
+									if (pPlatformCtx->ScratchMem.PushBack(&pFilteredLineStart[StartChar], RequiredSize)
+										&& pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
 									{
-										memcpy(pScratchStart, &pFilteredLineStart[StartChar], RequiredSize);
-										memset((char*)pScratchStart + RequiredSize, '\0', 1);
-										
 										if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 										{
 											ImGui::SetClipboardText(pScratchStart);
 										}
 										
 										ImGui::SetTooltip(pScratchStart);
-										
-										pPlatformCtx->ScratchSize += RequiredSize;
 									}
 									
 									break;
@@ -827,13 +817,13 @@ struct CrazyLog
 							int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
 							int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
 							
-							char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
-							if (pPlatformCtx->ScratchSize + Size + 1 < pPlatformCtx->ScratchMemoryCapacity) {
-								memcpy(pScratchStart, buf + vLineOffsets[BottomLine], Size);
-								memset(pScratchStart + Size, '\0', 1);
+							char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+							if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
+								pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
+							{
+							
 								ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
 								ImGui::SetTooltip(pScratchStart);
-								pPlatformCtx->ScratchSize += Size + 1;
 							}
 							
 							if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
@@ -845,7 +835,7 @@ struct CrazyLog
 						else if (bIsAltPressed && bIsItemHovered) 
 						{
 							SelectionSize += ImGui::GetIO().MouseWheel;
-							SelectionSize = max(SelectionSize, 5);
+							SelectionSize = max(SelectionSize, 1);
 							
 							int64_t LineSize = line_end - line_start;
 							
@@ -883,21 +873,17 @@ struct CrazyLog
 									int StartChar = j;
 									int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
 									
-									char* pScratchStart = (char*)pPlatformCtx->pScratchMemory + pPlatformCtx->ScratchSize;
+									char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 									int64_t RequiredSize = EndChar+1 - StartChar;
-									if (pPlatformCtx->ScratchSize + RequiredSize < pPlatformCtx->ScratchMemoryCapacity) 
+									if (pPlatformCtx->ScratchMem.PushBack(&line_start[StartChar], RequiredSize) &&
+										pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
 									{
-										memcpy(pScratchStart, &line_start[StartChar], RequiredSize);
-										memset((char*)pScratchStart + RequiredSize, '\0', 1);
-										
 										if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 										{
 											ImGui::SetClipboardText(pScratchStart);
 										}
 										
 										ImGui::SetTooltip(pScratchStart);
-										
-										pPlatformCtx->ScratchSize += RequiredSize;
 									}
 									
 									break;
