@@ -531,26 +531,29 @@ struct CrazyLog
 
 		//=============================================================
 		// Output
-		ImVec4 BgColor;
-		ImGuiStyle& rStyle = ImGui::GetStyle();
 		
+		ImVec2 sz = ImVec2(-FLT_MIN, 0.0f);
+		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 		if (bIsPeeking)
 		{
-			ImGui::SeparatorText("OUTPUT / PEEKING");
-			BgColor = rStyle.Colors[ImGuiCol_FrameBg];
+			ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100,0,0,255)); 
+			ImGui::Button("VIEW: PEEKING", sz);
 		} 
 		else if (AnyFilterActive())
 		{
-			ImGui::SeparatorText("OUTPUT / FILTRED");
-			
-			BgColor = rStyle.Colors[ImGuiCol_DockingEmptyBg];
+			ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20,100,38,255));
+			ImGui::Button("VIEW: FILTERED", sz);
 		} 
 		else 
 		{
-			ImGui::SeparatorText("OUTPUT / FULLVIEW");
-			
-			BgColor = rStyle.Colors[ImGuiCol_WindowBg];
+			ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(66,66,66,255));
+			ImGui::Button("VIEW: FULL", sz);
 		}
+		
+		ImGui::PopStyleColor();
+		ImGui::PopItemFlag();
+		
+		ImGui::SeparatorText("OUTPUT");
 		
 		bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
 		bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
@@ -563,7 +566,6 @@ struct CrazyLog
 		
 		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 		
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, BgColor);  // Change this color
 		if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 		{
 			bool bWantsToCopy = false;
@@ -654,7 +656,6 @@ struct CrazyLog
 			if (bAutoScroll && !bIsPeeking && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 				ImGui::SetScrollHereY(1.0f);
 			
-			ImGui::PopStyleColor();
 		}
 		ImGui::PopFont();
 		ImGui::EndChild();

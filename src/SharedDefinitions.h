@@ -1,17 +1,20 @@
 #pragma once
 #include <cstdint>
 
-struct FileContent {
+struct FileContent 
+{
 	size_t Size;
 	void* pFile;
 };
 
-struct LastFileFolder {
+struct LastFileFolder 
+{
 	unsigned long aWriteTime[2]; // Ugly and not cross platform
 	char aFilePath[256];
 };
 
-struct StratchMemory {
+struct StratchMemory 
+{
 	uint64_t Capacity;
 	uint64_t Size;
 	void* pMemory;
@@ -31,13 +34,15 @@ typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
 typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, unsigned long* pLastWriteTimem, LastFileFolder* pOutLastFileFolder);
 
 
-struct PlatformReloadContext {
+struct PlatformReloadContext 
+{
 	struct ImGuiContext* pImGuiCtx;
 	AllocFunc pImGuiAllocFunc; 
 	FreeFunc pImGuiFreeFunc; 
 };
 
-struct PlatformContext {
+struct PlatformContext 
+{
 	uint64_t PermanentMemoryCapacity;
 	void* pPermanentMemory;
 	
