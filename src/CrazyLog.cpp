@@ -51,7 +51,7 @@ struct CrazyLog
 
 	void Init()
 	{
-		bAutoScroll = true;
+		bAutoScroll = false;
 		SelectionSize = 1.f;
 		FilterRefreshCooldown = -1.f;
 		FileContentFetchCooldown = -1.f;
@@ -942,14 +942,13 @@ struct CrazyLog
 			const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
 			if (f.empty())
 				continue;
-		
-			if (f.b[0] != '+')
+	
+			bool bIsWildCard = f.b[0] == '+' || f.b[0] == '-';
+			if (!bIsWildCard)
 			{
-				// Grep
 				if (ImStristr(text, text_end, f.b, f.e) != NULL) 
 				{
-					
-					// Append
+					// Valid line Filter it also with + wildcard	
 					for (int j = 0; j != Filter.Filters.Size; j++)
 					{
 						const ImGuiTextFilter::ImGuiTextRange& f2 = Filter.Filters[j];
@@ -971,9 +970,24 @@ struct CrazyLog
 				}
 			}
 		}
-
-		// Implicit * grep
-		if (Filter.CountGrep == 0)
+		
+		int NonWildCardsCounter = 0;
+		for (int i = 0; i != Filter.Filters.Size; i++)
+		{
+			bool bFilterEnabled = (FilterFlags & (1ull << i));
+			if (!bFilterEnabled)
+				continue;
+			
+			const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
+			if (f.empty())
+				continue;
+	
+			bool bIsWildCard = f.b[0] == '+' || f.b[0] == '-';
+			if (!bIsWildCard)
+				NonWildCardsCounter++;
+		}
+	
+		if (NonWildCardsCounter == 0)
 			return true;
 
 		return false;
