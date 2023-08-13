@@ -912,29 +912,42 @@ struct CrazyLog
 
 		if (text == NULL)
 			text = "";
-
+		
+		// First do the exclude pass
 		for (int i = 0; i != Filter.Filters.Size; i++)
 		{
-			
-			bool bFilterEnabled = (FilterFlags & (1ull << i));
-			if (!bFilterEnabled)
-				continue;
-			
-		
 			const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
 			if (f.empty())
 				continue;
-		
+			
 			if (f.b[0] == '-')
 			{
+				bool bFilterEnabled = (FilterFlags & (1ull << i));
+				if (!bFilterEnabled)
+					continue;
+				
 				// Subtract
 				if (ImStristr(text, text_end, f.b + 1, f.e) != NULL)
 					return false;
 			}
-			else if (f.b[0] != '+')
+		}
+
+		// Then only pass the filter if our append conditions are passed
+		for (int i = 0; i != Filter.Filters.Size; i++)
+		{
+			bool bFilterEnabled = (FilterFlags & (1ull << i));
+			if (!bFilterEnabled)
+				continue;
+			
+			const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
+			if (f.empty())
+				continue;
+		
+			if (f.b[0] != '+')
 			{
 				// Grep
-				if (ImStristr(text, text_end, f.b, f.e) != NULL) {
+				if (ImStristr(text, text_end, f.b, f.e) != NULL) 
+				{
 					
 					// Append
 					for (int j = 0; j != Filter.Filters.Size; j++)
