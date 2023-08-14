@@ -31,6 +31,8 @@
 
 ================ InProgress
 
+// Alt + mouse over should select amount of words after the one currently hovering
+// Do a ctrl+f functionality?
 
 ================ Done
 
