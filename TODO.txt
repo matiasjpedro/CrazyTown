@@ -31,11 +31,15 @@
 
 ================ InProgress
 
-// Alt + mouse over should select amount of words after the one currently hovering
 // Do a ctrl+f functionality?
 
 ================ Done
 
+// Alt + mouse over should select amount of words after the one currently hovering
+// Make the feature request to have access to the defines
+// Make the debug/release build changes
+// Make the feature request to focus the text once we are in the symbol references
+// Make the feature request to remember the source preview size in the find panels
 // Add utility for scratch allocator and strings
 // Added a way to copy individual characters Alt + Scroll
 // Implement ListenForLatestFile

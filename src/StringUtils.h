@@ -33,5 +33,18 @@ namespace StringUtils
 
 		return Result;
 	}
+	
+	bool IsWhiteSpace(const char * p_Character) 
+	{
+		return *p_Character == ' ' || *p_Character == '\r' || *p_Character == '\n' || *p_Character == '\t';
+	}
+	
+	bool IsWordChar(const char * p_Character)
+	{
+		return (*p_Character >= 'a' &&  *p_Character <= 'z')
+			|| (*p_Character >= 'A' &&  *p_Character <= 'Z')
+			|| (*p_Character >= '0' &&  *p_Character <= '9')
+			|| *p_Character == '_' ;
+	}
 }
 

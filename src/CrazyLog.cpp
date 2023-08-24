@@ -1,4 +1,5 @@
 #include "CrazyLog.h"
+#include "StringUtils.h"
 
 #define FILTERS_FILE_NAME "FILTERS"
 #define FILTER_TOKEN ';'
@@ -549,8 +550,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	for (int i = 0; i < vFiltredLinesCached.Size; i++)
 	{
 		int line_no = vFiltredLinesCached[i];
-		char* pLineStart = const_cast<char*>(buf + vLineOffsets[line_no]);
-		char* pLineEnd = const_cast<char*>((line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end);
+		const char* pLineStart = buf + vLineOffsets[line_no];
+		const char* pLineEnd = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
 		int64_t line_size = pLineEnd - pLineStart;
 
 		if (bShowLineNum) {
@@ -825,6 +826,39 @@ void CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 }
 
+char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor) 
+{
+	while (pLineStart < pWordCursor)
+	{
+		pWordCursor--;
+		if (!StringUtils::IsWordChar(pWordCursor)) 
+		{
+			return pWordCursor+1;
+		}
+	}
+	
+	return nullptr;
+}
+
+char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount) 
+{
+	int WordCounter = 0;
+	while (pLineEnd > pWordCursor)
+	{
+		pWordCursor++;
+		if (!StringUtils::IsWordChar(pWordCursor)) 
+		{
+			WordCounter++;
+			if (WordAmount == WordCounter)
+			{
+				return pWordCursor;
+			}
+		}
+	}
+	
+	return pWordCursor;
+}
+
 void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd)
 {
 	SelectionSize += ImGui::GetIO().MouseWheel;
@@ -863,12 +897,13 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 		
 		if (MousePosX >= CharStartPos && MousePosX < CharEndPos)
 		{
-			int StartChar = j;
-			int EndChar = min(j + (int)SelectionSize, (int)LineSize - 1);
+			char* pWordCursor = const_cast<char*>(&pLineStart[j]);
+			char* pStartChar = GetWordStart(pLineStart, pWordCursor);
+			char* pEndChar = GetWordEnd(pLineEnd, pWordCursor, (int)SelectionSize);
 			
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			int64_t RequiredSize = EndChar+1 - StartChar;
-			if (pPlatformCtx->ScratchMem.PushBack(&pLineStart[StartChar], RequiredSize) &&
+			int64_t RequiredSize = pEndChar - pStartChar;
+			if (pPlatformCtx->ScratchMem.PushBack(pStartChar, RequiredSize) &&
 				pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
 			{
 				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
@@ -983,8 +1018,6 @@ bool CrazyLog::CustomPassFilter(const char* text, const char* text_end) const
 
 	return false;
 }
-	
-
 
 #undef FILTERS_FILE_NAME
 #undef FILTER_TOKEN

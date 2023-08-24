@@ -59,17 +59,18 @@ struct CrazyLog
 	void SetLog(const char* pFileContent, int FileSize);
 	
 	void ClearCache();
-		
-	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL);
-		
 	void FilterLines(PlatformContext* pPlatformCtx);
+	
+	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL);
 	void DrawFiltredView(PlatformContext* pPlatformCtx);
 	void DrawFullView(PlatformContext* pPlatformCtx);
 	void DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx);
 	void DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
 	void DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
-		
+	
+	char* GetWordStart(const char* pLineStart, char* pWordCursor);
+	char* GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount);
 	void SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd);
 		
 	//Filters;

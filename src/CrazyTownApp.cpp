@@ -1,6 +1,4 @@
-#include "SharedDefinitions.h"
 #include "SomeMacros.h"
-#include "StringUtils.h"
 
 #include "../vendor/imgui.cpp"
 #include "../vendor/imgui_demo.cpp"
@@ -74,8 +72,6 @@ void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformRelo
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	pMem->Log.Init();
 	pMem->Log.LoadFilter(pPlatformCtx);
-	
-	
 	
 }
 
