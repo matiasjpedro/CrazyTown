@@ -8,7 +8,7 @@
 		<ShowEmptyFolders>true</ShowEmptyFolders>
 		<IsVirtual>false</IsVirtual>
 		<IsFolder>false</IsFolder>
-		<BuildCommand>build.bat</BuildCommand>
+		<BuildCommand>build.bat $(Configuration)</BuildCommand>
 		<RebuildCommand></RebuildCommand>
 		<BuildFileCommand></BuildFileCommand>
 		<CleanCommand></CleanCommand>
@@ -21,8 +21,8 @@
 		<DebugSln></DebugSln>
 		<UseVisualStudioEnvBat>true</UseVisualStudioEnvBat>
 		<Configurations>
-			<Configuration>Debug</Configuration>
-			<Configuration>Release</Configuration>
+			<Configuration>dev</Configuration>
+			<Configuration>release</Configuration>
 		</Configurations>
 		<Platforms>
 			<Platform>x64</Platform>
@@ -37,19 +37,29 @@
 			<AdditionalIncludePath>C:\Program Files (x86)\Windows Kits\10\\include\10.0.18362.0\\winrt</AdditionalIncludePath>
 			<AdditionalIncludePath>C:\Program Files (x86)\Windows Kits\10\\include\10.0.18362.0\\cppwinrt</AdditionalIncludePath>
 		</AdditionalIncludePaths>
-		<Defines>
-			<Define>#define INCLUDE_STB_TEXTEDIT_H</Define>
-			<Define>#define STB_TEXTEDIT_IMPLEMENTATION</Define>
-		</Defines>
+		<Defines></Defines>
 		<ConfigProperties>
 			<ConfigAndPlatform>
 				<Name>Debug:x64</Name>
 				<Defines></Defines>
 				<ForceIncludes></ForceIncludes>
 			</ConfigAndPlatform>
+			<ConfigAndPlatform>
+				<Name>dev:x64</Name>
+				<Defines></Defines>
+				<ForceIncludes></ForceIncludes>
+			</ConfigAndPlatform>
 			<Config>
 				<Name>Debug</Name>
-				<Defines></Defines>
+				<Defines>
+					<Define>DEVELOPMENT = 1</Define>
+				</Defines>
+			</Config>
+			<Config>
+				<Name>dev</Name>
+				<Defines>
+					<Define>DEVELOPMENT = 1</Define>
+				</Defines>
 			</Config>
 			<Platform>
 				<Name>x64</Name>

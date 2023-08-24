@@ -344,12 +344,16 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowExW(
-		0, //WS_EX_TOPMOST,
+#if DEVELOPMENT 
+		WS_EX_TOPMOST,
+#else
+		0,
+#endif
 		wc.lpszClassName, 
 		L"CrazyTown", 
 		WS_OVERLAPPEDWINDOW, 
 		0, 620, 
-		1270, 800, 
+		1200, 800, 
 		nullptr, nullptr, 
 		wc.hInstance, 
 		nullptr);
