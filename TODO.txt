@@ -1,33 +1,15 @@
 ================ NOTES 
 
-# Added Icon 
-# Added Embedded Font for output readiblity
-# Added Expermiental FolderQuery, now you can specify Folder+Extension which will trigger to load the latest written file in that folder.
-# Added Cherrypick feature, now after setting a filter you can toggle on an off individual filters easily.
-# Improved Peek: Now Ctrl+Click in a filtered line it will forward you into the same line on full view, you can press mouse back to back to the filtered view.
-# Improved Selection: Now it resets the selection after you release the shift key, and it always start displaying the line hovered.
-
 ================ Backlog
 
 // Support to listen from a websocket?
-// Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
+// Support through multiple logs -> TabItemButton
+// Fix ListenForLatestFile
 
 ================ Next
 
-// Make function to handle the scratch allocator easier?
-// Show context, if a line is selected? pretty hard
 // If press saved in a filter that already exist Modify it instead of append
-// Filter Only the new lines after the cache
-
-// add relative time?
-// Click transforms the view into input field, it should allocate all the text?
-// https://github.com/ocornut/imgui/issues/950
-
-// Implement WebSocket 
-// Improve selection -> cap tooltip size
-
-// Support through multiple logs -> TabItemButton
-// Fix ListenForLatestFile
+// Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
 
 ================ InProgress
 
@@ -35,6 +17,8 @@
 
 ================ Done
 
+// Filter Only the new lines after the cache
+// Make function to handle the scratch allocator easier?
 // Alt + mouse over should select amount of words after the one currently hovering
 // Make the feature request to have access to the defines
 // Make the debug/release build changes
