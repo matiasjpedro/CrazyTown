@@ -431,6 +431,11 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				bWantsToCopy = true;
 		}
 		
+		if (ImGui::IsKeyReleased(ImGuiKey_F5))
+		{
+			FetchFile(pPlatformCtx);
+		}
+		
 		if (ImGui::BeginPopupContextWindow())
 		{
 			if (ImGui::Selectable("Copy")) 
