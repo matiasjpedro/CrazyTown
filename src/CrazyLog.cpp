@@ -842,12 +842,16 @@ char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor)
 
 char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount) 
 {
+	bool bWasChar = StringUtils::IsWordChar(pWordCursor);
+	
 	int WordCounter = 0;
 	while (pLineEnd > pWordCursor)
 	{
 		pWordCursor++;
-		if (!StringUtils::IsWordChar(pWordCursor)) 
+		bool bIsChar = StringUtils::IsWordChar(pWordCursor);
+		if (bWasChar != bIsChar) 
 		{
+			bWasChar = bIsChar;
 			WordCounter++;
 			if (WordAmount == WordCounter)
 			{
