@@ -828,16 +828,19 @@ void CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 
 char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor) 
 {
+	bool bWasChar = StringUtils::IsWordChar(pWordCursor);
 	while (pLineStart < pWordCursor)
 	{
 		pWordCursor--;
-		if (!StringUtils::IsWordChar(pWordCursor)) 
+		bool bIsChar = StringUtils::IsWordChar(pWordCursor);
+		if (bWasChar != bIsChar) 
 		{
+			bWasChar = bIsChar;
 			return pWordCursor+1;
 		}
 	}
 	
-	return nullptr;
+	return pWordCursor;
 }
 
 char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount) 
