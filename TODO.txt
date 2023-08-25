@@ -5,6 +5,7 @@
 // Support to listen from a websocket?
 // Support through multiple logs -> TabItemButton
 // Fix ListenForLatestFile
+// Maybe some highlight ? 
 
 ================ Next
 
@@ -17,6 +18,8 @@
 
 ================ Done
 
+// Make sure to leave the peeking when the filters are modified
+// press enter to search for the new value
 // Filter Only the new lines after the cache
 // Make function to handle the scratch allocator easier?
 // Alt + mouse over should select amount of words after the one currently hovering

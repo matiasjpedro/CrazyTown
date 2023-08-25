@@ -22,7 +22,6 @@ struct CrazyLog
 	int LastFrameFiltersCount;
 	
 	float SelectionSize;
-	float FilterRefreshCooldown;
 	float FileContentFetchCooldown;
 	float FolderFetchCooldown;
 	float PeekScrollValue;
@@ -67,7 +66,7 @@ struct CrazyLog
 	void DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx);
 	void DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
-	void DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
+	bool DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
 	
 	char* GetWordStart(const char* pLineStart, char* pWordCursor);
 	char* GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount);
@@ -76,4 +75,6 @@ struct CrazyLog
 	//Filters;
 	bool AnyFilterActive () const;
 	bool CustomPassFilter(const char* text, const char* text_end) const;
+	
+	bool CustomDrawFilter(const char* label, float width);
 };

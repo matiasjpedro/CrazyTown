@@ -3,7 +3,6 @@
 
 #define FILTERS_FILE_NAME "FILTERS"
 #define FILTER_TOKEN ';'
-#define FILTER_INTERVAL 1.f
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
 
@@ -17,7 +16,6 @@ void CrazyLog::Init()
 {
 	bAutoScroll = false;
 	SelectionSize = 1.f;
-	FilterRefreshCooldown = -1.f;
 	FileContentFetchCooldown = -1.f;
 	FolderFetchCooldown = -1.f;
 	PeekScrollValue = -1.f;
@@ -30,7 +28,6 @@ void CrazyLog::Clear()
 	bIsPeeking = false;
 	bFileLoaded = false;
 	bWantsToSavePreset = false;
-	FilterRefreshCooldown = -1;
 	
 	Buf.clear();
 	vLineOffsets.clear();
@@ -301,7 +298,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("Filters");
 	
-	bool bFilterChanged = Filter.Draw("Filter", -160.0f);
+	bool bFilterChanged = CustomDrawFilter("Filter", -160.0f);
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
 		ImGui::SetTooltip("Filter usage:\n"
 					"  \"\"         	display all lines\n"
@@ -354,30 +351,28 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		bSelectedFilterChanged = DrawPresets(DeltaTime, pPlatformCtx);
 	}
 
+	bool bCherryPickHasChanged = false;
 	if (Filter.IsActive() ) 
 	{
-		DrawCherrypick(DeltaTime, pPlatformCtx);
+		bCherryPickHasChanged = DrawCherrypick(DeltaTime, pPlatformCtx);
 		
-		// If we are typing set the refresh interval
 		if (bFilterChanged) 
 		{
-			FilterRefreshCooldown = FILTER_INTERVAL;
 			FilterSelectedIdx = 0;
 			
-		// If we are selecting from the drop down do it right away
-		} 
-		else if (bSelectedFilterChanged) 
-		{
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
-			FilterFlags = 0xFFFFFFFF;
-		}
-	}
+		} 
 		
-	if (FilterRefreshCooldown > 0) 
-	{
-		FilterRefreshCooldown -= DeltaTime;
-		if (FilterRefreshCooldown <= 0.f) 
+		if (bSelectedFilterChanged) 
+		{
+			FilterFlags = 0xFFFFFFFF;
+			
+			bAlreadyCached = false;
+			FiltredLinesCount = 0;
+		}
+		
+		if (bCherryPickHasChanged)
 		{
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
@@ -474,7 +469,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				PeekScrollValue = -1.f;
 			}
 			
-			if (ImGui::IsKeyReleased(ImGuiKey_MouseX1)) 
+			if (ImGui::IsKeyReleased(ImGuiKey_MouseX1) 
+				|| bFilterChanged 
+				|| bSelectedFilterChanged 
+				|| bCherryPickHasChanged) 
 			{
 				OneTimeScrollValue = FiltredScrollValue;
 				bIsPeeking = false;
@@ -800,11 +798,11 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 }
 
 
-void CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
+bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 {
+	bool bAnyFlagChanged = false;
 	if (ImGui::TreeNode("Cherrypick"))
 	{
-		bool bAnyFlagChanged = false;
 		for (int i = 0; i != Filter.Filters.Size; i++)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
@@ -817,13 +815,10 @@ void CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				bAnyFlagChanged = true;
 		}
 			
-		if (bAnyFlagChanged) {
-			bAlreadyCached = false;
-			FiltredLinesCount = 0;
-		}
-			
 		ImGui::TreePop();
 	}
+	
+	return bAnyFlagChanged;
 }
 
 char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor) 
@@ -1034,12 +1029,21 @@ bool CrazyLog::CustomPassFilter(const char* text, const char* text_end) const
 	return false;
 }
 
+bool CrazyLog::CustomDrawFilter(const char* label, float width)
+{
+	if (width != 0.0f)
+		ImGui::SetNextItemWidth(width);
+	bool value_changed = ImGui::InputText(label, Filter.InputBuf, IM_ARRAYSIZE(Filter.InputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+	if (value_changed)
+		Filter.Build();
+	return value_changed;
+}
+
 #undef FILTERS_FILE_NAME
 #undef FILTER_TOKEN
 #undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVAL
 #undef FILTER_TOKEN
-#undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVALERVAL
 #undef FILE_FETCH_INTERVAL
 #undef FOLDER_FETCH_INTERVAL
