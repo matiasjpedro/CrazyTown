@@ -46,5 +46,10 @@ namespace StringUtils
 			|| (*p_Character >= '0' &&  *p_Character <= '9')
 			|| *p_Character == '_' ;
 	}
+	
+	bool IsWhitspace(const char * p_Character)
+	{
+		return *p_Character == ' ' || *p_Character == '\t';
+	}
 }
 

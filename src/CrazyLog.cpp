@@ -828,14 +828,18 @@ void CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 
 char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor) 
 {
+	bool bWasWhiteSpace = StringUtils::IsWhitspace(pWordCursor);
 	bool bWasChar = StringUtils::IsWordChar(pWordCursor);
 	while (pLineStart < pWordCursor)
 	{
 		pWordCursor--;
 		bool bIsChar = StringUtils::IsWordChar(pWordCursor);
-		if (bWasChar != bIsChar) 
+		bool bIsWhitespace = StringUtils::IsWhitspace(pWordCursor);
+		bool bDifferentNonChar = !bIsChar && *pWordCursor != *(pWordCursor+1);
+		if (bWasChar != bIsChar || bWasWhiteSpace != bIsWhitespace || bDifferentNonChar) 
 		{
 			bWasChar = bIsChar;
+			bWasWhiteSpace = bIsWhitespace;
 			return pWordCursor+1;
 		}
 	}
@@ -845,6 +849,7 @@ char* CrazyLog::GetWordStart(const char* pLineStart, char* pWordCursor)
 
 char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount) 
 {
+	bool bWasWhiteSpace = StringUtils::IsWhitspace(pWordCursor);
 	bool bWasChar = StringUtils::IsWordChar(pWordCursor);
 	
 	int WordCounter = 0;
@@ -852,9 +857,12 @@ char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmou
 	{
 		pWordCursor++;
 		bool bIsChar = StringUtils::IsWordChar(pWordCursor);
-		if (bWasChar != bIsChar) 
+		bool bIsWhitespace = StringUtils::IsWhitspace(pWordCursor);
+		bool bDifferentNonChar = !bIsChar && *pWordCursor != *(pWordCursor-1);
+		if (bWasChar != bIsChar && bIsChar || bWasWhiteSpace != bIsWhitespace || bDifferentNonChar) 
 		{
 			bWasChar = bIsChar;
+			bWasWhiteSpace = bIsWhitespace;
 			WordCounter++;
 			if (WordAmount == WordCounter)
 			{
