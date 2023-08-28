@@ -32,7 +32,7 @@ void CrazyLog::Clear()
 	Buf.clear();
 	vLineOffsets.clear();
 	vLineOffsets.push_back(0);
-	vHighlightLineMatches.clear();
+	vHighlightLineMatches.clear_destruct();
 	vHighlightLineMatches.push_back(HighlightLineMatch());
 
 	ClearCache();
@@ -269,7 +269,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 {
 	Buf.Buf.clear();
 	vLineOffsets.clear();
-	vHighlightLineMatches.clear();
+	vHighlightLineMatches.clear_destruct();
 	
 	Buf.append(pFileContent, pFileContent + FileSize);
 	vLineOffsets.push_back(0);
@@ -843,8 +843,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 	}
 	
-	ImGui::SameLine();
-	bool bStreamModeChanged = ImGui::Checkbox("StreamMode", &bStreamMode);
+	//ImGui::SameLine();
+	bool bStreamModeChanged = false; //ImGui::Checkbox("StreamMode", &bStreamMode);
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
 		ImGui::SetTooltip("StreamMode:\n"
 		                  "Indicates if we should refetch the content of the file periodically,\n"

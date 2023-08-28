@@ -11,15 +11,16 @@
 
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
-// Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
-// Assign color to specific Filters?
+// Grab some unreal logs and make a video
 
 ================ InProgress
 
-// Assign color to specific Filters?
+// Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
 
 ================ Done
 
+// Find where I'm leaking memory, probably in the highlight vectors
+// Added different colors to the filters
 // Fixed word selection after introduced highlight feature 
 // Added highlight to the filtred words
 // F5 will refetch the file
