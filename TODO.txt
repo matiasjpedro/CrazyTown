@@ -14,10 +14,11 @@
 
 ================ InProgress
 
-// Do a ctrl+f functionality?
+// Assign color to specific Filters?
 
 ================ Done
 
+// Added highlight to the filtred words
 // F5 will refetch the file
 // Make sure to leave the peeking when the filters are modified
 // press enter to search for the new value

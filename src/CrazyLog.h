@@ -5,6 +5,13 @@ struct NamedFilter {
 	ImGuiTextFilter Filter;
 };
 
+struct HighlightLineMatch
+{
+	ImVector<int> vFilterIdxMatching;
+	ImVector<const char*> vpWordBegin;
+	ImVector<const char*> vpWordEnd;
+};
+
 struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
@@ -12,6 +19,9 @@ struct CrazyLog
 	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
+	
+	// TODO(matiasp): maybe I should combine this with the line offset and have all the line information in once place
+	ImVector<HighlightLineMatch> vHighlightLineMatches;
 	
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderPathToLoad[MAX_PATH];
@@ -75,6 +85,13 @@ struct CrazyLog
 	//Filters;
 	bool AnyFilterActive () const;
 	bool CustomPassFilter(const char* text, const char* text_end) const;
+	
+	void CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd,
+	                               HighlightLineMatch* pFiltredLineMatch);
+	void CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx,
+	                                HighlightLineMatch* pFiltredLineMatch);
+	
+	
 	
 	bool CustomDrawFilter(const char* label, float width);
 };
