@@ -11,10 +11,11 @@
 
 // If press saved in a filter that already exist Modify it instead of append
 // Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
+// Assign color to specific Filters?
 
 ================ InProgress
 
-// Assign color to specific Filters?
+// Highlight seems to be broken the mouse hover detection 
 
 ================ Done
 
