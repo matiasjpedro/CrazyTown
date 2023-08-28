@@ -430,7 +430,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	LARGE_INTEGER LastUpdateCounter = Win32GetWallClock();
 	LARGE_INTEGER LastCounter = Win32GetWallClock();
-	float TargetSecondsPerFrame = 1.0f / (float)60.f;
+	float TargetSecondsPerFrame = 1.0f / (float)45.f;
 	
 	DropTarget DragDrop;
 	
