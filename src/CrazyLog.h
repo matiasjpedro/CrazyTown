@@ -16,6 +16,8 @@ struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
 	ImGuiTextFilter Filter;
+	// TODO(matiasp): I should put this color inside the TextFilter
+	ImVector<ImVec4> vFilterColor;
 	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;

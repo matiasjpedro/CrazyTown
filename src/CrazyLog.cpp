@@ -593,6 +593,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		
 		for (int j = 0; j < vHighlightLineMatches[line_no].vFilterIdxMatching.Size; j++)
 		{
+			ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vFilterIdxMatching[j]];
+			
 			const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vpWordBegin[j];
 			const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vpWordEnd[j] + 1;
 			if (pLineCursor < pHighlightWordBegin)
@@ -601,7 +603,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::SameLine(0.f,0.f);
 						
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
 				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::PopStyleColor();
@@ -611,7 +613,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			}
 			else
 			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
 				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::PopStyleColor();
@@ -716,6 +718,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				
 				for (int i = 0; i < vHighlightLineMatches[line_no].vFilterIdxMatching.Size; i++)
 				{
+					ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vFilterIdxMatching[i]];
+					
 					const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vpWordBegin[i];
 					const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vpWordEnd[i] + 1;
 					if (pLineCursor < pHighlightWordBegin)
@@ -724,7 +728,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::SameLine(0.f,0.f);
 						
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
 						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::PopStyleColor();
@@ -734,7 +738,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 					}
 					else
 					{
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
 						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::PopStyleColor();
@@ -901,6 +905,12 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 
 bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 {
+	// HACKY we should put the color in the filter
+	while (Filter.Filters.Size > vFilterColor.Size)
+	{
+		vFilterColor.push_back(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+	}
+	
 	bool bAnyFlagChanged = false;
 	if (ImGui::TreeNode("Cherrypick"))
 	{
@@ -914,6 +924,9 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
 			if (bChanged)
 				bAnyFlagChanged = true;
+			
+			ImGui::SameLine();
+			ImGui::ColorEdit3(pScratchStart, (float*)&vFilterColor[i].x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
 		}
 			
 		ImGui::TreePop();

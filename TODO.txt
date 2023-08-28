@@ -10,15 +10,17 @@
 ================ Next
 
 // If press saved in a filter that already exist Modify it instead of append
+// Release builds should not create the temp dll
 // Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
 // Assign color to specific Filters?
 
 ================ InProgress
 
-// Highlight seems to be broken the mouse hover detection 
+// Assign color to specific Filters?
 
 ================ Done
 
+// Fixed word selection after introduced highlight feature 
 // Added highlight to the filtred words
 // F5 will refetch the file
 // Make sure to leave the peeking when the filters are modified
