@@ -1,10 +1,13 @@
 #include "CrazyLog.h"
 #include "StringUtils.h"
 
+#include "ConsolaTTF.cpp"
+
 #define FILTERS_FILE_NAME "FILTERS"
 #define FILTER_TOKEN ';'
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
+#define CONSOLAS_FONT_SIZE 14 
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -15,6 +18,7 @@ static char g_NullTerminator = '\0';
 void CrazyLog::Init()
 {
 	bAutoScroll = false;
+	FontScale = 1.f;
 	SelectionSize = 1.f;
 	FileContentFetchCooldown = -1.f;
 	FolderFetchCooldown = -1.f;
@@ -36,6 +40,36 @@ void CrazyLog::Clear()
 	vHighlightLineMatches.push_back(HighlightLineMatch());
 
 	ClearCache();
+}
+
+void CrazyLog::BuildFonts()
+{
+	ImGuiIO& IO = ImGui::GetIO();
+	IO.Fonts->Clear();
+	
+	IO.Fonts->AddFontDefault();
+
+	// Add the consolas font
+	{
+		ImFontConfig font_cfg = ImFontConfig();
+		font_cfg.OversampleH = font_cfg.OversampleV = 1;
+		font_cfg.PixelSnapH = true;
+	
+		float FontSize = max(1, CONSOLAS_FONT_SIZE + FontScale);
+	
+		if (font_cfg.SizePixels <= 0.0f)
+			font_cfg.SizePixels = FontSize * 1.0f;
+		if (font_cfg.Name[0] == '\0')
+			ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "Consola.ttf, %dpx", (int)font_cfg.SizePixels);
+		font_cfg.EllipsisChar = (ImWchar)0x0085;
+		font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / FontSize);  
+
+		const char* ttf_compressed_base85 = ConsolaTTF_compressed_data_base85;
+		const ImWchar* glyph_ranges = ImGui::GetIO().Fonts->GetGlyphRangesDefault();
+		IO.Fonts->AddFontFromMemoryCompressedBase85TTF(ttf_compressed_base85, font_cfg.SizePixels, &font_cfg, glyph_ranges);
+	}
+	
+	IO.Fonts->Build();
 }
 
 void CrazyLog::LoadClipboard() 
@@ -296,6 +330,20 @@ void CrazyLog::ClearCache() {
 	bAlreadyCached = false;
 }
 
+
+void CrazyLog::PreDraw(PlatformContext* pPlatformCtx)
+{
+	if (bWantsToScaleFont)
+	{
+		bWantsToScaleFont = false;
+		
+		// NOTE(matiasp): In order to the font scaling to work properly we need to build the fonts again
+		// and our backend (dx11) needs to rebuild the font texture.
+		BuildFonts();
+		pPlatformCtx->bWantsToRebuildFontTexture = true;
+	}
+}
+
 void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen /*= NULL*/)
 {
 	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize))
@@ -445,6 +493,15 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		{
 			if (ImGui::IsWindowFocused())
 				bWantsToCopy = true;
+		}
+		
+		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
+		{
+			if (ImGui::IsWindowFocused())
+			{
+				FontScale += ImGui::GetIO().MouseWheel;
+				bWantsToScaleFont = true;
+			}
 		}
 		
 		if (ImGui::IsKeyReleased(ImGuiKey_F5))
@@ -844,18 +901,23 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 	
 	//ImGui::SameLine();
-	bool bStreamModeChanged = false; //ImGui::Checkbox("StreamMode", &bStreamMode);
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
-		ImGui::SetTooltip("StreamMode:\n"
-		                  "Indicates if we should refetch the content of the file periodically,\n"
-		                  "looking for new content added, like a log. \n");
+	//bool bStreamModeChanged = ImGui::Checkbox("StreamMode", &bStreamMode);
+	//if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
+	//	ImGui::SetTooltip("StreamMode:\n"
+	//	                  "Indicates if we should refetch the content of the file periodically,\n"
+	//	                  "looking for new content added, like a log. \n");
+	//
+	//if (bStreamModeChanged) {
+	//	if (bStreamMode)
+	//		FetchFile(pPlatformCtx);
+	//	else
+	//		FileContentFetchCooldown = -1.f;
+	//}
 	
-	if (bStreamModeChanged) {
-		if (bStreamMode)
-			FetchFile(pPlatformCtx);
-		else
-			FileContentFetchCooldown = -1.f;
-	}
+	if (bStreamMode)
+		FetchFile(pPlatformCtx);
+	else
+		FileContentFetchCooldown = -1.f;
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
@@ -1224,3 +1286,4 @@ bool CrazyLog::CustomDrawFilter(const char* label, float width)
 #undef FILE_FETCH_INTERVALERVAL
 #undef FILE_FETCH_INTERVAL
 #undef FOLDER_FETCH_INTERVAL
+#undef CONSOLAS_FONT_SIZE

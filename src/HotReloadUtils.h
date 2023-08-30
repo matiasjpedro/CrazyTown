@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "SharedDefinitions.h"
 
+typedef void PreUpdateFunc(PlatformContext*);
 typedef void UpdateFunc(float, PlatformContext*);
 typedef void InitFunc(PlatformContext*, PlatformReloadContext*);
 typedef void ShutdownFunc(PlatformReloadContext*);
@@ -12,6 +13,7 @@ struct HotReloadableDll
 {
 	HMODULE DLL;
 	FILETIME LastWriteTime;
+	PreUpdateFunc* pPreUpdateFunc;
 	UpdateFunc* pUpdateFunc;
 	InitFunc* pInitFunc;
 	ShutdownFunc* pShutdownFunc;
@@ -60,6 +62,7 @@ inline HotReloadableDll HotReloadDll(char* SourceDLLName, char* TempDLLName)
 	if (Result.DLL)
 	{
 		Result.pUpdateFunc = (UpdateFunc *)GetProcAddress(Result.DLL, "AppUpdate");
+		Result.pPreUpdateFunc = (PreUpdateFunc *)GetProcAddress(Result.DLL, "AppPreUpdate");
 		Result.pInitFunc = (InitFunc *)GetProcAddress(Result.DLL, "AppInit");
 		Result.pShutdownFunc = (ShutdownFunc *)GetProcAddress(Result.DLL, "AppShutdown");
 		Result.pOnHotReloadFunc = (OnHotReloadFunc *)GetProcAddress(Result.DLL, "AppOnHotReload");

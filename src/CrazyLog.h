@@ -32,7 +32,8 @@ struct CrazyLog
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
-	
+
+	float FontScale;
 	float SelectionSize;
 	float FileContentFetchCooldown;
 	float FolderFetchCooldown;
@@ -47,12 +48,14 @@ struct CrazyLog
 	bool bFolderQuery;
 	bool bStreamMode;
 	bool bWantsToSavePreset;
+	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
 	bool bShowLineNum;
 	
+	void BuildFonts();
 	void Init();
 	void Clear();
 	
@@ -71,7 +74,8 @@ struct CrazyLog
 	
 	void ClearCache();
 	void FilterLines(PlatformContext* pPlatformCtx);
-	
+
+	void PreDraw(PlatformContext* pPlatformCtx);
 	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL);
 	void DrawFiltredView(PlatformContext* pPlatformCtx);
 	void DrawFullView(PlatformContext* pPlatformCtx);

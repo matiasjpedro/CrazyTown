@@ -52,4 +52,6 @@ struct PlatformContext
 	WriteFileFunc pWriteFileFunc;
 	FreeFileContentFunc pFreeFileContentFunc;
 	FetchLastFileFolderFunc pFetchLastFileFolderFunc;
+	
+	bool bWantsToRebuildFontTexture;
 };

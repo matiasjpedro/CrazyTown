@@ -501,6 +501,20 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 			CreateRenderTarget();
 		}
 		
+		gHotReloadableCode.pPreUpdateFunc(&gPlatformContext);
+		if (gPlatformContext.bWantsToRebuildFontTexture)
+		{
+			ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+			if (bd->pd3dDevice)
+			{
+				if (bd->pFontSampler)           { bd->pFontSampler->Release(); bd->pFontSampler = nullptr; }
+				if (bd->pFontTextureView)       { bd->pFontTextureView->Release(); bd->pFontTextureView = nullptr; ImGui::GetIO().Fonts->SetTexID(0); } // We copied data->pFontTextureView to io.Fonts->TexID so let's clear that as well.
+				ImGui_ImplDX11_CreateFontsTexture();
+			}
+			
+			gPlatformContext.bWantsToRebuildFontTexture = false;
+		}
+		
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
