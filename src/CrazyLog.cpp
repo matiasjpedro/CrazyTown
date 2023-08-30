@@ -37,7 +37,7 @@ void CrazyLog::Clear()
 	vLineOffsets.clear();
 	vLineOffsets.push_back(0);
 	vHighlightLineMatches.clear_destruct();
-	vHighlightLineMatches.push_back(HighlightLineMatch());
+	vHighlightLineMatches.push_back(HighlightLineMatches());
 
 	ClearCache();
 }
@@ -290,7 +290,7 @@ void CrazyLog::AddLog(const char* pFileContent, int FileSize)
 		if (Buf[old_size] == '\n')
 		{
 			vLineOffsets.push_back(old_size + 1);
-			vHighlightLineMatches.push_back(HighlightLineMatch());
+			vHighlightLineMatches.push_back(HighlightLineMatches());
 		}
 	}
 		
@@ -307,7 +307,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	
 	Buf.append(pFileContent, pFileContent + FileSize);
 	vLineOffsets.push_back(0);
-	vHighlightLineMatches.push_back(HighlightLineMatch());
+	vHighlightLineMatches.push_back(HighlightLineMatches());
 	
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -315,7 +315,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 		if (Buf[old_size] == '\n')
 		{
 			vLineOffsets.push_back(old_size + 1);
-			vHighlightLineMatches.push_back(HighlightLineMatch());
+			vHighlightLineMatches.push_back(HighlightLineMatches());
 		}
 	}
 	
@@ -648,12 +648,12 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		
 		const char* pLineCursor = pLineStart;
 		
-		for (int j = 0; j < vHighlightLineMatches[line_no].vFilterIdxMatching.Size; j++)
+		for (int j = 0; j < vHighlightLineMatches[line_no].vLineMatches.Size; j++)
 		{
-			ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vFilterIdxMatching[j]];
+			ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
 			
-			const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vpWordBegin[j];
-			const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vpWordEnd[j] + 1;
+			const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[j].pWordBegin;
+			const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[j].pWordEnd + 1;
 			if (pLineCursor < pHighlightWordBegin)
 			{
 				ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -769,16 +769,16 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			
 			bool bIsItemHovered = false;
 					
-			if (bIsPeeking && vHighlightLineMatches[line_no].vFilterIdxMatching.Size > 0)
+			if (bIsPeeking && vHighlightLineMatches[line_no].vLineMatches.Size > 0)
 			{
 				const char* pLineCursor = line_start;
 				
-				for (int i = 0; i < vHighlightLineMatches[line_no].vFilterIdxMatching.Size; i++)
+				for (int i = 0; i < vHighlightLineMatches[line_no].vLineMatches.Size; i++)
 				{
-					ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vFilterIdxMatching[i]];
+					ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
 					
-					const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vpWordBegin[i];
-					const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vpWordEnd[i] + 1;
+					const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[i].pWordBegin;
+					const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[i].pWordEnd + 1;
 					if (pLineCursor < pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -1205,11 +1205,9 @@ bool CrazyLog::CustomPassFilter(const char* text, const char* text_end) const
 	return false;
 }
 
-void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd, HighlightLineMatch* pFiltredLineMatch)
+void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd, HighlightLineMatches* pFiltredLineMatch)
 {
-	pFiltredLineMatch->vFilterIdxMatching.clear();
-	pFiltredLineMatch->vpWordBegin.clear();
-	pFiltredLineMatch->vpWordEnd.clear();
+	pFiltredLineMatch->vLineMatches.clear();
 	
 	for (int i = 0; i != Filter.Filters.Size; i++)
 	{
@@ -1225,10 +1223,12 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 
 		CacheHighlightMatchingWord(pLineBegin, pLineEnd, i, pFiltredLineMatch);
 	}
+	
+	qsort(pFiltredLineMatch->vLineMatches.Data, pFiltredLineMatch->vLineMatches.Size, sizeof(HighlightLineMatchEntry), HighlightLineMatchEntry::SortFunc);
 }
 
 void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx, 
-                                          HighlightLineMatch* pFiltredLineMatch)
+                                          HighlightLineMatches* pFiltredLineMatch)
 {
 	const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[FilterIdx];
 	
@@ -1258,9 +1258,7 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 			// If we reached the end of the word it means that the entire word is equal
 			if (pWordCursor == pWordEnd)
 			{
-				pFiltredLineMatch->vFilterIdxMatching.push_back(FilterIdx);
-				pFiltredLineMatch->vpWordBegin.push_back(pLineBegin);
-				pFiltredLineMatch->vpWordEnd.push_back(pLineCursor - 1);
+				pFiltredLineMatch->vLineMatches.push_back(HighlightLineMatchEntry(FilterIdx, pLineBegin, pLineCursor - 1));
 			}
 		}
 		

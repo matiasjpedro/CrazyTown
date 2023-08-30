@@ -5,11 +5,28 @@ struct NamedFilter {
 	ImGuiTextFilter Filter;
 };
 
-struct HighlightLineMatch
+struct HighlightLineMatchEntry
 {
-	ImVector<int> vFilterIdxMatching;
-	ImVector<const char*> vpWordBegin;
-	ImVector<const char*> vpWordEnd;
+	int FilterIdxMatching;
+	const char* pWordBegin;
+	const char* pWordEnd;
+	
+	HighlightLineMatchEntry(int in_FilterIdx, const char* in_pWordBegin, const char* in_pWordEnd) :
+							FilterIdxMatching(in_FilterIdx),
+							pWordBegin(in_pWordBegin),
+							pWordEnd(in_pWordEnd)
+	{
+	}
+	
+	static int SortFunc(const void * a, const void * b)
+	{
+		return ((const HighlightLineMatchEntry*)a)->pWordBegin 
+			> ((const HighlightLineMatchEntry*)b)->pWordBegin;
+	}
+};
+struct HighlightLineMatches
+{
+	ImVector<HighlightLineMatchEntry> vLineMatches;
 };
 
 struct CrazyLog
@@ -23,7 +40,7 @@ struct CrazyLog
 	ImVector<NamedFilter> LoadedFilters;
 	
 	// TODO(matiasp): maybe I should combine this with the line offset and have all the line information in once place
-	ImVector<HighlightLineMatch> vHighlightLineMatches;
+	ImVector<HighlightLineMatches> vHighlightLineMatches;
 	
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderPathToLoad[MAX_PATH];
@@ -93,9 +110,9 @@ struct CrazyLog
 	bool CustomPassFilter(const char* text, const char* text_end) const;
 	
 	void CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd,
-	                               HighlightLineMatch* pFiltredLineMatch);
+	                               HighlightLineMatches* pFiltredLineMatch);
 	void CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx,
-	                                HighlightLineMatch* pFiltredLineMatch);
+	                                HighlightLineMatches* pFiltredLineMatch);
 	
 	
 	

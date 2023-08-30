@@ -18,6 +18,7 @@
 
 ================ Done
 
+// Fixed highlight not behaving accordingly when the matches were out of order
 // Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
 // Find where I'm leaking memory, probably in the highlight vectors
 // Added different colors to the filters
