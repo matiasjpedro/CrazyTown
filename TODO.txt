@@ -14,10 +14,11 @@
 
 ================ InProgress
 
-// Grab some unreal logs and make a video
+// Should I release 1.0? Make a list of all the features, and show those with 10x logs
 
 ================ Done
 
+// Fixed highlight not behaving correctly when having multiple matches with the same word begin
 // Fixed highlight not behaving accordingly when the matches were out of order
 // Support zoom, the _correct_ way of scaling your UI is currently to reload your font at the designed size
 // Find where I'm leaking memory, probably in the highlight vectors

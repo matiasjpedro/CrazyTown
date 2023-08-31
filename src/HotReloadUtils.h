@@ -71,11 +71,14 @@ inline HotReloadableDll HotReloadDll(char* SourceDLLName, char* TempDLLName)
 			&& Result.pOnHotReloadFunc 
 			&& Result.pInitFunc 
 			&& Result.pOnDropFunc
-			&& Result.pShutdownFunc;
+			&& Result.pShutdownFunc
+			&& Result.pPreUpdateFunc;
 	}
 
 	if (!Result.bIsValid) 
 	{
+		
+		Result.pPreUpdateFunc = nullptr;
 		Result.pUpdateFunc = nullptr;
 		Result.pInitFunc = nullptr;
 		Result.pOnHotReloadFunc = nullptr;

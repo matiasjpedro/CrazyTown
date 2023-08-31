@@ -386,7 +386,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	size_t FilterLen = StringUtils::Length(Filter.InputBuf);
 	
 	ImGui::SameLine();
-	if (ImGui::SmallButton("SavePreset") && FilterLen != 0) {
+	if (ImGui::SmallButton("Save") && FilterLen != 0) {
 		memset(aFilterNameToSave, 0, ArrayCount(aFilterNameToSave));
 		bWantsToSavePreset = true;
 	}
@@ -395,7 +395,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	{
 		ImGui::SetNextItemWidth(-160);
 		ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH);
-		
 		
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
 		if (ImGui::SmallButton("Accept") && FilterNameLen) 
@@ -654,7 +653,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			
 			const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[j].pWordBegin;
 			const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[j].pWordEnd + 1;
-			if (pLineCursor < pHighlightWordBegin)
+			if (pLineCursor <= pHighlightWordBegin)
 			{
 				ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
 				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
@@ -665,16 +664,6 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::PopStyleColor();
 				
-				ImGui::SameLine(0.f,0.f);
-				pLineCursor = pHighlightWordEnd;
-			}
-			else
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
-				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-				ImGui::PopStyleColor();
-						
 				ImGui::SameLine(0.f,0.f);
 				pLineCursor = pHighlightWordEnd;
 			}
@@ -779,22 +768,12 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 					
 					const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[i].pWordBegin;
 					const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[i].pWordEnd + 1;
-					if (pLineCursor < pHighlightWordBegin)
+					if (pLineCursor <= pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
 						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::SameLine(0.f,0.f);
 						
-						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
-						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-						ImGui::PopStyleColor();
-						
-						ImGui::SameLine(0.f,0.f);
-						pLineCursor = pHighlightWordEnd;
-					}
-					else
-					{
 						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
 						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
@@ -939,8 +918,8 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 				return true; 
 			} 
 		};
-	
-		ImGui::SetNextItemWidth(-288);
+		
+		ImGui::SetNextItemWidth(-160);
 		bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter, (void*)&LoadedFilters, LoadedFilters.Size);
 		if (bSelectedFilterChanged)
 		{
@@ -950,13 +929,8 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 			
 		ImGui::SameLine();
-		if (ImGui::SmallButton("DeletePreset")) {
+		if (ImGui::SmallButton("Delete")) {
 			DeleteFilter(pPlatformCtx);
-		}
-			
-		ImGui::SameLine();
-		if (ImGui::SmallButton("ReloadPresets")) {
-			LoadFilter(pPlatformCtx);
 		}
 				
 	}
