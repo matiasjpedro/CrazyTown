@@ -394,10 +394,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	if (bWantsToSavePreset) 
 	{
 		ImGui::SetNextItemWidth(-160);
-		ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH);
+		bool bAcceptPresetName = ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
 		
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
-		if (ImGui::SmallButton("Accept") && FilterNameLen) 
+		if ((ImGui::SmallButton("Accept")  || bAcceptPresetName) && FilterNameLen) 
 		{
 			SaveFilter(pPlatformCtx, aFilterNameToSave, Filter.InputBuf);
 			bWantsToSavePreset = false;
