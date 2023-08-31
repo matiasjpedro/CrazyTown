@@ -634,6 +634,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		int64_t line_size = pLineEnd - pLineStart;
 		
 		bool bIsItemHovered = false;
+		bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed || bIsCtrlressed;
 
 		if (bShowLineNum) 
 		{
@@ -656,12 +657,12 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			if (pLineCursor <= pHighlightWordBegin)
 			{
 				ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
-				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::SameLine(0.f,0.f);
 						
 				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				bIsItemHovered |= bShouldCheckHover || ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::PopStyleColor();
 				
 				ImGui::SameLine(0.f,0.f);
@@ -670,7 +671,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		}
 				
 		ImGui::TextUnformatted(pLineCursor, pLineEnd);
-		bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+		bIsItemHovered |= bShouldCheckHover || ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 
 		// Peek Full Version
 		if (bIsCtrlressed && bIsItemHovered) 
@@ -757,6 +758,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			}
 			
 			bool bIsItemHovered = false;
+			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed;
 					
 			if (bIsPeeking && vHighlightLineMatches[line_no].vLineMatches.Size > 0)
 			{
@@ -771,12 +773,12 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 					if (pLineCursor <= pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
-						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+						bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::SameLine(0.f,0.f);
 						
 						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-						bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+						bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 						ImGui::PopStyleColor();
 						
 						ImGui::SameLine(0.f,0.f);
@@ -785,12 +787,12 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				}
 				
 				ImGui::TextUnformatted(pLineCursor, line_end);
-				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 			}
 			else
 			{
 				ImGui::TextUnformatted(line_start, line_end);
-				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 			}
 					
 			// Select lines full view
