@@ -214,7 +214,7 @@ FileContent Win32ReadFile(char* pPath)
 	{
 		LPVOID pErrorMsgBuffer = NULL;
 		DWORD Error = GetLastError();
-		DWORD Result = FormatMessage(
+		DWORD ErrorResult = FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
 			NULL,
 			Error,
