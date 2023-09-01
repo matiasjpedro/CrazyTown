@@ -108,7 +108,6 @@ bool CrazyLog::FetchFile(PlatformContext* pPlatformCtx)
 		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
 	
-	FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 	
 	return bNewContent;
 }
@@ -125,17 +124,19 @@ void CrazyLog::SearchLatestFile(PlatformContext* pPlatformCtx)
 	if (bNewerFile && strcmp(aFilePathToLoad, OutLastFileFolder.aFilePath) != 0) {
 		strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), OutLastFileFolder.aFilePath);
 			
-		bStreamMode = true;
-		LoadFile(pPlatformCtx);
+		bStreamMode = LoadFile(pPlatformCtx);
+		
+		if (bStreamMode)
+			FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 	}
 	
 	FolderFetchCooldown = FOLDER_FETCH_INTERVAL;
 }
 
-void CrazyLog::LoadFile(PlatformContext* pPlatformCtx) 
+bool CrazyLog::LoadFile(PlatformContext* pPlatformCtx) 
 {
 	if (aFilePathToLoad[0] == 0)
-		return;
+		return false;
 		
 	bIsPeeking = false;
 	
@@ -148,10 +149,9 @@ void CrazyLog::LoadFile(PlatformContext* pPlatformCtx)
 		pPlatformCtx->pFreeFileContentFunc(&File);
 		
 		LastFetchFileSize = (int)File.Size;
-		
-		if (bStreamMode)
-			FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 	}
+	
+	return File.Size > 0;
 }
 
 void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
@@ -835,7 +835,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SeparatorText("Target");
 	
 #if 0
-	ImGui::SetNextItemWidth(-200);
+	ImGui::SetNextItemWidth(-160);
 	if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 	{
 		bFolderQuery = true;
@@ -869,6 +869,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SetNextItemWidth(-160);
 	if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 	{
+		bStreamMode = false;
+		bFolderQuery = false;
 		LoadFile(pPlatformCtx);
 	}
 	else if(bStreamMode)
@@ -877,28 +879,10 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			FileContentFetchCooldown -= DeltaTime;
 			if (FileContentFetchCooldown <= 0.f) {
 				bAlreadyCached = !FetchFile(pPlatformCtx);
+				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
 			}
 		}
 	}
-	
-	//ImGui::SameLine();
-	//bool bStreamModeChanged = ImGui::Checkbox("StreamMode", &bStreamMode);
-	//if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
-	//	ImGui::SetTooltip("StreamMode:\n"
-	//	                  "Indicates if we should refetch the content of the file periodically,\n"
-	//	                  "looking for new content added, like a log. \n");
-	//
-	//if (bStreamModeChanged) {
-	//	if (bStreamMode)
-	//		FetchFile(pPlatformCtx);
-	//	else
-	//		FileContentFetchCooldown = -1.f;
-	//}
-	
-	if (bStreamMode)
-		FetchFile(pPlatformCtx);
-	else
-		FileContentFetchCooldown = -1.f;
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)

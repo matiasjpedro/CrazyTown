@@ -184,7 +184,7 @@ void Win32FreeFile(FileContent* pFileContent)
 FileContent Win32ReadFile(char* pPath) 
 {
 	FileContent Result = {0};
-	HANDLE FileHandle =	CreateFileA(pPath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	HANDLE FileHandle =	CreateFileA(pPath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0, OPEN_EXISTING, 0, 0);
 	if(FileHandle != INVALID_HANDLE_VALUE)
 	{
 		LARGE_INTEGER FileSize;
@@ -209,6 +209,22 @@ FileContent Win32ReadFile(char* pPath)
 		}
 			
 		CloseHandle(FileHandle);
+	}
+	else
+	{
+		LPVOID pErrorMsgBuffer = NULL;
+		DWORD Error = GetLastError();
+		DWORD Result = FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL,
+			Error,
+			0, // Default language
+			(LPSTR)&pErrorMsgBuffer,
+			0,
+			NULL
+		);
+		
+		OutputDebugStringA((LPSTR)pErrorMsgBuffer);
 	}
 	
 	return Result;

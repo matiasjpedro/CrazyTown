@@ -78,7 +78,7 @@ struct CrazyLog
 	
 	void LoadClipboard();
 	bool FetchFile(PlatformContext* pPlatformCtx);
-	void LoadFile(PlatformContext* pPlatformCtx);
+	bool LoadFile(PlatformContext* pPlatformCtx);
 	void SearchLatestFile(PlatformContext* pPlatformCtx);
 	
 	void LoadFilter(PlatformContext* pPlatformCtx);
