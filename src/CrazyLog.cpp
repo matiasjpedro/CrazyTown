@@ -372,13 +372,13 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::SeparatorText("Filters");
 	
 	bool bFilterChanged = CustomDrawFilter("Filter", -160.0f);
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
-		ImGui::SetTooltip("Filter usage:\n"
-					"  \"\"         	display all lines\n"
-					"  \"xxx\"      	display lines containing \"xxx\"\n"
-					"  \"xxx,yyy\"  	display lines containing \"xxx\" or \"yyy\"\n"
-					"  \"xxx,yyy,+zzz\" display lines containing (\"xxx\" or \"yyy\") and \"+zzz\"\n"
-					"  \"-xxx\"     	hide lines containing \"xxx\"");
+	ImGui::SameLine();
+	HelpMarker(	"Filter usage:\n\n"
+	           "  \"\"           display all lines\n"
+	           "  \"xxx\"        display lines containing \"xxx\"\n"
+	           "  \"xxx,yyy\"    display lines containing \"xxx\" || \"yyy\"\n"
+	           "  \"xxx,+zzz\"   display lines containing  \"xxx\" && \"zzz\"\n"
+	           "  \"-xxx\"       hide lines containing \"xxx\"");
 	
 	
 	// If the size of the filters changed, make sure to start with those filters enabled.
@@ -934,6 +934,10 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			}
 		}
 	}
+
+	ImGui::SameLine();
+	HelpMarker("Full path of the file to load, ex: D:\\logs\\file_name.ext \n\n"
+	           "You can also drag and drop files.");
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
