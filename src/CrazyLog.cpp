@@ -25,6 +25,7 @@ void CrazyLog::Init()
 	PeekScrollValue = -1.f;
 	FiltredScrollValue = -1.f;
 	FilterFlags = 0xFFFFFFFF;
+	SetLastCommand("LAST COMMAND");
 }
 
 void CrazyLog::Clear()
@@ -40,6 +41,8 @@ void CrazyLog::Clear()
 	vHighlightLineMatches.push_back(HighlightLineMatches());
 
 	ClearCache();
+	
+	SetLastCommand("LOG CLEARED");
 }
 
 void CrazyLog::BuildFonts()
@@ -151,6 +154,8 @@ bool CrazyLog::LoadFile(PlatformContext* pPlatformCtx)
 		LastFetchFileSize = (int)File.Size;
 	}
 	
+	SetLastCommand("FILE LOADED");
+	
 	return File.Size > 0;
 }
 
@@ -261,6 +266,8 @@ void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx)
 		Filter.Clear();
 		bAlreadyCached = false;
 		FiltredLinesCount = 0;
+		
+		SetLastCommand("FILTER DELETED");
 	}
 }
 
@@ -275,6 +282,8 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char
 	
 	SaveLoadedFilters(pPlatformCtx);
 	FilterSelectedIdx = LoadedFilters.size() - 1;
+	
+	SetLastCommand("FILTER SAVED");
 }
 
 // This method will append to the buffer
@@ -425,6 +434,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
+			
+			SetLastCommand("FILTER CHANGED");
 		} 
 		
 		if (bSelectedFilterChanged) 
@@ -433,12 +444,16 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
+			
+			SetLastCommand("SELECTED PRESET CHANGED");
 		}
 		
 		if (bCherryPickHasChanged)
 		{
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
+			
+			SetLastCommand("CHERRY PICK CHANGED");
 		}
 	}
 
@@ -473,11 +488,12 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		                  "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
 		                  "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
 		                  "[Ctrl+V]             Will copy the clipboard into the output view. \n"
+		                  "[Ctrl+MouseWheel]    Will scale the font. \n"
 		                  "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
 		                  "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
 		                  "[Alt]                Will enter in word selection mode when hovering a word. \n"
 		                  "[Shift]              Will enter in line selection mode when hovering a line. \n"
-		                  "[ScrollWheel]        While in word/line selection mode it will expand/shrink the selection. \n"
+		                  "[MouseWheel]         While in word/line selection mode it will expand/shrink the selection. \n"
 						  "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
 		                  "[MouseRightClick]    Will open the context menu with some options. \n");
 	}
@@ -493,19 +509,25 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 	
-	if (ImGui::BeginChild("Output", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
+	if (ImGui::BeginChild("Output", ImVec2(0, -20), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 	{
 		bool bWantsToCopy = false;
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
 		{
-			if (ImGui::IsWindowFocused())	
+			if (ImGui::IsWindowFocused())
+			{
 				LoadClipboard();
+				SetLastCommand("CLIPBOARD LOADED");
+			}
 		}
 		
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_C))
 		{
 			if (ImGui::IsWindowFocused())
+			{
 				bWantsToCopy = true;
+				SetLastCommand("VIEW COPIED TO CLIPBOARD");
+			}
 		}
 		
 		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
@@ -514,12 +536,14 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			{
 				FontScale += ImGui::GetIO().MouseWheel;
 				bWantsToScaleFont = true;
+				SetLastCommand("FONT SCALED");
 			}
 		}
 		
 		if (ImGui::IsKeyReleased(ImGuiKey_F5))
 		{
 			FetchFile(pPlatformCtx);
+			SetLastCommand("FILE REFRESHED");
 		}
 		
 		if (ImGui::BeginPopupContextWindow())
@@ -567,6 +591,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			{
 				OneTimeScrollValue = FiltredScrollValue;
 				bIsPeeking = false;
+				
+				SetLastCommand("EXIT PEEK VIEW");
 			}
 			
 			if (!AnyFilterActive()) 
@@ -601,9 +627,9 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			ImGui::SetScrollHereY(1.0f);
 	}
 	ImGui::PopFont();
-	
-	
 	ImGui::EndChild();
+	
+	ImGui::SeparatorText(aLastCommand);
 	
 	ImGui::End();
 }
@@ -632,6 +658,11 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 				
 	FiltredLinesCount = vLineOffsets.Size;
 	bAlreadyCached = true;
+}
+
+void CrazyLog::SetLastCommand(const char* pLastCommand)
+{
+	strcpy_s(aLastCommand, sizeof(aLastCommand), pLastCommand);
 }
 
 void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
@@ -704,6 +735,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				FiltredScrollValue = ImGui::GetScrollY();
 	
 				bIsPeeking = true;
+				SetLastCommand("ENTER PEEK VIEW");
 			}
 		}
 		// Select lines from Filtered Version
@@ -735,6 +767,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 				{
 					ImGui::SetClipboardText(pScratchStart);
+					SetLastCommand("LINE SELECTION COPIED TO CLIPBOARD");
 				}
 			}
 
@@ -833,6 +866,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 				{
 					ImGui::SetClipboardText(pScratchStart);
+					SetLastCommand("LINE SELECTION COPIED TO CLIPBOARD");
 				}
 			}
 			else if (bIsAltPressed && bIsItemHovered) 
@@ -1073,6 +1107,7 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 				{
 					ImGui::SetClipboardText(pScratchStart);
+					SetLastCommand("WORD SELECTION COPIED TO CLIPBOARD");
 				}
 				
 				ImGui::SetTooltip(pScratchStart);

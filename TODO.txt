@@ -20,9 +20,11 @@
 
 ================ InProgress
 
+// Sometime it crashes when refreshing the file, see if we can force the crash
 
 ================ Done
 
+// Added last command separator
 // Make a mark helper with all the shortcuts
 // Fix Copy to clipboard spaces?
 // Install UE5 run the game and see if we can open those logs with the streaming feature

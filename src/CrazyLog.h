@@ -45,6 +45,7 @@ struct CrazyLog
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderPathToLoad[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
+	char aLastCommand[MAX_PATH];
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
 	int LastFetchFileSize;
@@ -92,6 +93,8 @@ struct CrazyLog
 	void ClearCache();
 	void FilterLines(PlatformContext* pPlatformCtx);
 
+	void SetLastCommand(const char* pLastCommand);
+	
 	void PreDraw(PlatformContext* pPlatformCtx);
 	void Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen = NULL);
 	void DrawFiltredView(PlatformContext* pPlatformCtx);
