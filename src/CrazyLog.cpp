@@ -466,7 +466,21 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::PopStyleColor();
 	ImGui::PopItemFlag();
 	
-	ImGui::SeparatorText("OUTPUT");
+	ImGui::SeparatorText("OUTPUT (?)");
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
+	{
+		ImGui::SetTooltip("KEYBINDS when hovering the output view: \n\n"
+		                  "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
+		                  "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
+		                  "[Ctrl+V]             Will copy the clipboard into the output view. \n"
+		                  "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
+		                  "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
+		                  "[Alt]                Will enter in word selection mode when hovering a word. \n"
+		                  "[Shift]              Will enter in line selection mode when hovering a line. \n"
+		                  "[ScrollWheel]        While in word/line selection mode it will expand/shrink the selection. \n"
+						  "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
+		                  "[MouseRightClick]    Will open the context menu with some options. \n");
+	}
 	
 	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
 	bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
@@ -587,7 +601,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			ImGui::SetScrollHereY(1.0f);
 	}
 	ImGui::PopFont();
+	
+	
 	ImGui::EndChild();
+	
 	ImGui::End();
 }
 
@@ -894,7 +911,8 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 	bool bSelectedFilterChanged = false;
 	if (LoadedFilters.Size > 0)
 	{
-		struct Funcs { 
+		struct Funcs 
+		{ 
 			static bool ItemGetter(void* pData, int n, const char** out_ppStr) 
 			{ 
 				ImVector<NamedFilter>& vrLoadedFilters = *((ImVector<NamedFilter>*)pData);
@@ -905,7 +923,8 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		};
 		
 		ImGui::SetNextItemWidth(-160);
-		bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter, (void*)&LoadedFilters, LoadedFilters.Size);
+		bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter,
+		                                      (void*)&LoadedFilters, LoadedFilters.Size);
 		if (bSelectedFilterChanged)
 		{
 			Filter.Clear();
