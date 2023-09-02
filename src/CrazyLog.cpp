@@ -303,7 +303,6 @@ void CrazyLog::AddLog(const char* pFileContent, int FileSize)
 			vHighlightLineMatches.push_back(HighlightLineMatches());
 		}
 	}
-		
 	
 	bAlreadyCached = false;
 }
@@ -700,8 +699,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		{
 			ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
 			
-			const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[j].pWordBegin;
-			const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[j].pWordEnd + 1;
+			const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
+			const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
 			if (pLineCursor <= pHighlightWordBegin)
 			{
 				ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -818,8 +817,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				{
 					ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
 					
-					const char* pHighlightWordBegin = vHighlightLineMatches[line_no].vLineMatches[i].pWordBegin;
-					const char* pHighlightWordEnd = vHighlightLineMatches[line_no].vLineMatches[i].pWordEnd + 1;
+					const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordBeginOffset;
+					const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordEndOffset + 1;
 					if (pLineCursor <= pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -893,7 +892,6 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::SameLine();
 		ImGui::Text("- COMING SOON");
 	
-#if 0
 		ImGui::SameLine();
 		ImGui::Text("- EXPERIMENTAL!");
 		ImGui::SetNextItemWidth(-160);
@@ -931,7 +929,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::Text("Streaming file: %s", aFilePathToLoad);
-#endif
+		
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
@@ -1293,7 +1291,7 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 			// If we reached the end of the word it means that the entire word is equal
 			if (pWordCursor == pWordEnd)
 			{
-				pFiltredLineMatch->vLineMatches.push_back(HighlightLineMatchEntry(FilterIdx, pLineBegin, pLineCursor - 1));
+				pFiltredLineMatch->vLineMatches.push_back(HighlightLineMatchEntry(FilterIdx, pLineBegin - Buf.begin(), (pLineCursor - 1) - Buf.begin()));
 			}
 		}
 		

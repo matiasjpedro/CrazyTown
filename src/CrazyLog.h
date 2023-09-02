@@ -23,20 +23,20 @@ struct NamedFilter {
 struct HighlightLineMatchEntry
 {
 	int FilterIdxMatching;
-	const char* pWordBegin;
-	const char* pWordEnd;
+	const int64_t WordBeginOffset;
+	const int64_t WordEndOffset;
 	
-	HighlightLineMatchEntry(int in_FilterIdx, const char* in_pWordBegin, const char* in_pWordEnd) :
+	HighlightLineMatchEntry(int in_FilterIdx, const int64_t in_WordBeginOffset, const int64_t in_WordEndOffset) :
 							FilterIdxMatching(in_FilterIdx),
-							pWordBegin(in_pWordBegin),
-							pWordEnd(in_pWordEnd)
+							WordBeginOffset(in_WordBeginOffset),
+							WordEndOffset(in_WordEndOffset)
 	{
 	}
 	
 	static int SortFunc(const void * a, const void * b)
 	{
-		return ((const HighlightLineMatchEntry*)a)->pWordBegin 
-			> ((const HighlightLineMatchEntry*)b)->pWordBegin;
+		return ((const HighlightLineMatchEntry*)a)->WordBeginOffset 
+			> ((const HighlightLineMatchEntry*)b)->WordBeginOffset;
 	}
 };
 struct HighlightLineMatches
