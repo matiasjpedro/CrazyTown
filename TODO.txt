@@ -4,6 +4,7 @@
 
 // Support to listen from a websocket?
 // Support through multiple logs -> TabItemButton
+// Remove window border?
 
 ================ Next
 
@@ -11,16 +12,18 @@
 // Release builds should not create the temp dll
 // Save Colores selecter for the filters?
 // Fix ListenForLatestFile
-
-// Should I release 1.0? Make a list of all the features, and show those with 10x logs
+// Do Control+F panel, Do we need it? we can achieve that by +"search" or maybe control+f should fake that?   
 
 ================ InProgress
 
-// Do control+f panel 
-// On middle mouse hovering filter, just add a filter from the clipboard
+// Make a mark helper with all the shortcuts
+// Should I release 1.0? Make a list of all the features, and show those with 10x logs
+// Add a field that shows you the last command executed
+// Do the enum to select the target mode 
 
 ================ Done
 
+// Fix Copy to clipboard spaces?
 // Install UE5 run the game and see if we can open those logs with the streaming feature
 // Fixed highlight not behaving correctly when having multiple matches with the same word begin
 // Fixed highlight not behaving accordingly when the matches were out of order

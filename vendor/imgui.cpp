@@ -13342,7 +13342,11 @@ void ImGui::LogRenderedText(const ImVec2* ref_pos, const char* text, const char*
         g.LogLinePosY = ref_pos->y;
     if (log_new_line)
     {
-        LogText(IM_NEWLINE);
+		
+//----MPEDIT-FixForAddingNewLineToTheClipboard
+        //LogText(IM_NEWLINE);
+//----MPEDIT-
+		
         g.LogLineFirstItem = true;
     }
 
