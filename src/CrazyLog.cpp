@@ -25,6 +25,10 @@ void CrazyLog::Init()
 	FiltredScrollValue = -1.f;
 	FilterFlags = 0xFFFFFFFF;
 	SetLastCommand("LAST COMMAND");
+	ImGui::StyleColorsClassic();
+    ImGuiStyle& style = ImGui::GetStyle();
+	style.FrameRounding = 6.f;
+	style.GrabRounding = 6.f;
 }
 
 void CrazyLog::Clear()
@@ -514,7 +518,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		bool bWantsToCopy = false;
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
 		{
-			if (ImGui::IsWindowFocused())
+			if (ImGui::IsWindowHovered())
 			{
 				LoadClipboard();
 				SetLastCommand("CLIPBOARD LOADED");
@@ -523,7 +527,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_C))
 		{
-			if (ImGui::IsWindowFocused())
+			if (ImGui::IsWindowHovered())
 			{
 				bWantsToCopy = true;
 				SetLastCommand("VIEW COPIED TO CLIPBOARD");
@@ -532,7 +536,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
 		{
-			if (ImGui::IsWindowFocused())
+			if (ImGui::IsWindowHovered())
 			{
 				FontScale += ImGui::GetIO().MouseWheel;
 				bWantsToScaleFont = true;
@@ -885,12 +889,10 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	ImGui::SeparatorText("Target");
 	
-	ImGui::SetNextItemWidth(250);
+	ImGui::SetNextItemWidth(-160);
 	ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
-		ImGui::SameLine();
-		ImGui::Text("- EXPERIMENTAL!");
 		ImGui::SetNextItemWidth(-160);
 		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -910,7 +912,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::SameLine();
 		HelpMarker("Loads the last written file that matches the query. \n"
 		           "and it will start streaming it into the output. \n"
-		           "Example: D:\\logs\\*.extension \n");
+		           "Example: D:\\logs\\*.txt \n");
 		
 		if(bStreamMode)
 		{
@@ -945,8 +947,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 	else if (SelectedTargetMode == TM_StreamFromWebSocket)
 	{
-		ImGui::SameLine();
-		ImGui::Text("- COMING SOON");
+		
 	}
 	
 	

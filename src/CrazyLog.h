@@ -12,7 +12,7 @@ static char* apTargetModeStr[TM_COUNT] =
 {
 	"StaticText",
 	"StreamLastModifiedFileFromFolder",
-	"StreamFromWebSocket"
+	"StreamFromWebSocket - TODO"
 };
 
 struct NamedFilter {
