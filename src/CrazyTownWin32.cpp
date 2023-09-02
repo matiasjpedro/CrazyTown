@@ -246,11 +246,9 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, DWORD* pLastWriteTime, LastFil
 			if (pFolderQuery[i] == pExtensionToken && pFolderQuery[i-1] == pExtensionQueryToken) {
 				
 				bQueryWithExpectedFormat = true;
+				FolderPathLen = i - 1; 
 				
-				FolderPathLen = StringUtils::Concat(
-					pOutLastFileFolder->aFilePath, sizeof(pOutLastFileFolder->aFilePath),
-					pFolderQuery, i-1, 
-					0, 0);
+				memcpy(pOutLastFileFolder->aFilePath, pFolderQuery, sizeof(char) * FolderPathLen);
 				
 				break;
 			}
@@ -259,24 +257,27 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, DWORD* pLastWriteTime, LastFil
 	
 	if (!bQueryWithExpectedFormat)
 		return false;
+	
+	bool bFoundNewFile = false;
 		
 	FILETIME BestDate = *(FILETIME*)pLastWriteTime;
 	
 	WIN32_FIND_DATA FindData;
 	HANDLE hFind = FindFirstFile(pFolderQuery, &FindData);
-	bool bFoundNewFile = false;
 
 	if (hFind != INVALID_HANDLE_VALUE) {
 
 		do 
 		{
-			
 			if (CompareFileTime(&FindData.ftLastWriteTime, &BestDate) == 1) {
 				bFoundNewFile = true;
 				
 				BestDate = FindData.ftLastWriteTime;
 				memcpy(pOutLastFileFolder->aWriteTime, &FindData.ftLastWriteTime, sizeof(FILETIME));
-				strcpy_s(pOutLastFileFolder->aFilePath + FolderPathLen - 1, sizeof(pOutLastFileFolder->aFilePath), FindData.cFileName);
+				size_t RemainingSize = sizeof(pOutLastFileFolder->aFilePath) - sizeof(char) * (FolderPathLen);
+				strcpy_s(&pOutLastFileFolder->aFilePath[FolderPathLen],
+				         RemainingSize,
+				         FindData.cFileName);
 			}
 			
 		} while (FindNextFile(hFind, &FindData));

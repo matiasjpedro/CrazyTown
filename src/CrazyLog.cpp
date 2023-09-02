@@ -355,7 +355,12 @@ void CrazyLog::PreDraw(PlatformContext* pPlatformCtx)
 
 void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen /*= NULL*/)
 {
-	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize))
+	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
+	bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
+	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
+	unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
+	
+	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags))
 	{
 		ImGui::End();
 		return;
@@ -498,18 +503,13 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		                  "[MouseRightClick]    Will open the context menu with some options. \n");
 	}
 	
-	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
-	bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
-	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
-	unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
-	
 	if (!bIsShiftPressed && !bIsAltPressed && SelectionSize > 1.f) {
 		SelectionSize = 0.f;
 	}
 	
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 	
-	if (ImGui::BeginChild("Output", ImVec2(0, -20), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
+	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
 	{
 		bool bWantsToCopy = false;
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
@@ -889,9 +889,6 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
-		ImGui::SameLine();
-		ImGui::Text("- COMING SOON");
-	
 		ImGui::SameLine();
 		ImGui::Text("- EXPERIMENTAL!");
 		ImGui::SetNextItemWidth(-160);

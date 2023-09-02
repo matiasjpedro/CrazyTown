@@ -17,10 +17,13 @@
 
 ================ InProgress
 
+// Check for memory leaks
 // Test Release build
 
 ================ Done
 
+// When pressing alt avoid scroll
+// Fix Streaming mode crashing on release build 
 // Do the enum to select the target mode
 // Fixed crash when Fetching file differences 
 // Fixed line selection not selecting the last line
