@@ -1,5 +1,20 @@
 #pragma once
 
+enum TargetMode 
+{
+	TM_StaticText = 0,
+	TM_StreamLastModifiedFileFromFolder,
+	TM_StreamFromWebSocket,
+	TM_COUNT
+};
+
+static char* apTargetModeStr[TM_COUNT] =
+{
+	"StaticText",
+	"StreamLastModifiedFileFromFolder",
+	"StreamFromWebSocket"
+};
+
 struct NamedFilter {
 	char aName[MAX_PATH];
 	ImGuiTextFilter Filter;
@@ -50,6 +65,7 @@ struct CrazyLog
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
+	TargetMode SelectedTargetMode;
 
 	float FontScale;
 	float SelectionSize;

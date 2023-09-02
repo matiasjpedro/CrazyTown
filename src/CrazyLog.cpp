@@ -17,7 +17,6 @@ static char g_NullTerminator = '\0';
 
 void CrazyLog::Init()
 {
-	bAutoScroll = false;
 	FontScale = 1.f;
 	SelectionSize = 1.f;
 	FileContentFetchCooldown = -1.f;
@@ -290,8 +289,10 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char
 void CrazyLog::AddLog(const char* pFileContent, int FileSize) 
 {
 	int old_size = Buf.size();
-	
-	Buf.Buf.reserve(Buf.Buf.Size + FileSize);
+	int NewRequiredCapacity = Buf.Buf.Size + FileSize;
+	int GrowthCapacity = Buf.Buf._grow_capacity(Buf.Buf.Size + FileSize);
+
+	Buf.Buf.reserve(GrowthCapacity);
 	Buf.append(pFileContent, pFileContent + FileSize);
 	
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -542,7 +543,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (ImGui::IsKeyReleased(ImGuiKey_F5))
 		{
-			FetchFile(pPlatformCtx);
+			LoadFile(pPlatformCtx);
 			SetLastCommand("FILE REFRESHED");
 		}
 		
@@ -601,11 +602,11 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 		}
 		
+		if (!bAlreadyCached && AnyFilterActive()) 
+			FilterLines(pPlatformCtx);
+		
 		if (!bIsPeeking && AnyFilterActive())
 		{
-			if (!bAlreadyCached) 
-				FilterLines(pPlatformCtx);
-			
 			DrawFiltredView(pPlatformCtx);
 		}
 		else
@@ -885,59 +886,75 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	ImGui::SeparatorText("Target");
 	
+	ImGui::SetNextItemWidth(250);
+	ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
+	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
+	{
+		ImGui::SameLine();
+		ImGui::Text("- COMING SOON");
+	
 #if 0
-	ImGui::SetNextItemWidth(-160);
-	if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		bFolderQuery = true;
-		SearchLatestFile(pPlatformCtx);
-	}
-	else if (bFolderQuery)
-	{
-		if (FolderFetchCooldown > 0.f ) {
-			FolderFetchCooldown -= DeltaTime;
-			if (FolderFetchCooldown <= 0.f) {
-				SearchLatestFile(pPlatformCtx);
-			}
-		}
-	}
-	
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
-		ImGui::SetTooltip("It will automatically load the last written file that matches the query. \n"
-		                  "It will enable stream mode by default, since it will start streaming the last file into the output. \n"
-		                  "Expected format example: D:\\logs\\*.extension \n");
-	
-	ImGui::SameLine();
-	bool bFolderQueryChanged = ImGui::Checkbox("Enabled", &bFolderQuery);
-	if (bFolderQueryChanged) {
-		if (bFolderQuery)
+		ImGui::SameLine();
+		ImGui::Text("- EXPERIMENTAL!");
+		ImGui::SetNextItemWidth(-160);
+		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
-		else
-			FolderFetchCooldown = -1.f;
-	}
-#endif
-	
-	ImGui::SetNextItemWidth(-160);
-	if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		bStreamMode = false;
-		bFolderQuery = false;
-		LoadFile(pPlatformCtx);
-	}
-	else if(bStreamMode)
-	{
-		if (FileContentFetchCooldown > 0 && bFileLoaded) {
-			FileContentFetchCooldown -= DeltaTime;
-			if (FileContentFetchCooldown <= 0.f) {
-				bAlreadyCached = !FetchFile(pPlatformCtx);
-				FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+		}
+		else if (bFolderQuery)
+		{
+			if (FolderFetchCooldown > 0.f ) {
+				FolderFetchCooldown -= DeltaTime;
+				if (FolderFetchCooldown <= 0.f) {
+					SearchLatestFile(pPlatformCtx);
+				}
 			}
 		}
+	
+		ImGui::SameLine();
+		HelpMarker("Loads the last written file that matches the query. \n"
+		           "and it will start streaming it into the output. \n"
+		           "Example: D:\\logs\\*.extension \n");
+		
+		if(bStreamMode)
+		{
+			if (FileContentFetchCooldown > 0 && bFileLoaded) 
+			{
+				FileContentFetchCooldown -= DeltaTime;
+				if (FileContentFetchCooldown <= 0.f) 
+				{
+					FetchFile(pPlatformCtx);
+					FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+				}
+			}
+		}
+		
+		ImGui::Text("Streaming file: %s", aFilePathToLoad);
+#endif
 	}
-
-	ImGui::SameLine();
-	HelpMarker("Full path of the file to load, ex: D:\\logs\\file_name.ext \n\n"
-	           "You can also drag and drop files.");
+	else if (SelectedTargetMode == TM_StaticText)
+	{
+		ImGui::SetNextItemWidth(-160);
+		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			bStreamMode = false;
+			bFolderQuery = false;
+			LoadFile(pPlatformCtx);
+		}
+		
+		ImGui::SameLine();
+		HelpMarker("Full path of the file to load. \n"
+				   "Example: D:\\logs\\file_name.ext \n\n"
+		           "You can also drag and drop files.");
+	}
+	else if (SelectedTargetMode == TM_StreamFromWebSocket)
+	{
+		ImGui::SameLine();
+		ImGui::Text("- COMING SOON");
+	}
+	
+	
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
