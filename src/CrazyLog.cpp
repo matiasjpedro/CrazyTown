@@ -851,7 +851,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				SelectionSize = max(SelectionSize, 1);
 						
 				int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
-				int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
+				int TopLine = min(line_no + (int)SelectionSize - 1, vLineOffsets.Size - 1);
 				const char* TopLineEnd = (TopLine + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[TopLine + 1] - 1) : buf_end;
 				int64_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
 						
