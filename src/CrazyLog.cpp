@@ -585,7 +585,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		// Using a scrollbar or mouse-wheel will take away from the bottom edge.
 		if (bAutoScroll && !bIsPeeking && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 			ImGui::SetScrollHereY(1.0f);
-		
 	}
 	ImGui::PopFont();
 	ImGui::EndChild();
@@ -662,7 +661,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 						
 				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
 				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-				bIsItemHovered |= bShouldCheckHover || ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 				ImGui::PopStyleColor();
 				
 				ImGui::SameLine(0.f,0.f);
@@ -671,7 +670,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		}
 				
 		ImGui::TextUnformatted(pLineCursor, pLineEnd);
-		bIsItemHovered |= bShouldCheckHover || ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+		bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
 
 		// Peek Full Version
 		if (bIsCtrlressed && bIsItemHovered) 
