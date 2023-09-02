@@ -11,19 +11,19 @@
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
 // Save Colores selecter for the filters?
-// Fix ListenForLatestFile
 // Do Control+F panel, Do we need it? we can achieve that by +"search" or maybe control+f should fake that?   
 // Should I release 1.0? Make a list of all the features, and show those with 10x logs
-// Add a field that shows you the last command executed
 // Do the enum to select the target mode 
 // Should I use clippear to the filtered view?
+// Sometime it crashes when refreshing the file, see if we can force the crash
 
 ================ InProgress
 
-// Sometime it crashes when refreshing the file, see if we can force the crash
+// Test Release build
 
 ================ Done
 
+// Fixed line selection not selecting the last line
 // Added last command separator
 // Make a mark helper with all the shortcuts
 // Fix Copy to clipboard spaces?

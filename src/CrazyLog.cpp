@@ -745,11 +745,11 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			SelectionSize = max(SelectionSize, 1);
 
 			int BottomLine = max(i - (int)SelectionSize + 1, 0);
-			int TopLine = min(i + (int)SelectionSize, vFiltredLinesCached.Size - 1);
+			int TopLine = min(i + (int)SelectionSize - 1, vFiltredLinesCached.Size - 1);
 
 			bool bWroteOnScratch = false;
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			for (int j = BottomLine; j < TopLine; j++) {
+			for (int j = BottomLine; j <= TopLine; j++) {
 	
 				int FilteredLineNo = vFiltredLinesCached[j];
 				char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
@@ -852,7 +852,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 						
 				int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
 				int TopLine = min(line_no + (int)SelectionSize, vLineOffsets.Size - 1);
-				int64_t Size = (buf + vLineOffsets[TopLine]) - (buf + vLineOffsets[BottomLine]);
+				const char* TopLineEnd = (TopLine + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[TopLine + 1] - 1) : buf_end;
+				int64_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
 						
 				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 				if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
