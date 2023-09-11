@@ -11,17 +11,20 @@
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
 // Save Colores selecter for the filters?
-// Do Control+F panel, Do we need it? we can achieve that by +"search" or maybe control+f should fake that?   
-// Should I release 1.0? Make a list of all the features, and show those with 10x logs
-// Should I use clippear to the filtered view?
+// Add ms performance,
+// Add clipper to the filtred view
+// Check for memory leaks
 
 ================ InProgress
 
-// Check for memory leaks
-// Test Release build
+
+
+
 
 ================ Done
 
+// After loading an static file and tried to stream the file it will not stream if it has the same name,
+// I should check the creation date.
 // When pressing alt avoid scroll
 // Fix Streaming mode crashing on release build 
 // Do the enum to select the target mode

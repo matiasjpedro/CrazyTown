@@ -11,7 +11,7 @@ enum TargetMode
 static char* apTargetModeStr[TM_COUNT] =
 {
 	"StaticText",
-	"StreamLastModifiedFileFromFolder",
+	"StreamLastModifiedFileFromFolder - EXPERIMENTAL",
 	"StreamFromWebSocket - TODO"
 };
 
@@ -39,6 +39,7 @@ struct HighlightLineMatchEntry
 			> ((const HighlightLineMatchEntry*)b)->WordBeginOffset;
 	}
 };
+
 struct HighlightLineMatches
 {
 	ImVector<HighlightLineMatchEntry> vLineMatches;
@@ -73,8 +74,8 @@ struct CrazyLog
 	float FolderFetchCooldown;
 	float PeekScrollValue;
 	float FiltredScrollValue;
-	
-	unsigned long aWriteTime[2];
+
+	FileTimeData LastLoadedFileTime;
 	uint64_t FilterFlags;
 	
 	bool bAlreadyCached;

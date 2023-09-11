@@ -7,9 +7,15 @@ struct FileContent
 	void* pFile;
 };
 
+struct FileTimeData
+{
+	unsigned long aWriteTime[2];
+	unsigned long aCreationTime[2];
+};
+
 struct LastFileFolder 
 {
-	unsigned long aWriteTime[2]; // Ugly and not cross platform
+	FileTimeData FileTime;
 	char aFilePath[256];
 };
 
@@ -31,7 +37,7 @@ typedef void    (*FreeFunc)(void* pLocation, void* pUserData);
 typedef FileContent    (*ReadFileFunc)(char* pPath);
 typedef bool           (*WriteFileFunc)(FileContent* pFileContent, char* pPath);
 typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
-typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, unsigned long* pLastWriteTimem, LastFileFolder* pOutLastFileFolder);
+typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, FileTimeData* pLastFetchFileData, LastFileFolder* pOutLastFileFolder);
 
 
 struct PlatformReloadContext 

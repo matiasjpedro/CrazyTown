@@ -124,11 +124,13 @@ void CrazyLog::SearchLatestFile(PlatformContext* pPlatformCtx)
 		return;
 	
 	LastFileFolder OutLastFileFolder = { 0 };
-	bool bNewerFile = pPlatformCtx->pFetchLastFileFolderFunc(aFolderPathToLoad, aWriteTime, &OutLastFileFolder);
+	bool bNewerFile = pPlatformCtx->pFetchLastFileFolderFunc(aFolderPathToLoad, &LastLoadedFileTime, &OutLastFileFolder);
 		
 	// There is a newer file
-	if (bNewerFile && strcmp(aFilePathToLoad, OutLastFileFolder.aFilePath) != 0) {
+	if (bNewerFile) 
+	{
 		strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), OutLastFileFolder.aFilePath);
+		memcpy(&LastLoadedFileTime, &OutLastFileFolder.FileTime, sizeof(FileTimeData));
 			
 		bStreamMode = LoadFile(pPlatformCtx);
 		
@@ -896,6 +898,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::SetNextItemWidth(-160);
 		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
+			memset(&LastLoadedFileTime, 0, sizeof(FileTimeData));
+			
 			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
 		}
