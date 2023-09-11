@@ -878,9 +878,17 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SeparatorText("Target");
 	
 	ImGui::SetNextItemWidth(-160);
-	ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
+	bool bModeJustChanged = ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
+		if (bModeJustChanged)
+		{
+			bStreamMode = false;
+			bFolderQuery = false;
+			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
+			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
+		}
+		
 		ImGui::SetNextItemWidth(-160);
 		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -891,9 +899,11 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		else if (bFolderQuery)
 		{
-			if (FolderFetchCooldown > 0.f ) {
+			if (FolderFetchCooldown > 0.f ) 
+			{
 				FolderFetchCooldown -= DeltaTime;
-				if (FolderFetchCooldown <= 0.f) {
+				if (FolderFetchCooldown <= 0.f) 
+				{
 					SearchLatestFile(pPlatformCtx);
 				}
 			}
@@ -917,16 +927,23 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			}
 		}
 		
-		ImGui::Text("Streaming file: %s", aFilePathToLoad);
+		if(aFilePathToLoad[0] != 0)
+			ImGui::Text("Streaming file: %s", aFilePathToLoad);
 		
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
-		ImGui::SetNextItemWidth(-160);
-		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		if (bModeJustChanged)
 		{
 			bStreamMode = false;
 			bFolderQuery = false;
+			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
+			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
+		}
+		
+		ImGui::SetNextItemWidth(-160);
+		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
 			LoadFile(pPlatformCtx);
 		}
 		
@@ -937,7 +954,13 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 	else if (SelectedTargetMode == TM_StreamFromWebSocket)
 	{
-		
+		if (bModeJustChanged)
+		{
+			bStreamMode = false;
+			bFolderQuery = false;
+			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
+			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
+		}
 	}
 	
 	

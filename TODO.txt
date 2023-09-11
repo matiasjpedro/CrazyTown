@@ -11,11 +11,13 @@
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
 // Add ms performance,
-// Save Colors selecter for the filters?
+// Check for memory leaks
+// Think on how to support multiple processes writing in the FolderQuery
 
 ================ InProgress
 
-// Check for memory leaks
+// Save Colors selecter for the filters?
+// Save Target input field values?
 
 ================ Done
 
