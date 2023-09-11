@@ -10,19 +10,16 @@
 
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
-// Save Colores selecter for the filters?
 // Add ms performance,
-// Add clipper to the filtred view
-// Check for memory leaks
+// Save Colors selecter for the filters?
 
 ================ InProgress
 
-
-
-
+// Check for memory leaks
 
 ================ Done
 
+// Add clipper to the filtred view
 // After loading an static file and tried to stream the file it will not stream if it has the same name,
 // I should check the creation date.
 // When pressing alt avoid scroll

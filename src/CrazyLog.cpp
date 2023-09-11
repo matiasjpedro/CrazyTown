@@ -570,7 +570,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			if (ImGui::BeginMenu("Options"))
 			{
 				ImGui::Checkbox("Auto-scroll", &bAutoScroll);
-				//ImGui::Checkbox("Show Line Number", &bShowLineNum);
 				ImGui::EndMenu();
 			}
 			
@@ -679,113 +678,107 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	
 	const char* buf = Buf.begin();
 	const char* buf_end = Buf.end();
-	for (int i = 0; i < vFiltredLinesCached.Size; i++)
+	ImGuiListClipper clipper;
+	clipper.Begin(vFiltredLinesCached.Size);
+	while (clipper.Step())
 	{
-		int line_no = vFiltredLinesCached[i];
-		const char* pLineStart = buf + vLineOffsets[line_no];
-		const char* pLineEnd = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-		int64_t line_size = pLineEnd - pLineStart;
-		
-		bool bIsItemHovered = false;
-		bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed || bIsCtrlressed;
-
-		if (bShowLineNum) 
+		for (int ClipperIdx = clipper.DisplayStart; ClipperIdx < clipper.DisplayEnd; ClipperIdx++)
 		{
-			char aLineNumberName[10] = { 0 };
-			int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
-
-			ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
-			ImGui::SameLine();
-		}
-		
-		
-		const char* pLineCursor = pLineStart;
-		
-		for (int j = 0; j < vHighlightLineMatches[line_no].vLineMatches.Size; j++)
-		{
-			ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
+			int line_no = vFiltredLinesCached[ClipperIdx];
+			const char* pLineStart = buf + vLineOffsets[line_no];
+			const char* pLineEnd = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+			int64_t line_size = pLineEnd - pLineStart;
 			
-			const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
-			const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
-			if (pLineCursor <= pHighlightWordBegin)
+			bool bIsItemHovered = false;
+			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed || bIsCtrlressed;
+	
+			const char* pLineCursor = pLineStart;
+			
+			for (int j = 0; j < vHighlightLineMatches[line_no].vLineMatches.Size; j++)
 			{
-				ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
-				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-				ImGui::SameLine(0.f,0.f);
-						
-				ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
-				ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-				ImGui::PopStyleColor();
+				ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
 				
-				ImGui::SameLine(0.f,0.f);
-				pLineCursor = pHighlightWordEnd;
-			}
-		}
-				
-		ImGui::TextUnformatted(pLineCursor, pLineEnd);
-		bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-
-		// Peek Full Version
-		if (bIsCtrlressed && bIsItemHovered) 
-		{
-			if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
-			{
-				// TODO(Matiasp): Why it does not work when I scale the font?
-				float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
-				float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
-	
-				// We apply the same offset to maintain the same scroll position
-				// between peeking and filtred view.
-				PeekScrollValue = ItemPosY - TopOffset;
-				FiltredScrollValue = ImGui::GetScrollY();
-	
-				bIsPeeking = true;
-				SetLastCommand("ENTER PEEK VIEW");
-			}
-		}
-		// Select lines from Filtered Version
-		else if (bIsShiftPressed && bIsItemHovered) 
-		{
-			SelectionSize += ImGui::GetIO().MouseWheel;
-			SelectionSize = max(SelectionSize, 1);
-
-			int BottomLine = max(i - (int)SelectionSize + 1, 0);
-			int TopLine = min(i + (int)SelectionSize - 1, vFiltredLinesCached.Size - 1);
-
-			bool bWroteOnScratch = false;
-			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			for (int j = BottomLine; j <= TopLine; j++) {
-	
-				int FilteredLineNo = vFiltredLinesCached[j];
-				char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
-				char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
-	
-				int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
-				bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
-			}
-
-			if (bWroteOnScratch) {
-				pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
-				ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
-				ImGui::SetTooltip(pScratchStart);
-	
-				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+				const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
+				const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
+				if (pLineCursor <= pHighlightWordBegin)
 				{
-					ImGui::SetClipboardText(pScratchStart);
-					SetLastCommand("LINE SELECTION COPIED TO CLIPBOARD");
+					ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
+					bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+					ImGui::SameLine(0.f,0.f);
+							
+					ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
+					ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
+					bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+					ImGui::PopStyleColor();
+					
+					ImGui::SameLine(0.f,0.f);
+					pLineCursor = pHighlightWordEnd;
 				}
 			}
-
-		}
-		// Select chars from Filtered Version
-		else if (bIsAltPressed && bIsItemHovered) 
-		{
-			SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd);
+					
+			ImGui::TextUnformatted(pLineCursor, pLineEnd);
+			bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+	
+			// Peek Full Version
+			if (bIsCtrlressed && bIsItemHovered) 
+			{
+				if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
+				{
+					float TopOffset = ImGui::GetCursorScreenPos().y - ImGui::GetWindowPos().y;
+					float ItemPosY = (float)(line_no + 1) * ImGui::GetTextLineHeightWithSpacing();
+		
+					// We apply the same offset to maintain the same scroll position
+					// between peeking and filtred view.
+					PeekScrollValue = ItemPosY - TopOffset;
+					FiltredScrollValue = ImGui::GetScrollY();
+		
+					bIsPeeking = true;
+					SetLastCommand("ENTER PEEK VIEW");
+				}
+			}
+			// Select lines from Filtered Version
+			else if (bIsShiftPressed && bIsItemHovered) 
+			{
+				SelectionSize += ImGui::GetIO().MouseWheel;
+				SelectionSize = max(SelectionSize, 1);
+	
+				int BottomLine = max(ClipperIdx - (int)SelectionSize + 1, 0);
+				int TopLine = min(ClipperIdx + (int)SelectionSize - 1, vFiltredLinesCached.Size - 1);
+	
+				bool bWroteOnScratch = false;
+				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
+				for (int j = BottomLine; j <= TopLine; j++) {
+		
+					int FilteredLineNo = vFiltredLinesCached[j];
+					char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
+					char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
+		
+					int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
+					bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
+				}
+	
+				if (bWroteOnScratch) {
+					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
+					ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
+					ImGui::SetTooltip(pScratchStart);
+		
+					if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
+					{
+						ImGui::SetClipboardText(pScratchStart);
+						SetLastCommand("LINE SELECTION COPIED TO CLIPBOARD");
+					}
+				}
+	
+			}
+			// Select chars from Filtered Version
+			else if (bIsAltPressed && bIsItemHovered) 
+			{
+				SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd);
+			}
 		}
 	}
 	
-	
+	clipper.End();
 }
 
 void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
@@ -804,13 +797,6 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 		{
 			const char* line_start = buf + vLineOffsets[line_no];
 			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-			if (bShowLineNum) {
-				char aLineNumberName[10] = { 0 };
-				int len = sprintf_s(aLineNumberName, sizeof(aLineNumberName), "%i - ", line_no);
-					
-				ImGui::TextUnformatted(aLineNumberName, &aLineNumberName[len]);
-				ImGui::SameLine();
-			}
 			
 			bool bIsItemHovered = false;
 			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed;
