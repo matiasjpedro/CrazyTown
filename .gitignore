@@ -37,3 +37,4 @@
 /data/*.txt
 /data/*.ini
 /data/FILTERS
+/data/QUERIES

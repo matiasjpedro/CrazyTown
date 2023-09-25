@@ -55,6 +55,7 @@ void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformRelo
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	pMem->Log.Init();
 	pMem->Log.LoadFilter(pPlatformCtx);
+	pMem->Log.LoadFolderQuery(pPlatformCtx);
 	
 	pMem->Log.BuildFonts();
 	

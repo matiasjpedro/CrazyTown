@@ -59,7 +59,7 @@ struct CrazyLog
 	ImVector<HighlightLineMatches> vHighlightLineMatches;
 	
 	char aFilePathToLoad[MAX_PATH];
-	char aFolderPathToLoad[MAX_PATH];
+	char aFolderQueryName[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
 	char aLastCommand[MAX_PATH];
 	int FilterSelectedIdx;
@@ -71,11 +71,12 @@ struct CrazyLog
 	float FontScale;
 	float SelectionSize;
 	float FileContentFetchCooldown;
+	float FileContentFetchSlider;
 	float FolderFetchCooldown;
 	float PeekScrollValue;
 	float FiltredScrollValue;
 
-	FileTimeData LastLoadedFileTime;
+	FileData LastLoadedFileData;
 	uint64_t FilterFlags;
 	
 	bool bAlreadyCached;
@@ -103,6 +104,8 @@ struct CrazyLog
 	void SaveLoadedFilters(PlatformContext* pPlatformCtx);
 	void DeleteFilter(PlatformContext* pPlatformCtx);
 	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char* pFilterContent);
+	void SaveFolderQuery(PlatformContext* pPlatformCtx);
+	void LoadFolderQuery(PlatformContext* pPlatformCtx);
 	
 	void AddLog(const char* pFileContent, int FileSize);
 	void SetLog(const char* pFileContent, int FileSize);

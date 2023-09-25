@@ -230,7 +230,7 @@ FileContent Win32ReadFile(char* pPath)
 	return Result;
 }
 
-bool Win32FetchLastFileFolder(char* pFolderQuery, FileTimeData* pLastFileTimeData, LastFileFolder* pOutLastFileFolder)
+bool Win32FetchLastFileFolder(char* pFolderQuery, FileData* pLastFileTimeData, FileData* pOutLastFileFolder)
 {
 	// Check the proper format
 	// We expect to receive FolderPath\*.extension
@@ -260,7 +260,7 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, FileTimeData* pLastFileTimeDat
 	
 	bool bFoundNewFile = false;
 		
-	FILETIME BestDate = *(FILETIME*)pLastFileTimeData->aWriteTime;
+	FILETIME BestDate = *(FILETIME*)pLastFileTimeData->FileTime.aWriteTime;
 	
 	WIN32_FIND_DATA FindData;
 	HANDLE hFind = FindFirstFile(pFolderQuery, &FindData);
@@ -269,23 +269,41 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, FileTimeData* pLastFileTimeDat
 	{
 		do 
 		{
-			bool bIsNewer = CompareFileTime(&FindData.ftLastWriteTime, &BestDate) == 1;
-			bool bIsDifferent = CompareFileTime(&FindData.ftCreationTime, (FILETIME*)pLastFileTimeData->aCreationTime) != 0;
-			if (bIsNewer && bIsDifferent)
-			{
-				bFoundNewFile = true;
-				
-				BestDate = FindData.ftLastWriteTime;
-				
-				memcpy(&pOutLastFileFolder->FileTime.aWriteTime, &FindData.ftLastWriteTime, sizeof(FILETIME));
-				memcpy(&pOutLastFileFolder->FileTime.aCreationTime, &FindData.ftCreationTime, sizeof(FILETIME));
-				
-				size_t RemainingSize = sizeof(pOutLastFileFolder->aFilePath) - sizeof(char) * (FolderPathLen);
-				strcpy_s(&pOutLastFileFolder->aFilePath[FolderPathLen],
-				         RemainingSize,
-				         FindData.cFileName);
-			}
+			bool bIsNewer = CompareFileTime(&FindData.ftLastWriteTime, &BestDate) >= 0;
+			int CreationTimeCompare = CompareFileTime(&FindData.ftCreationTime, (FILETIME*)pLastFileTimeData->FileTime.aCreationTime) != 0;
 			
+			if (bIsNewer)
+			{
+				if (CreationTimeCompare >= 0 && (FindData.nFileSizeLow > 0))
+				{
+					size_t RemainingSize = sizeof(pOutLastFileFolder->aFilePath) - sizeof(char) * (FolderPathLen);
+					strcpy_s(&pOutLastFileFolder->aFilePath[FolderPathLen],
+					         RemainingSize,
+					         FindData.cFileName);
+					
+					bool bIsDifferent = false;
+					// If both files have the same creation time make sure that have the same name
+					if (CreationTimeCompare == 0)
+					{
+						bIsDifferent = strcmp(pOutLastFileFolder->aFilePath, pLastFileTimeData->aFilePath) != 0;
+					}
+					else
+					{
+						bIsDifferent = true;
+					}
+					
+					if (bIsDifferent)
+					{
+						bFoundNewFile = true;
+				
+						BestDate = FindData.ftLastWriteTime;
+				
+						memcpy(&pOutLastFileFolder->FileTime.aWriteTime, &FindData.ftLastWriteTime, sizeof(FILETIME));
+						memcpy(&pOutLastFileFolder->FileTime.aCreationTime, &FindData.ftCreationTime, sizeof(FILETIME));
+					}
+				}
+			}
+				
 		} while (FindNextFile(hFind, &FindData));
 
 		FindClose(hFind);

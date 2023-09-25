@@ -4,6 +4,7 @@
 #include "ConsolaTTF.cpp"
 
 #define FILTERS_FILE_NAME "FILTERS"
+#define FOLDER_QUERY_NAME "QUERIES"
 #define FILTER_TOKEN ';'
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
@@ -29,6 +30,7 @@ void CrazyLog::Init()
     ImGuiStyle& style = ImGui::GetStyle();
 	style.FrameRounding = 6.f;
 	style.GrabRounding = 6.f;
+	FileContentFetchSlider = FILE_FETCH_INTERVAL;
 }
 
 void CrazyLog::Clear()
@@ -83,6 +85,7 @@ void CrazyLog::LoadClipboard()
 	bIsPeeking = false;
 	bFileLoaded = false;
 	bStreamMode = false;
+
 	bFolderQuery = false;
 	memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 	
@@ -120,17 +123,17 @@ bool CrazyLog::FetchFile(PlatformContext* pPlatformCtx)
 
 void CrazyLog::SearchLatestFile(PlatformContext* pPlatformCtx)
 {
-	if (aFolderPathToLoad[0] == 0)
+	if (aFolderQueryName[0] == 0)
 		return;
 	
-	LastFileFolder OutLastFileFolder = { 0 };
-	bool bNewerFile = pPlatformCtx->pFetchLastFileFolderFunc(aFolderPathToLoad, &LastLoadedFileTime, &OutLastFileFolder);
+	FileData OutLastFileData = { 0 };
+	bool bNewerFile = pPlatformCtx->pFetchLastFileFolderFunc(aFolderQueryName, &LastLoadedFileData, &OutLastFileData);
 		
 	// There is a newer file
 	if (bNewerFile) 
 	{
-		strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), OutLastFileFolder.aFilePath);
-		memcpy(&LastLoadedFileTime, &OutLastFileFolder.FileTime, sizeof(FileTimeData));
+		strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), OutLastFileData.aFilePath);
+		memcpy(&LastLoadedFileData, &OutLastFileData, sizeof(FileData));
 			
 		bStreamMode = LoadFile(pPlatformCtx);
 		
@@ -257,6 +260,29 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	
 	OutFile.Size = (size_t)pPlatformCtx->ScratchMem.Size - PreviousSize;
 	pPlatformCtx->pWriteFileFunc(&OutFile, FILTERS_FILE_NAME);
+}
+
+void CrazyLog::SaveFolderQuery(PlatformContext* pPlatformCtx)
+{
+	FileContent OutFile = {0};
+	OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
+
+	size_t Len = StringUtils::Length(aFolderQueryName);
+	if (Len > 0)
+	{
+		pPlatformCtx->ScratchMem.PushBack(aFolderQueryName, Len);
+		OutFile.Size = Len;
+		pPlatformCtx->pWriteFileFunc(&OutFile, FOLDER_QUERY_NAME);
+	}
+}
+
+void CrazyLog::LoadFolderQuery(PlatformContext* pPlatformCtx)
+{
+	FileContent File = pPlatformCtx->pReadFileFunc(FOLDER_QUERY_NAME);
+	if (File.Size > 0)
+	{
+		memcpy(aFolderQueryName, File.pFile, File.Size);
+	}
 }
 
 
@@ -886,16 +912,18 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bStreamMode = false;
 			bFolderQuery = false;
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
-			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
 		}
 		
 		ImGui::SetNextItemWidth(-160);
-		if (ImGui::InputText("FolderQuery", aFolderPathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		if (ImGui::InputText("FolderQuery", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			memset(&LastLoadedFileTime, 0, sizeof(FileTimeData));
+			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
 			
 			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
+			
+			if(aFolderQueryName[0] != 0)
+				SaveFolderQuery(pPlatformCtx);
 		}
 		else if (bFolderQuery)
 		{
@@ -922,13 +950,16 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 				if (FileContentFetchCooldown <= 0.f) 
 				{
 					FetchFile(pPlatformCtx);
-					FileContentFetchCooldown = FILE_FETCH_INTERVAL;
+					FileContentFetchCooldown = FileContentFetchSlider;
 				}
 			}
 		}
 		
 		if(aFilePathToLoad[0] != 0)
 			ImGui::Text("Streaming file: %s", aFilePathToLoad);
+		
+		ImGui::SetNextItemWidth(-160);
+		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.1f, 3.0f);
 		
 	}
 	else if (SelectedTargetMode == TM_StaticText)
@@ -938,7 +969,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bStreamMode = false;
 			bFolderQuery = false;
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
-			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
+			memset(aFolderQueryName, 0, sizeof(aFolderQueryName));
 		}
 		
 		ImGui::SetNextItemWidth(-160);
@@ -959,7 +990,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bStreamMode = false;
 			bFolderQuery = false;
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
-			memset(aFolderPathToLoad, 0, sizeof(aFolderPathToLoad));
+			memset(aFolderQueryName, 0, sizeof(aFolderQueryName));
 		}
 	}
 	
@@ -1321,6 +1352,7 @@ bool CrazyLog::CustomDrawFilter(const char* label, float width)
 }
 
 #undef FILTERS_FILE_NAME
+#undef FOLDER_QUERY_NAME
 #undef FILTER_TOKEN
 #undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVAL
