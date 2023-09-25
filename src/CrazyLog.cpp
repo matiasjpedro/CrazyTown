@@ -768,7 +768,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				SelectionSize += ImGui::GetIO().MouseWheel;
 				SelectionSize = max(SelectionSize, 1);
 	
-				int BottomLine = max(ClipperIdx - (int)SelectionSize + 1, 0);
+				int BottomLine = ClipperIdx;
 				int TopLine = min(ClipperIdx + (int)SelectionSize - 1, vFiltredLinesCached.Size - 1);
 	
 				bool bWroteOnScratch = false;
@@ -785,7 +785,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	
 				if (bWroteOnScratch) {
 					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
-					ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0.5));
+					//ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0));
 					ImGui::SetTooltip(pScratchStart);
 		
 					if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
@@ -868,7 +868,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				SelectionSize += ImGui::GetIO().MouseWheel;
 				SelectionSize = max(SelectionSize, 1);
 						
-				int BottomLine = max(line_no - (int)SelectionSize + 1, 0);
+				int BottomLine = line_no;
 				int TopLine = min(line_no + (int)SelectionSize - 1, vLineOffsets.Size - 1);
 				const char* TopLineEnd = (TopLine + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[TopLine + 1] - 1) : buf_end;
 				int64_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
@@ -877,8 +877,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
 					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
 				{
-						
-					ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
+					//ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
 					ImGui::SetTooltip(pScratchStart);
 				}
 						
