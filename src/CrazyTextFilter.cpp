@@ -200,7 +200,6 @@ void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImV
 		{
 			pvScopesOut->push_back(CrazyTextRange(pCursorEnd, nullptr, 0));
 			ScopeCounter = 0;
-			
 		}
 		else if (*pCursorEnd == ')')
 		{

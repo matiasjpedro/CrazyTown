@@ -521,7 +521,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		ImGui::SetTooltip("KEYBINDS when hovering the output view: \n\n"
 		                  "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
 		                  "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
-		                  "[Ctrl+V]             Will copy the clipboard into the output view. \n"
+		                  "[Ctrl+V]             Will paste the clipboard into the output view. \n"
 		                  "[Ctrl+MouseWheel]    Will scale the font. \n"
 		                  "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
 		                  "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
