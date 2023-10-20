@@ -13,14 +13,20 @@
 // Add ms performance,
 // Check for memory leaks
 // Think on how to support multiple processes writing in the FolderQuery
+// Save Target input field values?
+// Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
+
 
 ================ InProgress
 
+// Add version number
 // Save Colors selecter for the filters?
-// Save Target input field values?
+// TODO check memory usage on streaming
 
 ================ Done
 
+// Support Filter Grouping with ()
+// Use C synthax for filters
 // Add clipper to the filtred view
 // After loading an static file and tried to stream the file it will not stream if it has the same name,
 // I should check the creation date.

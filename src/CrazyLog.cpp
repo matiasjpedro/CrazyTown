@@ -1,5 +1,6 @@
 #include "CrazyLog.h"
 #include "StringUtils.h"
+#include "CrazyTextFilter.h"
 
 #include "ConsolaTTF.cpp"
 
@@ -419,17 +420,17 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	
 	// If the size of the filters changed, make sure to start with those filters enabled.
-	if (LastFrameFiltersCount < Filter.Filters.Size) 
+	if (LastFrameFiltersCount < Filter.vFilters.Size) 
 	{
-		for (int i = LastFrameFiltersCount; i < Filter.Filters.Size; i++) 
+		for (int i = LastFrameFiltersCount; i < Filter.vFilters.Size; i++) 
 		{
 			FilterFlags |= 1ull << i;
 		}
 	}
 	
-	LastFrameFiltersCount = Filter.Filters.Size;
+	LastFrameFiltersCount = Filter.vFilters.Size;
 
-	size_t FilterLen = StringUtils::Length(Filter.InputBuf);
+	size_t FilterLen = StringUtils::Length(Filter.aInputBuf);
 	
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Save") && FilterLen != 0) {
@@ -445,7 +446,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
 		if ((ImGui::SmallButton("Accept")  || bAcceptPresetName) && FilterNameLen) 
 		{
-			SaveFilter(pPlatformCtx, aFilterNameToSave, Filter.InputBuf);
+			SaveFilter(pPlatformCtx, aFilterNameToSave, Filter.aInputBuf);
 			bWantsToSavePreset = false;
 		}
 	
@@ -679,7 +680,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	{
 		const char* line_start = buf + vLineOffsets[line_no];
 		const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-		if (CustomPassFilter(line_start, line_end)) 
+		if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
 		{
 			vFiltredLinesCached.push_back(line_no);
 		}
@@ -998,6 +999,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
 {
+	
 }
 
 
@@ -1023,7 +1025,7 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bSelectedFilterChanged)
 		{
 			Filter.Clear();
-			memcpy(Filter.InputBuf, LoadedFilters[FilterSelectedIdx].Filter.InputBuf, MAX_PATH);
+			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.InputBuf, MAX_PATH);
 			Filter.Build();
 		}
 			
@@ -1041,7 +1043,7 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	// HACKY we should put the color in the filter
-	while (Filter.Filters.Size > vFilterColor.Size)
+	while (Filter.vFilters.Size > vFilterColor.Size)
 	{
 		vFilterColor.push_back(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 	}
@@ -1049,11 +1051,11 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 	bool bAnyFlagChanged = false;
 	if (ImGui::TreeNode("Cherrypick"))
 	{
-		for (int i = 0; i != Filter.Filters.Size; i++)
+		for (int i = 0; i != Filter.vFilters.Size; i++)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			size_t FilterSize = Filter.Filters[i].e - Filter.Filters[i].b;
-			pPlatformCtx->ScratchMem.PushBack(Filter.Filters[i].e - FilterSize, FilterSize);
+			size_t FilterSize = Filter.vFilters[i].pEnd - Filter.vFilters[i].pBegin;
+			pPlatformCtx->ScratchMem.PushBack(Filter.vFilters[i].pEnd - FilterSize, FilterSize);
 			pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
 				
 			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
@@ -1130,9 +1132,7 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 	for (int j = 0; j < LineSize; ++j)
 	{
 		if (pLineStart[j] == '\t')
-		{
 			TabCounter++;
-		}
 		else
 			break;
 	}
@@ -1181,7 +1181,7 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 
 bool CrazyLog::AnyFilterActive () const
 {
-	for (int i = 0; i != Filter.Filters.Size; i++)
+	for (int i = 0; i != Filter.vFilters.Size; i++)
 	{
 		bool bFilterEnabled = (FilterFlags & (1ull << i));
 		if (bFilterEnabled)
@@ -1191,108 +1191,20 @@ bool CrazyLog::AnyFilterActive () const
 	return false;
 }
 
-bool CrazyLog::CustomPassFilter(const char* text, const char* text_end) const
-{
-	if (Filter.Filters.empty())
-		return true;
-
-	if (text == NULL)
-		text = "";
-	
-	// First do the exclude pass
-	for (int i = 0; i != Filter.Filters.Size; i++)
-	{
-		const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
-		if (f.empty())
-			continue;
-		
-		if (f.b[0] == '-')
-		{
-			bool bFilterEnabled = (FilterFlags & (1ull << i));
-			if (!bFilterEnabled)
-				continue;
-			
-			// Subtract
-			if (ImStristr(text, text_end, f.b + 1, f.e) != NULL)
-				return false;
-		}
-	}
-
-	// Then only pass the filter if our append conditions are passed
-	for (int i = 0; i != Filter.Filters.Size; i++)
-	{
-		bool bFilterEnabled = (FilterFlags & (1ull << i));
-		if (!bFilterEnabled)
-			continue;
-		
-		const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
-		if (f.empty())
-			continue;
-
-		bool bIsWildCard = f.b[0] == '+' || f.b[0] == '-';
-		if (!bIsWildCard)
-		{
-			if (ImStristr(text, text_end, f.b, f.e) != NULL) 
-			{
-				// Valid line Filter it also with + wildcard	
-				for (int j = 0; j != Filter.Filters.Size; j++)
-				{
-					const ImGuiTextFilter::ImGuiTextRange& f2 = Filter.Filters[j];
-					if (f2.empty())
-						continue;
-					
-					bool bFilterEnabled2 = (FilterFlags & (1ull << j));
-					if (!bFilterEnabled2)
-						continue;
-					
-					if (f2.b[0] == '+')
-					{
-						if (ImStristr(text, text_end, f2.b + 1, f2.e) == NULL)
-							return false;
-					}
-				}
-				
-				return true;
-			}
-		}
-	}
-	
-	int NonWildCardsCounter = 0;
-	for (int i = 0; i != Filter.Filters.Size; i++)
-	{
-		bool bFilterEnabled = (FilterFlags & (1ull << i));
-		if (!bFilterEnabled)
-			continue;
-		
-		const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
-		if (f.empty())
-			continue;
-
-		bool bIsWildCard = f.b[0] == '+' || f.b[0] == '-';
-		if (!bIsWildCard)
-			NonWildCardsCounter++;
-	}
-
-	if (NonWildCardsCounter == 0)
-		return true;
-
-	return false;
-}
-
 void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd, HighlightLineMatches* pFiltredLineMatch)
 {
 	pFiltredLineMatch->vLineMatches.clear();
 	
-	for (int i = 0; i != Filter.Filters.Size; i++)
+	for (int i = 0; i != Filter.vFilters.Size; i++)
 	{
 		bool bFilterEnabled = (FilterFlags & (1ull << i));
 		if (!bFilterEnabled)
 			continue;
 		
-		const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[i];
-		if (f.empty())
+		const CrazyTextFilter::CrazyTextRange& f = Filter.vFilters[i];
+		if (f.Empty())
 			continue;
-		if (f.b[0] == '-')
+		if (f.pBegin[0] == '-')
 			continue;
 
 		CacheHighlightMatchingWord(pLineBegin, pLineEnd, i, pFiltredLineMatch);
@@ -1304,11 +1216,11 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx, 
                                           HighlightLineMatches* pFiltredLineMatch)
 {
-	const ImGuiTextFilter::ImGuiTextRange& f = Filter.Filters[FilterIdx];
+	const CrazyTextFilter::CrazyTextRange& f = Filter.vFilters[FilterIdx];
 	
-	bool bIsWildCard = f.b[0] == '+';
-	const char* pWordBegin = bIsWildCard ? f.b + 1 : f.b;
-	const char* pWordEnd = f.e;
+	bool bIsWildCard = f.pBegin[0] == '+';
+	const char* pWordBegin = bIsWildCard ? f.pBegin + 1 : f.pBegin;
+	const char* pWordEnd = f.pEnd;
 	
 	if (!pWordEnd)
 		pWordEnd = pWordBegin + strlen(pWordBegin);
@@ -1344,7 +1256,7 @@ bool CrazyLog::CustomDrawFilter(const char* label, float width)
 {
 	if (width != 0.0f)
 		ImGui::SetNextItemWidth(width);
-	bool value_changed = ImGui::InputText(label, Filter.InputBuf, IM_ARRAYSIZE(Filter.InputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+	bool value_changed = ImGui::InputText(label, Filter.aInputBuf, IM_ARRAYSIZE(Filter.aInputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
 	if (value_changed)
 		Filter.Build();
 	return value_changed;

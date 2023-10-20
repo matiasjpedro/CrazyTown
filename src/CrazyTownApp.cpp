@@ -7,6 +7,7 @@
 #include "../vendor/imgui_widgets.cpp"
 
 #include "SharedDefinitions.cpp"
+#include "CrazyTextFilter.cpp"
 #include "CrazyLog.cpp"
 
 struct AppMemory 

@@ -1,3 +1,5 @@
+#include "CrazyTextFilter.h"
+
 #pragma once
 
 enum TargetMode 
@@ -15,7 +17,8 @@ static char* apTargetModeStr[TM_COUNT] =
 	"StreamFromWebSocket - TODO"
 };
 
-struct NamedFilter {
+struct NamedFilter 
+{
 	char aName[MAX_PATH];
 	ImGuiTextFilter Filter;
 };
@@ -48,7 +51,7 @@ struct HighlightLineMatches
 struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
-	ImGuiTextFilter Filter;
+	CrazyTextFilter Filter;
 	// TODO(matiasp): I should put this color inside the TextFilter
 	ImVector<ImVec4> vFilterColor;
 	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.

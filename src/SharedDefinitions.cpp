@@ -10,7 +10,7 @@ void StratchMemory::Reset()
 	Size = 0;
 }
 	
-bool StratchMemory::PushBack (const void* pSrc, size_t SrcSize) 
+bool StratchMemory::PushBack(const void* pSrc, size_t SrcSize) 
 {
 	if (Size + SrcSize > Capacity)
 		return false;
