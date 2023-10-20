@@ -13,6 +13,7 @@
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
+#define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
 static char g_FilterToken = ';';
 static char g_NullTerminator = '\0';
@@ -211,8 +212,8 @@ void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
 					
 					int FilterIdx = TokenCounter / 2;
 					
-					memcpy(LoadedFilters[FilterIdx].Filter.InputBuf, pFilterBegin, CurrentStringSize);
-					LoadedFilters[FilterIdx].Filter.InputBuf[CurrentStringSize] = '\0';
+					memcpy(LoadedFilters[FilterIdx].Filter.aInputBuf, pFilterBegin, CurrentStringSize);
+					LoadedFilters[FilterIdx].Filter.aInputBuf[CurrentStringSize] = '\0';
 					
 					CurrentStringSize = 0;
 				}
@@ -241,6 +242,8 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	FileContent OutFile = {0};
 	OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
 	size_t PreviousSize = (size_t)pPlatformCtx->ScratchMem.Size;
+	
+	// TODO(matiasp): handle colors
 
 	// Start from 1 to skip the NONE filter
 	for (unsigned i = 1; i < (unsigned)LoadedFilters.size(); ++i)
@@ -252,11 +255,24 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 		pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
 		
 		// Copy the filter
-		size_t LoadedFilterContentLen = StringUtils::Length(LoadedFilters[i].Filter.InputBuf);
-		pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].Filter.InputBuf, LoadedFilterContentLen);
+		size_t LoadedFilterContentLen = StringUtils::Length(LoadedFilters[i].Filter.aInputBuf);
+		pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].Filter.aInputBuf, LoadedFilterContentLen);
 		
 		// Add the Token Separator
 		pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
+		
+		//for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
+		//{
+		//	ImVec4& Color = LoadedFilters[i].Filter.vColors[j];
+		//	
+		//	char aColorBuf[7];
+		//	sprintf(aColorBuf, "#%02X%02X%02X", (int)Color.x, (int)Color.y, (int)Color.z);
+		//	//ImGui::ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp(Color.x, 0, 255), ImClamp(Color.y, 0, 255), ImClamp(Color.z, 0, 255));
+		//	pPlatformCtx->ScratchMem.PushBack(aColorBuf, ArrayCount(aColorBuf));
+		//}
+		//
+		//// Add the Token Separator
+		//pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
 	}
 	
 	OutFile.Size = (size_t)pPlatformCtx->ScratchMem.Size - PreviousSize;
@@ -310,7 +326,9 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char
 	
 	LoadedFilters.resize(LoadedFilters.size() + 1);
 	memcpy(LoadedFilters[LoadedFilters.size() - 1].aName, pFilterName, FilterNameLen+1);
-	memcpy(LoadedFilters[LoadedFilters.size() - 1].Filter.InputBuf, pFilterContent, FilterContentLen+1);
+	memcpy(LoadedFilters[LoadedFilters.size() - 1].Filter.aInputBuf, pFilterContent, FilterContentLen+1);
+	
+	// TODO(matiasp): handle colors
 	
 	SaveLoadedFilters(pPlatformCtx);
 	FilterSelectedIdx = LoadedFilters.size() - 1;
@@ -719,7 +737,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			
 			for (int j = 0; j < vHighlightLineMatches[line_no].vLineMatches.Size; j++)
 			{
-				ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
+				ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
 				
 				const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
 				const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
@@ -830,7 +848,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				
 				for (int i = 0; i < vHighlightLineMatches[line_no].vLineMatches.Size; i++)
 				{
-					ImVec4 FilterColor = vFilterColor[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
+					ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
 					
 					const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordBeginOffset;
 					const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordEndOffset + 1;
@@ -1021,7 +1039,10 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bSelectedFilterChanged)
 		{
 			Filter.Clear();
-			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.InputBuf, MAX_PATH);
+			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.aInputBuf, MAX_PATH);
+			
+			// TODO(matiasp): handle colors
+			
 			Filter.Build();
 		}
 			
@@ -1039,9 +1060,9 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	// HACKY we should put the color in the filter
-	while (Filter.vFilters.Size > vFilterColor.Size)
+	while (Filter.vFilters.Size > Filter.vColors.Size)
 	{
-		vFilterColor.push_back(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		Filter.vColors.push_back(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 	}
 	
 	bool bAnyFlagChanged = false;
@@ -1059,7 +1080,7 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				bAnyFlagChanged = true;
 			
 			ImGui::SameLine();
-			ImGui::ColorEdit3(pScratchStart, (float*)&vFilterColor[i].x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+			ImGui::ColorEdit3(pScratchStart, (float*)&Filter.vColors[i].x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
 		}
 			
 		ImGui::TreePop();

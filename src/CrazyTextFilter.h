@@ -58,4 +58,5 @@ struct CrazyTextFilter
 	
 	char aInputBuf[256];
 	ImVector<CrazyTextRange> vFilters;
+	ImVector<ImVec4> vColors;
 };

@@ -20,7 +20,7 @@ static char* apTargetModeStr[TM_COUNT] =
 struct NamedFilter 
 {
 	char aName[MAX_PATH];
-	ImGuiTextFilter Filter;
+	CrazyTextFilter Filter;
 };
 
 struct HighlightLineMatchEntry
@@ -52,9 +52,7 @@ struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
 	CrazyTextFilter Filter;
-	// TODO(matiasp): I should put this color inside the TextFilter
-	ImVector<ImVec4> vFilterColor;
-	ImVector<int> vLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
+	ImVector<int> vLineOffsets; 
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
 	

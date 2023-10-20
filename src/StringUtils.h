@@ -51,5 +51,41 @@ namespace StringUtils
 	{
 		return *p_Character == ' ' || *p_Character == '\t';
 	}
+	
+	int HexCharToInt(char Hex) 
+	{
+		if (Hex >= '0' && Hex <= '9') 
+		{
+			return Hex - '0';
+		}
+		if (Hex >= 'a' && Hex <= 'f') 
+		{
+			return Hex - 'a' + 10;
+		}
+		if (Hex >= 'A' && Hex <= 'F') 
+		{
+			return Hex - 'A' + 10;
+		}
+		return -1; // Invalid hex character
+	}
+	
+	void HexToRGB(const char* pHexColorStr, float* pOutColor) 
+	{
+		// Ensure that the input string is at least 6 characters long
+		if (Length(pHexColorStr) < 6) 
+			return;
+
+		// Skip the '#' symbol if present
+		if (pHexColorStr[0] == '#') 
+		{
+			pHexColorStr++;
+		}
+
+		// Parse the hex color string
+		for (int i = 0; i < 3; i++) 
+		{
+			pOutColor[i] = 16 * (float)HexCharToInt(pHexColorStr[i * 2]) + (float)HexCharToInt(pHexColorStr[i * 2 + 1]);
+		}
+	}
 }
 

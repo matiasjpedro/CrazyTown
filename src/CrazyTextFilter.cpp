@@ -67,8 +67,6 @@ void CrazyTextFilter::Build()
 		
 		vFilters[i].ScopeNum = ScopeNum;
 	}
-	
-	vScopes.clear();
 }
 
 bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd) const
@@ -145,8 +143,6 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 					Result = bScopeResult;
 					bFistValueAlreadySet = true;
 				}
-				
-				
 			}
 			
 			// The for loop is going to sum again, so we just remove the last one that we checked. 
