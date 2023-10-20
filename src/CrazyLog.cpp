@@ -411,12 +411,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	bool bFilterChanged = CustomDrawFilter("Filter", -160.0f);
 	ImGui::SameLine();
-	HelpMarker(	"Filter usage:\n\n"
-	           "  \"\"           display all lines\n"
-	           "  \"xxx\"        display lines containing \"xxx\"\n"
-	           "  \"xxx,yyy\"    display lines containing \"xxx\" || \"yyy\"\n"
-	           "  \"xxx,+zzz\"   display lines containing  \"xxx\" && \"zzz\"\n"
-	           "  \"-xxx\"       hide lines containing \"xxx\"");
+	HelpMarker(	"Filter usage: Just use it as C conditions \n\n"
+	           "Example: ((word1 || word2) && !word3)\n");
 	
 	
 	// If the size of the filters changed, make sure to start with those filters enabled.
