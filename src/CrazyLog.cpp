@@ -339,18 +339,14 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char
 // This method will append to the buffer
 void CrazyLog::AddLog(const char* pFileContent, int FileSize) 
 {
-	int old_size = Buf.size();
-	int NewRequiredCapacity = Buf.Buf.Size + FileSize;
-	int GrowthCapacity = Buf.Buf._grow_capacity(Buf.Buf.Size + FileSize);
-
-	Buf.Buf.reserve(GrowthCapacity);
+	int OldSize = Buf.size();
 	Buf.append(pFileContent, pFileContent + FileSize);
 	
-	for (int new_size = Buf.size(); old_size < new_size; old_size++)
+	for (int NewSize = Buf.size(); OldSize < NewSize; OldSize++)
 	{
-		if (Buf[old_size] == '\n')
+		if (Buf[OldSize] == '\n')
 		{
-			vLineOffsets.push_back(old_size + 1);
+			vLineOffsets.push_back(OldSize + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
 		}
 	}

@@ -8,23 +8,24 @@
 
 ================ Next
 
+// don't cleanup when switching to streaming, because we loose the path, or at least reapply
 // If press saved in a filter that already exist Modify it instead of append
 // Release builds should not create the temp dll
 // Add ms performance,
 // Check for memory leaks
 // Think on how to support multiple processes writing in the FolderQuery
 // Save Target input field values?
-// Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
 
+// Add version number
+// Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
 
 ================ InProgress
 
-// Add version number
 // Save Colors selecter for the filters?
-// TODO check memory usage on streaming
 
 ================ Done
 
+// TODO check memory usage on streaming
 // Support Filter Grouping with ()
 // Use C synthax for filters
 // Add clipper to the filtred view
