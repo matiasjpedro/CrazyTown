@@ -26,7 +26,8 @@ struct StratchMemory
 	void* pMemory;
 
 	void Reset ();
-	bool PushBack (const void* pSrc, size_t SrcSize);
+	
+	void* PushBack(size_t SrcSize, void* pSrc);
 	void* Back ();
 };
 

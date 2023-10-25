@@ -249,17 +249,17 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	for (unsigned i = 1; i < (unsigned)LoadedFilters.size(); ++i)
 	{
 		size_t LoadedFilterNameLen = StringUtils::Length(LoadedFilters[i].aName);
-		pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].aName, LoadedFilterNameLen);
+		pPlatformCtx->ScratchMem.PushBack(LoadedFilterNameLen, LoadedFilters[i].aName);
 		
 		// Add the Token Separator
-		pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
+		pPlatformCtx->ScratchMem.PushBack(1, &g_FilterToken);
 		
 		// Copy the filter
 		size_t LoadedFilterContentLen = StringUtils::Length(LoadedFilters[i].Filter.aInputBuf);
-		pPlatformCtx->ScratchMem.PushBack(LoadedFilters[i].Filter.aInputBuf, LoadedFilterContentLen);
+		pPlatformCtx->ScratchMem.PushBack(LoadedFilterContentLen, LoadedFilters[i].Filter.aInputBuf);
 		
 		// Add the Token Separator
-		pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
+		pPlatformCtx->ScratchMem.PushBack(1, &g_FilterToken);
 		
 		//for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
 		//{
@@ -287,7 +287,7 @@ void CrazyLog::SaveFolderQuery(PlatformContext* pPlatformCtx)
 	size_t Len = StringUtils::Length(aFolderQueryName);
 	if (Len > 0)
 	{
-		pPlatformCtx->ScratchMem.PushBack(aFolderQueryName, Len);
+		pPlatformCtx->ScratchMem.PushBack(Len, aFolderQueryName);
 		OutFile.Size = Len;
 		pPlatformCtx->pWriteFileFunc(&OutFile, FOLDER_QUERY_NAME);
 	}
@@ -791,11 +791,11 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 					char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
 		
 					int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
-					bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(pFilteredLineStart, Size);
+					bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(Size, pFilteredLineStart) != nullptr;
 				}
 	
 				if (bWroteOnScratch) {
-					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
+					pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator);
 					//ImGui::SetNextWindowPos(ImGui::GetMousePos()+ ImVec2(20, 0), 0, ImVec2(0, 0));
 					ImGui::SetTooltip(pScratchStart);
 		
@@ -885,8 +885,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				int64_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
 						
 				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-				if (pPlatformCtx->ScratchMem.PushBack(buf + vLineOffsets[BottomLine], Size) &&
-					pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
+				if (pPlatformCtx->ScratchMem.PushBack(Size, (void*)(buf + vLineOffsets[BottomLine])) &&
+					pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator))
 				{
 					//ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
 					ImGui::SetTooltip(pScratchStart);
@@ -1068,8 +1068,8 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 			size_t FilterSize = Filter.vFilters[i].pEnd - Filter.vFilters[i].pBegin;
-			pPlatformCtx->ScratchMem.PushBack(Filter.vFilters[i].pEnd - FilterSize, FilterSize);
-			pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1);
+			pPlatformCtx->ScratchMem.PushBack(FilterSize, (void*)(Filter.vFilters[i].pEnd - FilterSize));
+			pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator);
 				
 			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
 			if (bChanged)
@@ -1175,8 +1175,8 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 			
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 			int64_t RequiredSize = pEndChar - pStartChar;
-			if (pPlatformCtx->ScratchMem.PushBack(pStartChar, RequiredSize) &&
-				pPlatformCtx->ScratchMem.PushBack(&g_NullTerminator, 1))
+			if (pPlatformCtx->ScratchMem.PushBack(RequiredSize, pStartChar) &&
+				pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator))
 			{
 				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
 				{

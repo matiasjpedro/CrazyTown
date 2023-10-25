@@ -10,13 +10,14 @@ void StratchMemory::Reset()
 	Size = 0;
 }
 	
-bool StratchMemory::PushBack(const void* pSrc, size_t SrcSize) 
+void* StratchMemory::PushBack(size_t SrcSize, void* pSrc) 
 {
 	if (Size + SrcSize > Capacity)
-		return false;
+		return nullptr;
 		
 	memcpy((uint8_t*)pMemory + Size, pSrc, SrcSize);
+	uint64_t OldSize = Size;
 	Size += SrcSize;
 	
-	return true;
+	return (uint8_t*)pMemory+OldSize;
 }
