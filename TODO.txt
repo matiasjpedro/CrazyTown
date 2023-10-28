@@ -21,10 +21,21 @@
 
 ================ InProgress
 
-// Save Colors selecter for the filters?
+// copy filter to the clipboard and paste filter from the clipboard
+// See multithreading chili videos
+// check if the c programming language book speaks about pthreads
+// use crc hash to see which file we are talking about?
+// do multithread for the pass filter
 
 ================ Done
 
+// implement json save version
+// Resave filter when changing a color // how to save only the one selected?
+// Select default colors
+// Make the CrazyTextFilter store offsets instead of pointers, since memmove of the vector screws everything up
+// When saving a filter apply it
+// Save Colors selecter for the filters?
+// Change pBegin and pEnd to offsets instead of pointers so I can copy those in the preset
 // TODO check memory usage on streaming
 // Support Filter Grouping with ()
 // Use C synthax for filters

@@ -186,7 +186,6 @@ void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
 		unsigned FiltersCounter = 1;
 		int FiltersCount = cJSON_GetArraySize(pFiltersArray);
 		LoadedFilters.resize(FiltersCount + 1, { 0 });
-		//memset(LoadedFilters.Data, 0, sizeof(NamedFilter) * FiltersCount);
 		
 		//Add dummy so we can reset the selection
 		LoadedFilters[0] = NoneFilter;
@@ -210,10 +209,17 @@ void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
 			{
 				ImVec4 Color;
 				StringUtils::HexToRGB(pColor->valuestring, &Color.x);
+				Color.x /= 255;
+				Color.y /= 255;
+				Color.z /= 255;
+				Color.w /= 255;
+				
 				memcpy(&pNamedFilter->Filter.vColors[ColorsCounter], &Color, sizeof(ImVec4));
 				
 				ColorsCounter++;
 			}
+			
+			pNamedFilter->Filter.Build();
 			
 			FiltersCounter++;
 		}
@@ -263,10 +269,14 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 		
 		for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
 		{
-			ImVec4 Color = ImVec4(0, 255, 255, 255);
+			ImVec4& Color = LoadedFilters[i].Filter.vColors[j];
 			
-			char aColorBuf[7];
-			sprintf(aColorBuf, "#%02X%02X%02X", (int)Color.x, (int)Color.y, (int)Color.z);
+			char aColorBuf[9];
+			sprintf(aColorBuf, "#%02X%02X%02X%02X", 
+			        (int)(Color.x*255.f), 
+			        (int)(Color.y*255.f), 
+			        (int)(Color.z*255.f),
+			        (int)(Color.w*255.f));
 			
 			pFilterColor = cJSON_CreateString(aColorBuf);
 			cJSON_AddItemToObject(pJsonColorArray, "color", pFilterColor);
@@ -325,14 +335,14 @@ void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx)
 
 void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter) 
 {
+	// Make sure to build it so it construct the filters + colors
+	pFilter->Build();
+	
 	size_t FilterNameLen = StringUtils::Length(pFilterName);
-	size_t FilterContentLen = StringUtils::Length(pFilter->aInputBuf);
 	
-	LoadedFilters.resize(LoadedFilters.size() + 1);
+	LoadedFilters.resize(LoadedFilters.size() + 1, { 0 });
 	memcpy(LoadedFilters[LoadedFilters.size() - 1].aName, pFilterName, FilterNameLen+1);
-	memcpy(LoadedFilters[LoadedFilters.size() - 1].Filter.aInputBuf, pFilter->aInputBuf, FilterContentLen+1);
-	
-	// TODO: Fill up colors with the active filter
+	LoadedFilters[LoadedFilters.size() - 1].Filter = *pFilter;
 	
 	SaveLoadedFilters(pPlatformCtx);
 	FilterSelectedIdx = LoadedFilters.size() - 1;
@@ -1038,15 +1048,7 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		                                      (void*)&LoadedFilters, LoadedFilters.Size);
 		if (bSelectedFilterChanged)
 		{
-			Filter.Clear();
-			
-			int ColorsAmount = LoadedFilters[FilterSelectedIdx].Filter.vColors.Size;
-			Filter.vColors.resize(ColorsAmount);
-			memcpy(&Filter.vColors[0], &LoadedFilters[FilterSelectedIdx].Filter.vColors[0], sizeof(ImVec4) * ColorsAmount);
-			
-			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.aInputBuf, MAX_PATH);
-			
-			Filter.Build();
+			Filter = LoadedFilters[FilterSelectedIdx].Filter;
 		}
 			
 		ImGui::SameLine();
@@ -1074,16 +1076,24 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 		for (int i = 0; i != Filter.vFilters.Size; i++)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			size_t FilterSize = Filter.vFilters[i].pEnd - Filter.vFilters[i].pBegin;
-			pPlatformCtx->ScratchMem.PushBack(FilterSize, (void*)(Filter.vFilters[i].pEnd - FilterSize));
+			bool bColorHasChanged = ImGui::ColorEdit4(pScratchStart, (float*)&Filter.vColors[i].x, 
+			                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+			
+			if (bColorHasChanged && FilterSelectedIdx != 0) {
+				
+				LoadedFilters[FilterSelectedIdx].Filter.vColors[i] = Filter.vColors[i];
+				// TODO(matiasp): Patch the json color instead of saving all the filters again
+				SaveLoadedFilters(pPlatformCtx);
+			}
+			
+			ImGui::SameLine();
+			size_t FilterSize = Filter.vFilters[i].EndOffset - Filter.vFilters[i].BeginOffset;
+			pPlatformCtx->ScratchMem.PushBack(FilterSize, (void*)(&Filter.aInputBuf[Filter.vFilters[i].BeginOffset]));
 			pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator);
 				
 			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
 			if (bChanged)
 				bAnyFlagChanged = true;
-			
-			ImGui::SameLine();
-			ImGui::ColorEdit3(pScratchStart, (float*)&Filter.vColors[i].x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
 		}
 			
 		ImGui::TreePop();
@@ -1224,7 +1234,8 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 		const CrazyTextFilter::CrazyTextRange& f = Filter.vFilters[i];
 		if (f.Empty())
 			continue;
-		if (f.pBegin[0] == '-')
+		
+		if (Filter.aInputBuf[f.BeginOffset] == '!')
 			continue;
 
 		CacheHighlightMatchingWord(pLineBegin, pLineEnd, i, pFiltredLineMatch);
@@ -1238,9 +1249,8 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 {
 	const CrazyTextFilter::CrazyTextRange& f = Filter.vFilters[FilterIdx];
 	
-	bool bIsWildCard = f.pBegin[0] == '+';
-	const char* pWordBegin = bIsWildCard ? f.pBegin + 1 : f.pBegin;
-	const char* pWordEnd = f.pEnd;
+	const char* pWordBegin = &Filter.aInputBuf[f.BeginOffset];
+	const char* pWordEnd = &Filter.aInputBuf[f.EndOffset];
 	
 	if (!pWordEnd)
 		pWordEnd = pWordBegin + strlen(pWordBegin);

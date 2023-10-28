@@ -23,13 +23,12 @@ bool CrazyTextFilter::Draw(const char* pLabel, float Width)
 
 void CrazyTextFilter::Build()
 {
-	vFilters.resize(0);
-	
 	ImVector<CrazyTextRange> vScopes;
 	vScopes.reserve(10);
 	
-	CrazyTextRange input_range(aInputBuf, aInputBuf + strlen(aInputBuf), 0);
-	input_range.Split(&vFilters, &vScopes);
+	size_t InputBufferLen = strlen(aInputBuf);
+	CrazyTextRange input_range(0, InputBufferLen, 0);
+	input_range.Split(&aInputBuf[0], &aInputBuf[InputBufferLen], &vFilters, &vScopes);
 
 	for (int i = 0; i != vFilters.Size; i++)
 	{
@@ -38,23 +37,29 @@ void CrazyTextFilter::Build()
 		if (f.Empty())
 			continue;
 		
+		char* pFilterBegin = &aInputBuf[f.BeginOffset];
+		char* pFilterEnd = &aInputBuf[f.EndOffset];
+		
 		// Cleanup the text range with the unwanted characters. 
-		while (f.pBegin < f.pEnd 
-			&& (ImCharIsBlankA(f.pBegin[0]) || f.pBegin[0] == '('))
-			f.pBegin++;
-		while (f.pEnd > f.pBegin 
-			&& (ImCharIsBlankA(f.pEnd[-1]) || f.pEnd[-1] == ')' || f.pEnd[-1] == 0))
-			f.pEnd--;
+		while (pFilterBegin < pFilterEnd
+			&& (ImCharIsBlankA(pFilterBegin[0]) || pFilterBegin[0] == '('))
+			pFilterBegin++;
+		while (pFilterEnd > pFilterBegin 
+			&& (ImCharIsBlankA(pFilterEnd[-1]) || pFilterEnd[-1] == ')' || pFilterEnd[-1] == 0))
+			pFilterEnd--;
+		
+		f.BeginOffset = pFilterBegin - &aInputBuf[0];
+		f.EndOffset = pFilterEnd - &aInputBuf[0];
 		
 		// Once I have clear out unwanted character check if I should add the not operator
-		if (*vFilters[i].pBegin == '!')
+		if (aInputBuf[f.BeginOffset] == '!')
 			vFilters[i].OperatorFlags |= 1 << FO_NOT;
 		
 		// Assign Scopes
 		int8_t ScopeNum = -1;
 		for (int j = 0; j < vScopes.Size; j++) 
 		{
-			if (vScopes[j].pBegin < vFilters[i].pBegin && vScopes[j].pEnd >= vFilters[i].pEnd)
+			if (vScopes[j].BeginOffset < vFilters[i].BeginOffset && vScopes[j].EndOffset >= vFilters[i].EndOffset)
 			{
 				ScopeNum = (int8_t)j;
 			}
@@ -67,6 +72,16 @@ void CrazyTextFilter::Build()
 		
 		vFilters[i].ScopeNum = ScopeNum;
 	}
+	
+	size_t OldColorSize = vColors.size();
+	vColors.resize(vFilters.size());
+	
+	// Pick default colors for the new colors
+	for (int i = (int)OldColorSize; i < vColors.size(); i++) {
+		int DefaultColorIdx = i % ArrayCount(aDefaultColors);
+		vColors[i] = aDefaultColors[DefaultColorIdx];
+	}
+	
 }
 
 bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd) const
@@ -101,9 +116,13 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				bScopeValueValid = true;
 			
 				bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
+				
+				const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
+				const char* pFilterEnd = &aInputBuf[vFilters[i].EndOffset];
+				
 				bool bMatch = bCheckNot ? 
-					ImStristr(pText, pTextEnd, vFilters[i].pBegin+1, vFilters[i].pEnd) != NULL:
-					ImStristr(pText, pTextEnd, vFilters[i].pBegin, vFilters[i].pEnd) != NULL;
+					ImStristr(pText, pTextEnd, pFilterBegin+1, pFilterEnd) != NULL:
+					ImStristr(pText, pTextEnd, pFilterBegin, pFilterEnd) != NULL;
 		
 				if (bFirstScopeValueAlreadySet)
 				{
@@ -155,10 +174,13 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				continue;
 			}
 			
+			const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
+			const char* pFilterEnd = &aInputBuf[vFilters[i].EndOffset];
+			
 			bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
 			bool bMatch = bCheckNot ? 
-				ImStristr(pText, pTextEnd, vFilters[i].pBegin+1, vFilters[i].pEnd) != NULL:
-				ImStristr(pText, pTextEnd, vFilters[i].pBegin, vFilters[i].pEnd) != NULL;
+				ImStristr(pText, pTextEnd, pFilterBegin+1, pFilterEnd) != NULL:
+				ImStristr(pText, pTextEnd, pFilterBegin, pFilterEnd) != NULL;
 			
 			if (bFistValueAlreadySet)
 			{
@@ -182,7 +204,7 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 	return Result;
 }
 
-void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImVector<CrazyTextRange>* pvScopesOut) const
+void CrazyTextFilter::CrazyTextRange::Split(const char* pBegin, const char* pEnd, ImVector<CrazyTextRange>* pvOut, ImVector<CrazyTextRange>* pvScopesOut) const
 {
 	pvOut->resize(0);
 	const char* pCursorBegin = pBegin;
@@ -194,7 +216,7 @@ void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImV
 	{
 		if (*pCursorEnd == '(')
 		{
-			pvScopesOut->push_back(CrazyTextRange(pCursorEnd, nullptr, 0));
+			pvScopesOut->push_back(CrazyTextRange(pCursorEnd - pBegin, 0, 0));
 			ScopeCounter = 0;
 		}
 		else if (*pCursorEnd == ')')
@@ -204,7 +226,7 @@ void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImV
 			// should I send an error?
 			if (ScopeIdx >= 0)
 			{
-				(*pvScopesOut)[ScopeIdx].pEnd = pCursorEnd;
+				(*pvScopesOut)[ScopeIdx].EndOffset = pCursorEnd - pBegin;
 			}
 			
 			ScopeCounter++;
@@ -220,7 +242,7 @@ void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImV
 				uint8_t Flags = 1 << PrevOp;
 				
 				// -1 to don't count the separator
-				pvOut->push_back(CrazyTextRange(pCursorBegin, pCursorEnd - 1, Flags));
+				pvOut->push_back(CrazyTextRange(pCursorBegin - pBegin, pCursorEnd - pBegin - 1, Flags));
 				
 				PrevOp = (FilterOperator)i;
 				
@@ -236,7 +258,7 @@ void CrazyTextFilter::CrazyTextRange::Split(ImVector<CrazyTextRange>* pvOut, ImV
 	if (pCursorBegin != pCursorEnd)
 	{
 		uint8_t Flags = 1 << PrevOp;
-		pvOut->push_back(CrazyTextRange(pCursorBegin, pCursorEnd, Flags));
+		pvOut->push_back(CrazyTextRange(pCursorBegin - pBegin, pCursorEnd - pBegin, Flags));
 	}
 }
 	

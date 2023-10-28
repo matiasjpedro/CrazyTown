@@ -82,7 +82,7 @@ namespace StringUtils
 		}
 
 		// Parse the hex color string
-		for (int i = 0; i < 3; i++) 
+		for (int i = 0; i < 4; i++) 
 		{
 			pOutColor[i] = 16 * (float)HexCharToInt(pHexColorStr[i * 2]) + (float)HexCharToInt(pHexColorStr[i * 2 + 1]);
 		}

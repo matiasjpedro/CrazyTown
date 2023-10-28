@@ -1,5 +1,18 @@
 #pragma once 
 
+static ImVec4 aDefaultColors[9] =
+{
+	ImVec4(1.000f, 0.992f, 0.000f, 1.000f),
+	ImVec4(0.000f, 0.992f, 0.961f, 1.000f),
+	ImVec4(1.000f, 0.647f, 0.000f, 1.000f),
+	ImVec4(0.396f, 1.000f, 0.451f, 1.000f),
+	ImVec4(1.000f, 0.588f, 0.855f, 1.000f),
+	ImVec4(0.686f, 1.000f, 1.000f, 1.000f),
+	ImVec4(0.922f, 0.253f, 0.253f, 1.000f),
+	ImVec4(0.588f, 1.000f, 0.663f, 1.000f),
+	ImVec4(1.000f, 0.953f, 0.588f, 1.000f)
+};
+
 enum FilterOperator
 {
 	FO_NONE = 0,
@@ -21,6 +34,7 @@ static char* apSeparatorStr[FO_COUNT] =
 struct CrazyTextFilter 
 {
 	CrazyTextFilter(const char* pDefaultFilter = "");
+	
 	bool Draw(const char* pLabel = "Filter (inc,-exc)", float Width = 0.0f); 
 	bool PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd = NULL) const;
 	bool PassGroup(uint64_t EnableMask, const char* pText, const char* pTextEnd, 
@@ -32,29 +46,33 @@ struct CrazyTextFilter
 	// [Internal]
 	struct CrazyTextRange 
 	{
-		const char* pBegin;
-		const char* pEnd;
+		uint64_t BeginOffset;
+		uint64_t EndOffset;
 		uint8_t OperatorFlags;
 		int8_t ScopeNum;
 
 		CrazyTextRange()
 		{ 
-			 pBegin = pEnd = NULL; 
-			 OperatorFlags = 0;
+			 BeginOffset = EndOffset = NULL; 
+			 BeginOffset = EndOffset = OperatorFlags = 0;
 			 ScopeNum = -1;
 		}
 		
-		CrazyTextRange(const char* _pBegin, const char* _pEnd, uint8_t _Flags) 
+		CrazyTextRange(uint64_t _BeginOffset, uint64_t _EndOffset, uint8_t _Flags) 
 		{ 
-			pBegin = _pBegin; 
-			pEnd = _pEnd; 
+			BeginOffset = _BeginOffset; 
+			EndOffset = _EndOffset; 
 			OperatorFlags = _Flags; 
 			ScopeNum = -1;
 		}
 		
 		bool Empty() const { return OperatorFlags == 0; }
-		void Split(ImVector<CrazyTextRange>* pvOut, ImVector<CrazyTextRange>* pvScopesOut) const;
+		
+		void Split(const char* pBegin, const char* pEnd, 
+		           ImVector<CrazyTextRange>* pvOut, 
+		           ImVector<CrazyTextRange>* pvScopesOut) const;
 	};
+	
 	
 	char aInputBuf[256];
 	ImVector<CrazyTextRange> vFilters;
