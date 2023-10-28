@@ -175,57 +175,50 @@ void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
 	NamedFilter NoneFilter = { 0 };
 	strcpy_s(NoneFilter.aName, sizeof(NoneFilter.aName), NoneFilterName);
 	
-	FileContent File = pPlatformCtx->pReadFileFunc(FILTERS_FILE_NAME);
+	FileContent File = pPlatformCtx->pReadFileFunc("PIMBA.json");
 	if (File.pFile) 
 	{
-		// TODO(matiasp): Store this at the beggining of the file
-		LoadedFilters.reserve_discard(10);
-		LoadedFilters.resize(0);
+		cJSON * pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+		cJSON * pFiltersArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "Filters");
+		cJSON * pFilter = nullptr;
+		cJSON * pColor = nullptr;
+		
+		unsigned FiltersCounter = 1;
+		int FiltersCount = cJSON_GetArraySize(pFiltersArray);
+		LoadedFilters.resize(FiltersCount + 1, { 0 });
+		//memset(LoadedFilters.Data, 0, sizeof(NamedFilter) * FiltersCount);
 		
 		//Add dummy so we can reset the selection
-		LoadedFilters.push_back(NoneFilter);
+		LoadedFilters[0] = NoneFilter;
 		
-		unsigned TokenCounter = 2;
-		unsigned CurrentStringSize = 0;
-		for (unsigned i = 0; i < File.Size; i++)
+		cJSON_ArrayForEach(pFilter, pFiltersArray)
 		{
-			bool bIsIteratingName = TokenCounter % 2 == 0;
-			char* pCurrentChar = &((char*)File.pFile)[i];
-		
-			if (*pCurrentChar == FILTER_TOKEN)
-			{
-				if (bIsIteratingName) 
-				{	
-					char* pNameBegin = pCurrentChar - CurrentStringSize;
-					
-					int FilterIdx = TokenCounter / 2;
-					
-					LoadedFilters.resize(FilterIdx + 1);
-					memcpy(LoadedFilters[FilterIdx].aName, pNameBegin, CurrentStringSize);
-					LoadedFilters[FilterIdx].aName[CurrentStringSize] = '\0';
-					
-					CurrentStringSize = 0;
-				}
-				else 
-				{
-					char* pFilterBegin = pCurrentChar - CurrentStringSize;
-					
-					int FilterIdx = TokenCounter / 2;
-					
-					memcpy(LoadedFilters[FilterIdx].Filter.aInputBuf, pFilterBegin, CurrentStringSize);
-					LoadedFilters[FilterIdx].Filter.aInputBuf[CurrentStringSize] = '\0';
-					
-					CurrentStringSize = 0;
-				}
+			cJSON * pFilterName = cJSON_GetObjectItemCaseSensitive(pFilter, "key");
+			cJSON * pFilterValue = cJSON_GetObjectItemCaseSensitive(pFilter, "value");
 			
-				TokenCounter++;
-			}
-			else
+			NamedFilter* pNamedFilter = &LoadedFilters[FiltersCounter];
+			strcpy_s(pNamedFilter->aName, sizeof(pNamedFilter->aName), pFilterName->valuestring);
+			strcpy_s(pNamedFilter->Filter.aInputBuf, sizeof(pNamedFilter->Filter.aInputBuf),  pFilterValue->valuestring);
+			
+			cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pFilter, "colors");
+			
+			unsigned ColorsCounter = 0;
+			int ColorsCount = cJSON_GetArraySize(pColorArray);
+			pNamedFilter->Filter.vColors.resize(ColorsCount);
+			
+			cJSON_ArrayForEach(pColor, pColorArray)
 			{
-				CurrentStringSize++;
+				ImVec4 Color;
+				StringUtils::HexToRGB(pColor->valuestring, &Color.x);
+				memcpy(&pNamedFilter->Filter.vColors[ColorsCounter], &Color, sizeof(ImVec4));
+				
+				ColorsCounter++;
 			}
+			
+			FiltersCounter++;
 		}
-	
+		
+		free(pJsonRoot);
 		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
 	else
@@ -243,40 +236,51 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
 	size_t PreviousSize = (size_t)pPlatformCtx->ScratchMem.Size;
 	
-	// TODO(matiasp): handle colors
-
+	char* pStringToSave = nullptr;
+	
+	cJSON_Hooks AllocationFunctionsHooks = { 0 };
+	cJSON * pJsonRoot = cJSON_CreateObject();
+	cJSON * pJsonFilterArray = cJSON_CreateArray();
+	cJSON * pFilterValue = nullptr;
+	cJSON * pFilterName = nullptr;
+	cJSON * pFilterColor = nullptr;
+	cJSON * pFColor = nullptr;
+	
+	cJSON * pFilterObj = nullptr;
+	cJSON_AddItemToObject(pJsonRoot, "Filters", pJsonFilterArray);
+	
 	// Start from 1 to skip the NONE filter
 	for (unsigned i = 1; i < (unsigned)LoadedFilters.size(); ++i)
 	{
-		size_t LoadedFilterNameLen = StringUtils::Length(LoadedFilters[i].aName);
-		pPlatformCtx->ScratchMem.PushBack(LoadedFilterNameLen, LoadedFilters[i].aName);
+		pFilterObj = cJSON_CreateObject();
 		
-		// Add the Token Separator
-		pPlatformCtx->ScratchMem.PushBack(1, &g_FilterToken);
+		pFilterName = cJSON_CreateString(LoadedFilters[i].aName);
+		cJSON_AddItemToObject(pFilterObj, "key", pFilterName);
+		pFilterValue = cJSON_CreateString(LoadedFilters[i].Filter.aInputBuf);
+		cJSON_AddItemToObject(pFilterObj, "value", pFilterValue);
 		
-		// Copy the filter
-		size_t LoadedFilterContentLen = StringUtils::Length(LoadedFilters[i].Filter.aInputBuf);
-		pPlatformCtx->ScratchMem.PushBack(LoadedFilterContentLen, LoadedFilters[i].Filter.aInputBuf);
+		cJSON * pJsonColorArray = cJSON_AddArrayToObject(pFilterObj, "colors");
 		
-		// Add the Token Separator
-		pPlatformCtx->ScratchMem.PushBack(1, &g_FilterToken);
+		for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
+		{
+			ImVec4 Color = ImVec4(0, 255, 255, 255);
+			
+			char aColorBuf[7];
+			sprintf(aColorBuf, "#%02X%02X%02X", (int)Color.x, (int)Color.y, (int)Color.z);
+			
+			pFilterColor = cJSON_CreateString(aColorBuf);
+			cJSON_AddItemToObject(pJsonColorArray, "color", pFilterColor);
+		}
 		
-		//for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
-		//{
-		//	ImVec4& Color = LoadedFilters[i].Filter.vColors[j];
-		//	
-		//	char aColorBuf[7];
-		//	sprintf(aColorBuf, "#%02X%02X%02X", (int)Color.x, (int)Color.y, (int)Color.z);
-		//	//ImGui::ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp(Color.x, 0, 255), ImClamp(Color.y, 0, 255), ImClamp(Color.z, 0, 255));
-		//	pPlatformCtx->ScratchMem.PushBack(aColorBuf, ArrayCount(aColorBuf));
-		//}
-		//
-		//// Add the Token Separator
-		//pPlatformCtx->ScratchMem.PushBack(&g_FilterToken, 1);
+		cJSON_AddItemToObject(pJsonFilterArray, "filter", pFilterObj);
 	}
 	
-	OutFile.Size = (size_t)pPlatformCtx->ScratchMem.Size - PreviousSize;
-	pPlatformCtx->pWriteFileFunc(&OutFile, FILTERS_FILE_NAME);
+	OutFile.pFile = cJSON_Print(pJsonRoot);
+	OutFile.Size = strlen((char*)OutFile.pFile);
+	
+	pPlatformCtx->pWriteFileFunc(&OutFile, "PIMBA.json");
+	free(pJsonRoot);
+	
 }
 
 void CrazyLog::SaveFolderQuery(PlatformContext* pPlatformCtx)
@@ -319,16 +323,16 @@ void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx)
 	}
 }
 
-void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char* pFilterContent) 
+void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter) 
 {
 	size_t FilterNameLen = StringUtils::Length(pFilterName);
-	size_t FilterContentLen = StringUtils::Length(pFilterContent);
+	size_t FilterContentLen = StringUtils::Length(pFilter->aInputBuf);
 	
 	LoadedFilters.resize(LoadedFilters.size() + 1);
 	memcpy(LoadedFilters[LoadedFilters.size() - 1].aName, pFilterName, FilterNameLen+1);
-	memcpy(LoadedFilters[LoadedFilters.size() - 1].Filter.aInputBuf, pFilterContent, FilterContentLen+1);
+	memcpy(LoadedFilters[LoadedFilters.size() - 1].Filter.aInputBuf, pFilter->aInputBuf, FilterContentLen+1);
 	
-	// TODO(matiasp): handle colors
+	// TODO: Fill up colors with the active filter
 	
 	SaveLoadedFilters(pPlatformCtx);
 	FilterSelectedIdx = LoadedFilters.size() - 1;
@@ -456,7 +460,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
 		if ((ImGui::SmallButton("Accept")  || bAcceptPresetName) && FilterNameLen) 
 		{
-			SaveFilter(pPlatformCtx, aFilterNameToSave, Filter.aInputBuf);
+			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
 			bWantsToSavePreset = false;
 		}
 	
@@ -1035,9 +1039,12 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bSelectedFilterChanged)
 		{
 			Filter.Clear();
-			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.aInputBuf, MAX_PATH);
 			
-			// TODO(matiasp): handle colors
+			int ColorsAmount = LoadedFilters[FilterSelectedIdx].Filter.vColors.Size;
+			Filter.vColors.resize(ColorsAmount);
+			memcpy(&Filter.vColors[0], &LoadedFilters[FilterSelectedIdx].Filter.vColors[0], sizeof(ImVec4) * ColorsAmount);
+			
+			memcpy(Filter.aInputBuf, LoadedFilters[FilterSelectedIdx].Filter.aInputBuf, MAX_PATH);
 			
 			Filter.Build();
 		}

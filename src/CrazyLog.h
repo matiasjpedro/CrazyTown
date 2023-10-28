@@ -104,7 +104,7 @@ struct CrazyLog
 	void LoadFilter(PlatformContext* pPlatformCtx);
 	void SaveLoadedFilters(PlatformContext* pPlatformCtx);
 	void DeleteFilter(PlatformContext* pPlatformCtx);
-	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, char* pFilterContent);
+	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter);
 	void SaveFolderQuery(PlatformContext* pPlatformCtx);
 	void LoadFolderQuery(PlatformContext* pPlatformCtx);
 	
