@@ -101,12 +101,13 @@ struct CrazyLog
 	bool LoadFile(PlatformContext* pPlatformCtx);
 	void SearchLatestFile(PlatformContext* pPlatformCtx);
 	
-	void LoadFilter(PlatformContext* pPlatformCtx);
+	void LoadFilters(PlatformContext* pPlatformCtx);
 	void SaveLoadedFilters(PlatformContext* pPlatformCtx);
 	void DeleteFilter(PlatformContext* pPlatformCtx);
 	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter);
-	void SaveFolderQuery(PlatformContext* pPlatformCtx);
-	void LoadFolderQuery(PlatformContext* pPlatformCtx);
+	
+	void LoadSettings(PlatformContext* pPlatformCtx);
+	void SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue);
 	
 	void AddLog(const char* pFileContent, int FileSize);
 	void SetLog(const char* pFileContent, int FileSize);
@@ -131,14 +132,10 @@ struct CrazyLog
 		
 	//Filters;
 	bool AnyFilterActive () const;
-	bool CustomPassFilter(const char* text, const char* text_end) const;
 	
 	void CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd,
 	                               HighlightLineMatches* pFiltredLineMatch);
 	void CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx,
 	                                HighlightLineMatches* pFiltredLineMatch);
-	
-	
-	
-	bool CustomDrawFilter(const char* label, float width);
+
 };

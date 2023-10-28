@@ -4,9 +4,8 @@
 
 #include "ConsolaTTF.cpp"
 
-#define FILTERS_FILE_NAME "FILTERS"
-#define FOLDER_QUERY_NAME "QUERIES"
-#define FILTER_TOKEN ';'
+#define FILTERS_FILE_NAME "FILTERS.json"
+#define SETTINGS_NAME "SETTINGS.json"
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
@@ -15,7 +14,8 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static char g_FilterToken = ';';
+static float g_Version = 1.00f;
+
 static char g_NullTerminator = '\0';
 
 void CrazyLog::Init()
@@ -169,13 +169,13 @@ bool CrazyLog::LoadFile(PlatformContext* pPlatformCtx)
 	return File.Size > 0;
 }
 
-void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
+void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 {	
 	const char* NoneFilterName = "NONE";
 	NamedFilter NoneFilter = { 0 };
 	strcpy_s(NoneFilter.aName, sizeof(NoneFilter.aName), NoneFilterName);
 	
-	FileContent File = pPlatformCtx->pReadFileFunc("PIMBA.json");
+	FileContent File = pPlatformCtx->pReadFileFunc(FILTERS_FILE_NAME);
 	if (File.pFile) 
 	{
 		cJSON * pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
@@ -236,15 +236,11 @@ void CrazyLog::LoadFilter(PlatformContext* pPlatformCtx)
 	}
 }
 
+// TODO(matiasp): Save just one filter?
 void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx) 
 {
 	FileContent OutFile = {0};
-	OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
-	size_t PreviousSize = (size_t)pPlatformCtx->ScratchMem.Size;
 	
-	char* pStringToSave = nullptr;
-	
-	cJSON_Hooks AllocationFunctionsHooks = { 0 };
 	cJSON * pJsonRoot = cJSON_CreateObject();
 	cJSON * pJsonFilterArray = cJSON_CreateArray();
 	cJSON * pFilterValue = nullptr;
@@ -288,32 +284,59 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	OutFile.pFile = cJSON_Print(pJsonRoot);
 	OutFile.Size = strlen((char*)OutFile.pFile);
 	
-	pPlatformCtx->pWriteFileFunc(&OutFile, "PIMBA.json");
+	pPlatformCtx->pWriteFileFunc(&OutFile, FILTERS_FILE_NAME);
 	free(pJsonRoot);
 	
 }
 
-void CrazyLog::SaveFolderQuery(PlatformContext* pPlatformCtx)
-{
-	FileContent OutFile = {0};
-	OutFile.pFile = pPlatformCtx->ScratchMem.Back(); 
-
-	size_t Len = StringUtils::Length(aFolderQueryName);
-	if (Len > 0)
+void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
+	
+	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
+	if (File.pFile)
 	{
-		pPlatformCtx->ScratchMem.PushBack(Len, aFolderQueryName);
-		OutFile.Size = Len;
-		pPlatformCtx->pWriteFileFunc(&OutFile, FOLDER_QUERY_NAME);
+		cJSON * pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+		
+		cJSON * pLastFolderQuery = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "last_folder_query");
+		if(pLastFolderQuery)
+			strcpy_s(aFolderQueryName, sizeof(aFolderQueryName), pLastFolderQuery->valuestring);
+		
+		cJSON * pLastStaticFileLoaded = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "last_static_file_loaded");
+		if(pLastStaticFileLoaded)
+			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), pLastStaticFileLoaded->valuestring);
+		
+		free(pJsonRoot);
+		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
 }
 
-void CrazyLog::LoadFolderQuery(PlatformContext* pPlatformCtx)
-{
-	FileContent File = pPlatformCtx->pReadFileFunc(FOLDER_QUERY_NAME);
-	if (File.Size > 0)
+void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue) {
+	FileContent OutFile = {0};
+	
+	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
+	cJSON * pJsonRoot = nullptr;
+	if (File.pFile)
 	{
-		memcpy(aFolderQueryName, File.pFile, File.Size);
+		pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+		cJSON * pJsonValue = cJSON_CreateString(pValue);
+		if(cJSON_HasObjectItem(pJsonRoot, pKey))
+			cJSON_ReplaceItemInObjectCaseSensitive(pJsonRoot, pKey, pJsonValue);
+		else
+			cJSON_AddItemToObjectCS(pJsonRoot, pKey, pJsonValue);
+		
+		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
+	else
+	{
+		pJsonRoot = cJSON_CreateObject();
+		cJSON * pJsonValue = cJSON_CreateString(pValue);
+		cJSON_AddItemToObjectCS(pJsonRoot, pKey, pJsonValue);
+	}
+	
+	OutFile.pFile = cJSON_Print(pJsonRoot);
+	OutFile.Size = strlen((char*)OutFile.pFile);
+	
+	pPlatformCtx->pWriteFileFunc(&OutFile, SETTINGS_NAME);
+	free(pJsonRoot);	
 }
 
 
@@ -437,7 +460,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("Filters");
 	
-	bool bFilterChanged = CustomDrawFilter("Filter", -160.0f);
+	bool bFilterChanged = Filter.Draw("Filter", -160.0f);
 	ImGui::SameLine();
 	HelpMarker(	"Filter usage: Just use it as C conditions \n\n"
 	           "Example: ((word1 || word2) && !word3)\n");
@@ -718,7 +741,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 
 void CrazyLog::SetLastCommand(const char* pLastCommand)
 {
-	strcpy_s(aLastCommand, sizeof(aLastCommand), pLastCommand);
+	snprintf(aLastCommand, sizeof(aLastCommand), "ver %.2f - %s", g_Version, pLastCommand);
 }
 
 void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
@@ -946,8 +969,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
 			
-			if(aFolderQueryName[0] != 0)
-				SaveFolderQuery(pPlatformCtx);
+			if (aFolderQueryName[0] != 0)
+				SaveStringInSettings(pPlatformCtx, "last_folder_query", aFolderQueryName);
 		}
 		else if (bFolderQuery)
 		{
@@ -1000,6 +1023,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			LoadFile(pPlatformCtx);
+			if (aFilePathToLoad[0] != 0)
+				SaveStringInSettings(pPlatformCtx, "last_static_file_loaded", aFilePathToLoad);
 		}
 		
 		ImGui::SameLine();
@@ -1079,9 +1104,10 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			bool bColorHasChanged = ImGui::ColorEdit4(pScratchStart, (float*)&Filter.vColors[i].x, 
 			                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
 			
-			if (bColorHasChanged && FilterSelectedIdx != 0) {
+			if (bColorHasChanged && FilterSelectedIdx != 0 && ImGui::IsKeyReleased(ImGuiKey_MouseLeft)) {
 				
 				LoadedFilters[FilterSelectedIdx].Filter.vColors[i] = Filter.vColors[i];
+				
 				// TODO(matiasp): Patch the json color instead of saving all the filters again
 				SaveLoadedFilters(pPlatformCtx);
 			}
@@ -1282,22 +1308,11 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 	}
 }
 
-bool CrazyLog::CustomDrawFilter(const char* label, float width)
-{
-	if (width != 0.0f)
-		ImGui::SetNextItemWidth(width);
-	bool value_changed = ImGui::InputText(label, Filter.aInputBuf, IM_ARRAYSIZE(Filter.aInputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
-	if (value_changed)
-		Filter.Build();
-	return value_changed;
-}
 
 #undef FILTERS_FILE_NAME
-#undef FOLDER_QUERY_NAME
-#undef FILTER_TOKEN
+#undef SETTINGS_NAME
 #undef FILTER_INTERVAL
 #undef FILE_FETCH_INTERVAL
-#undef FILTER_TOKEN
 #undef FILE_FETCH_INTERVALERVAL
 #undef FILE_FETCH_INTERVAL
 #undef FOLDER_FETCH_INTERVAL

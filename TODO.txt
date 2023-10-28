@@ -16,19 +16,19 @@
 // Think on how to support multiple processes writing in the FolderQuery
 // Save Target input field values?
 
-// Add version number
 // Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
+
+// See multithreading chili videos
+// do multithread for the pass filter
 
 ================ InProgress
 
 // copy filter to the clipboard and paste filter from the clipboard
-// See multithreading chili videos
-// check if the c programming language book speaks about pthreads
-// use crc hash to see which file we are talking about?
-// do multithread for the pass filter
 
 ================ Done
 
+// Add version number
+// save queries in .json file aswell
 // implement json save version
 // Resave filter when changing a color // how to save only the one selected?
 // Select default colors
