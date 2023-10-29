@@ -1192,18 +1192,53 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 	bool bAnyFlagChanged = false;
 	if (ImGui::TreeNode("Cherrypick"))
 	{
+		static int LastSelectedColorIdx = 0;
+		if (ImGui::BeginPopup("ColorPresetsPicker"))
+		{
+			char ColorIdxStr[3] = { 0 };
+			for (unsigned i = 0; i < ArrayCount(aDefaultColors); i++) 
+			{
+				itoa(i, ColorIdxStr, 10);
+				
+				ImGui::SameLine();
+				ImGui::ColorEdit4(ColorIdxStr, (float*)&aDefaultColors[i].x, 
+				                  ImGuiColorEditFlags_NoPicker 
+				                  | ImGuiColorEditFlags_NoInputs 
+				                  | ImGuiColorEditFlags_NoTooltip 
+				                  | ImGuiColorEditFlags_NoLabel);
+				
+				if (ImGui::IsItemHovered() && ImGui::IsKeyReleased(ImGuiKey_MouseLeft)) 
+				{
+					Filter.vColors[LastSelectedColorIdx] = aDefaultColors[i];
+					
+					if (FilterSelectedIdx != 0) {
+						LoadedFilters[FilterSelectedIdx].Filter.vColors[LastSelectedColorIdx] = Filter.vColors[LastSelectedColorIdx];
+				
+						// TODO(matiasp): Patch the json color instead of saving all the filters again
+						SaveLoadedFilters(pPlatformCtx);
+					}
+					
+					ImGui::CloseCurrentPopup();
+					
+				}
+			}
+			
+			ImGui::EndPopup();
+		}
+		
 		for (int i = 0; i != Filter.vFilters.Size; i++)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 			bool bColorHasChanged = ImGui::ColorEdit4(pScratchStart, (float*)&Filter.vColors[i].x, 
-			                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-			
-			if (bColorHasChanged && FilterSelectedIdx != 0 && ImGui::IsKeyReleased(ImGuiKey_MouseLeft)) {
-				
-				LoadedFilters[FilterSelectedIdx].Filter.vColors[i] = Filter.vColors[i];
-				
-				// TODO(matiasp): Patch the json color instead of saving all the filters again
-				SaveLoadedFilters(pPlatformCtx);
+			                                          ImGuiColorEditFlags_NoPicker 
+			                                          | ImGuiColorEditFlags_NoInputs 
+			                                          | ImGuiColorEditFlags_NoTooltip 
+			                                          | ImGuiColorEditFlags_NoLabel);
+	
+			if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft) && ImGui::IsItemHovered()) 
+			{
+				LastSelectedColorIdx = i;
+				ImGui::OpenPopup("ColorPresetsPicker");
 			}
 			
 			ImGui::SameLine();
