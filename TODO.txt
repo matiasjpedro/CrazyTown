@@ -20,13 +20,17 @@
 
 // See multithreading chili videos
 // do multithread for the pass filter
+// load the txt in a multithread pass
 
 ================ InProgress
 
-// copy filter to the clipboard and paste filter from the clipboard
+// See multithreading chili videos
+// do multithread for the pass filter
+// load the txt in a multithread pass
 
 ================ Done
 
+// copy filter to the clipboard and paste filter from the clipboard
 // Add version number
 // save queries in .json file aswell
 // implement json save version

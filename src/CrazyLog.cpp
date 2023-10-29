@@ -339,6 +339,69 @@ void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* p
 	free(pJsonRoot);	
 }
 
+void CrazyLog::PasteFilter(PlatformContext* pPlatformCtx) {
+	const char* pClipboardText = ImGui::GetClipboardText();
+	cJSON * pFilterObj = cJSON_Parse(pClipboardText);
+	if (pFilterObj == nullptr)
+		return;
+	
+	cJSON * pFilterValue = cJSON_GetObjectItemCaseSensitive(pFilterObj, "value");
+	strcpy_s(Filter.aInputBuf, sizeof(Filter.aInputBuf),  pFilterValue->valuestring);
+			
+	cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pFilterObj, "colors");
+			
+	unsigned ColorsCounter = 0;
+	int ColorsCount = cJSON_GetArraySize(pColorArray);
+	Filter.vColors.resize(ColorsCount);
+	
+	cJSON * pColor = nullptr;
+			
+	cJSON_ArrayForEach(pColor, pColorArray)
+	{
+		ImVec4 Color;
+		StringUtils::HexToRGB(pColor->valuestring, &Color.x);
+		Color.x /= 255;
+		Color.y /= 255;
+		Color.z /= 255;
+		Color.w /= 255;
+				
+		memcpy(&Filter.vColors[ColorsCounter], &Color, sizeof(ImVec4));
+				
+		ColorsCounter++;
+	}
+			
+	Filter.Build();
+		
+	free(pFilterObj);
+}
+
+void CrazyLog::CopyFilter(PlatformContext* pPlatformCtx, CrazyTextFilter* pFilter) {
+	
+	cJSON * pFilterObj = cJSON_CreateObject();
+		
+	cJSON * pFilterValue = cJSON_CreateString(pFilter->aInputBuf);
+	cJSON_AddItemToObject(pFilterObj, "value", pFilterValue);
+		
+	cJSON * pJsonColorArray = cJSON_AddArrayToObject(pFilterObj, "colors");
+	for (unsigned j = 0; j < (unsigned)pFilter->vColors.Size; ++j)
+	{
+		ImVec4& Color = pFilter->vColors[j];
+			
+		char aColorBuf[9];
+		sprintf(aColorBuf, "#%02X%02X%02X%02X", 
+		        (int)(Color.x*255.f), 
+		        (int)(Color.y*255.f), 
+		        (int)(Color.z*255.f),
+		        (int)(Color.w*255.f));
+			
+		cJSON* pFilterColor = cJSON_CreateString(aColorBuf);
+		cJSON_AddItemToObject(pJsonColorArray, "color", pFilterColor);
+	}
+	
+	ImGui::SetClipboardText(cJSON_Print(pFilterObj));
+	free(pFilterObj);
+}
+
 
 void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx) 
 {
@@ -460,11 +523,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("Filters");
 	
-	bool bFilterChanged = Filter.Draw("Filter", -160.0f);
+	bool bFilterChanged = Filter.Draw("Filter", -190.0f);
 	ImGui::SameLine();
 	HelpMarker(	"Filter usage: Just use it as C conditions \n\n"
 	           "Example: ((word1 || word2) && !word3)\n");
-	
 	
 	// If the size of the filters changed, make sure to start with those filters enabled.
 	if (LastFrameFiltersCount < Filter.vFilters.Size) 
@@ -476,29 +538,32 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	}
 	
 	LastFrameFiltersCount = Filter.vFilters.Size;
-
-	size_t FilterLen = StringUtils::Length(Filter.aInputBuf);
+		
+	ImGui::SameLine();
+	int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
+	if (ImGui::Button("Copy")) 
+		CopyFilter(pPlatformCtx, &Filter);
 	
 	ImGui::SameLine();
-	if (ImGui::SmallButton("Save") && FilterLen != 0) {
-		memset(aFilterNameToSave, 0, ArrayCount(aFilterNameToSave));
-		bWantsToSavePreset = true;
-	}
-
+	if (ImGui::Button("Paste"))
+		PasteFilter(pPlatformCtx);
+		
 	if (bWantsToSavePreset) 
 	{
-		ImGui::SetNextItemWidth(-160);
+		ImGui::SetNextItemWidth(-190);
 		bool bAcceptPresetName = ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
 		
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
-		if ((ImGui::SmallButton("Accept")  || bAcceptPresetName) && FilterNameLen) 
+		
+		ImGui::SameLine();
+		if ((ImGui::Button("Accept")  || bAcceptPresetName) && FilterNameLen) 
 		{
 			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
 			bWantsToSavePreset = false;
 		}
 	
 		ImGui::SameLine();
-		if (ImGui::SmallButton("Cancel")) 
+		if (ImGui::Button("Cancel")) 
 			bWantsToSavePreset = false;
 	}
 	
@@ -1068,20 +1133,32 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 			} 
 		};
 		
-		ImGui::SetNextItemWidth(-160);
+		ImGui::SetNextItemWidth(-190);
 		bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter,
 		                                      (void*)&LoadedFilters, LoadedFilters.Size);
+		
+		ImGui::SameLine();
+		HelpMarker(	"Those will be stored under FILTER.json");
+		
 		if (bSelectedFilterChanged)
 		{
 			Filter = LoadedFilters[FilterSelectedIdx].Filter;
 		}
+	}
+	
+		ImGui::SameLine();
+		int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
+		if (ImGui::Button("Save")) {
+			memset(aFilterNameToSave, 0, ArrayCount(aFilterNameToSave));
+			bWantsToSavePreset = true;
+		}
 			
 		ImGui::SameLine();
-		if (ImGui::SmallButton("Delete")) {
+		SelectableFlags = FilterSelectedIdx != 0 ? 0 : ImGuiSelectableFlags_Disabled;
+		if (ImGui::Button("Delete")) {
+			
 			DeleteFilter(pPlatformCtx);
 		}
-				
-	}
 	
 	return bSelectedFilterChanged;
 }
