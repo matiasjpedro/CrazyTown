@@ -523,10 +523,13 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("Filters");
 	
-	bool bFilterChanged = Filter.Draw("Filter", -190.0f);
+	bool bFilterChanged = Filter.Draw("Filter", -110.0f);
 	ImGui::SameLine();
-	HelpMarker(	"Filter usage: Just use it as C conditions \n\n"
-	           "Example: ((word1 || word2) && !word3)\n");
+	HelpMarker(	"Filter usage: Just use it as C conditions \n"
+	           "Example: ((word1 || word2) && !word3)\n\n"
+	           "You can also copy/paste filters to/from the clipboard.\n");
+	
+	
 	
 	// If the size of the filters changed, make sure to start with those filters enabled.
 	if (LastFrameFiltersCount < Filter.vFilters.Size) 
@@ -538,25 +541,33 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	}
 	
 	LastFrameFiltersCount = Filter.vFilters.Size;
+	if (ImGui::BeginPopup("FilterOptions"))
+	{
 		
-	ImGui::SameLine();
-	int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
-	if (ImGui::Button("Copy")) 
-		CopyFilter(pPlatformCtx, &Filter);
+		int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
+		if (ImGui::Selectable("Copy", false, SelectableFlags)) 
+			CopyFilter(pPlatformCtx, &Filter);
+		
+		if (ImGui::Selectable("Paste")) 
+			PasteFilter(pPlatformCtx);
+		
+		ImGui::EndPopup();
+	}
 	
 	ImGui::SameLine();
-	if (ImGui::Button("Paste"))
-		PasteFilter(pPlatformCtx);
+	if (ImGui::Button("+##Filter")) {
+		ImGui::OpenPopup("FilterOptions");
+	}
 		
 	if (bWantsToSavePreset) 
 	{
-		ImGui::SetNextItemWidth(-190);
+		ImGui::SetNextItemWidth(-195);
 		bool bAcceptPresetName = ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
 		
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
 		
 		ImGui::SameLine();
-		if ((ImGui::Button("Accept")  || bAcceptPresetName) && FilterNameLen) 
+		if ((ImGui::Button("Confirm")  || bAcceptPresetName) && FilterNameLen) 
 		{
 			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
 			bWantsToSavePreset = false;
@@ -1015,7 +1026,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	ImGui::SeparatorText("Target");
 	
-	ImGui::SetNextItemWidth(-160);
+	ImGui::SetNextItemWidth(-110);
 	bool bModeJustChanged = ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
@@ -1026,7 +1037,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
 		
-		ImGui::SetNextItemWidth(-160);
+		ImGui::SetNextItemWidth(-110);
 		if (ImGui::InputText("FolderQuery", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
@@ -1070,7 +1081,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if(aFilePathToLoad[0] != 0)
 			ImGui::Text("Streaming file: %s", aFilePathToLoad);
 		
-		ImGui::SetNextItemWidth(-160);
+		ImGui::SetNextItemWidth(-110);
 		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.1f, 3.0f);
 		
 	}
@@ -1084,7 +1095,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			memset(aFolderQueryName, 0, sizeof(aFolderQueryName));
 		}
 		
-		ImGui::SetNextItemWidth(-160);
+		ImGui::SetNextItemWidth(-110);
 		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
 			LoadFile(pPlatformCtx);
@@ -1133,7 +1144,7 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 			} 
 		};
 		
-		ImGui::SetNextItemWidth(-190);
+		ImGui::SetNextItemWidth(-110);
 		bSelectedFilterChanged = ImGui::Combo("Presets", &FilterSelectedIdx, &Funcs::ItemGetter,
 		                                      (void*)&LoadedFilters, LoadedFilters.Size);
 		
@@ -1146,19 +1157,25 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 	}
 	
-		ImGui::SameLine();
+	if (ImGui::BeginPopup("PresetsOptions"))
+	{
+		
 		int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
-		if (ImGui::Button("Save")) {
+		if (ImGui::Selectable("Save", false, SelectableFlags)) {
 			memset(aFilterNameToSave, 0, ArrayCount(aFilterNameToSave));
 			bWantsToSavePreset = true;
 		}
-			
-		ImGui::SameLine();
+		
 		SelectableFlags = FilterSelectedIdx != 0 ? 0 : ImGuiSelectableFlags_Disabled;
-		if (ImGui::Button("Delete")) {
-			
+		if (ImGui::Selectable("Delete", false, SelectableFlags)) 
 			DeleteFilter(pPlatformCtx);
-		}
+		
+		ImGui::EndPopup();
+	}
+	
+	ImGui::SameLine();
+	if (ImGui::Button("+##Presets"))
+		ImGui::OpenPopup("PresetsOptions");
 	
 	return bSelectedFilterChanged;
 }
