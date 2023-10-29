@@ -24,13 +24,14 @@
 
 ================ InProgress
 
-// Have the ability to resave it? when selecting save you could select new or an existent one
+// Disable buttons and show why are those disabled
 // See multithreading chili videos
 // do multithread for the pass filter
 // load the txt in a multithread pass
 
 ================ Done
 
+// Have the ability to resave it? when selecting save you could select new or an existent one
 // Added colors preset to the selection instead of the picker
 // copy filter to the clipboard and paste filter from the clipboard
 // Add version number

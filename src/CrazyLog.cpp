@@ -436,6 +436,19 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, Craz
 	SetLastCommand("FILTER SAVED");
 }
 
+void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, int FilterIdx, CrazyTextFilter* pFilter) 
+{
+	// Make sure to build it so it construct the filters + colors
+	pFilter->Build();
+	
+	LoadedFilters[FilterIdx].Filter = *pFilter;
+	
+	SaveLoadedFilters(pPlatformCtx);
+	FilterSelectedIdx = FilterIdx;
+	
+	SetLastCommand("FILTER SAVED");
+}
+
 // This method will append to the buffer
 void CrazyLog::AddLog(const char* pFileContent, int FileSize) 
 {
@@ -562,43 +575,76 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	if (bWantsToSavePreset) 
 	{
 		ImGui::SetNextItemWidth(-195);
-		bool bAcceptPresetName = ImGui::InputText("PresetName", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
+		bool bAcceptPresetName = ImGui::InputText("Provide preset name", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
 		
 		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
 		
+		bool bCanConfirm = FilterNameLen && Filter.IsActive();
+		
 		ImGui::SameLine();
-		if ((ImGui::Button("Confirm")  || bAcceptPresetName) && FilterNameLen) 
+		if (bAcceptPresetName && bCanConfirm) 
 		{
 			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
 			bWantsToSavePreset = false;
 		}
-	
+		
 		ImGui::SameLine();
 		if (ImGui::Button("Cancel")) 
 			bWantsToSavePreset = false;
 	}
 	
+	if (bWantsToOverridePreset)
+	{
+		struct Funcs 
+		{ 
+			static bool ItemGetter(void* pData, int n, const char** out_ppStr) 
+			{ 
+				ImVector<NamedFilter>& vrLoadedFilters = *((ImVector<NamedFilter>*)pData);
+				NamedFilter& NamedFilter = vrLoadedFilters[n];
+				*out_ppStr = NamedFilter.aName; 
+				return true; 
+			} 
+		};
+		
+		ImGui::SetNextItemWidth(-235);
+		bool bSelectedFilterChanged = ImGui::Combo("Select preset to override", &FilterToOverrideIdx, &Funcs::ItemGetter,
+		                                      (void*)&LoadedFilters, LoadedFilters.Size);
+		ImGui::SameLine();
+		
+		if (bSelectedFilterChanged && FilterToOverrideIdx != 0) {
+			SaveFilter(pPlatformCtx, FilterToOverrideIdx, &Filter);
+			bWantsToOverridePreset = false;
+			FilterToOverrideIdx = 0;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) {
+			bWantsToOverridePreset = false;
+			FilterToOverrideIdx = 0;
+		}
+	}
+	
 	bool bSelectedFilterChanged = false;
-	if (!bWantsToSavePreset) 
+	if (!bWantsToSavePreset && !bWantsToOverridePreset) 
 	{
 		bSelectedFilterChanged = DrawPresets(DeltaTime, pPlatformCtx);
 	}
 
 	bool bCherryPickHasChanged = false;
-	if (Filter.IsActive() ) 
+	
+	if (bFilterChanged) 
+	{
+		FilterSelectedIdx = 0;
+			
+		bAlreadyCached = false;
+		FiltredLinesCount = 0;
+			
+		SetLastCommand("FILTER CHANGED");
+	}
+	
+	if (Filter.IsActive()) 
 	{
 		bCherryPickHasChanged = DrawCherrypick(DeltaTime, pPlatformCtx);
-		
-		if (bFilterChanged) 
-		{
-			FilterSelectedIdx = 0;
-			
-			bAlreadyCached = false;
-			FiltredLinesCount = 0;
-			
-			SetLastCommand("FILTER CHANGED");
-		} 
-		
 		if (bSelectedFilterChanged) 
 		{
 			FilterFlags = 0xFFFFFFFF;
@@ -1164,6 +1210,12 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (ImGui::Selectable("Save", false, SelectableFlags)) {
 			memset(aFilterNameToSave, 0, ArrayCount(aFilterNameToSave));
 			bWantsToSavePreset = true;
+		}
+		
+		SelectableFlags = LoadedFilters.size() ? SelectableFlags : ImGuiSelectableFlags_Disabled;
+		if (ImGui::Selectable("Override", false, SelectableFlags)) {
+			FilterToOverrideIdx = 0;
+			bWantsToOverridePreset = true;
 		}
 		
 		SelectableFlags = FilterSelectedIdx != 0 ? 0 : ImGuiSelectableFlags_Disabled;

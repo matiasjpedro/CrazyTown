@@ -63,6 +63,7 @@ struct CrazyLog
 	char aFolderQueryName[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
 	char aLastCommand[MAX_PATH];
+	int FilterToOverrideIdx;
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
 	int LastFetchFileSize;
@@ -85,6 +86,7 @@ struct CrazyLog
 	bool bFolderQuery;
 	bool bStreamMode;
 	bool bWantsToSavePreset;
+	bool bWantsToOverridePreset;
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	
@@ -107,6 +109,7 @@ struct CrazyLog
 	void CopyFilter(PlatformContext* pPlatformCtx, CrazyTextFilter* pFilter);
 	void DeleteFilter(PlatformContext* pPlatformCtx);
 	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter);
+	void SaveFilter(PlatformContext* pPlatformCtx, int FilterIdx, CrazyTextFilter* pFilter);
 	
 	void LoadSettings(PlatformContext* pPlatformCtx);
 	void SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue);
