@@ -77,7 +77,7 @@ void CrazyTextFilter::Build()
 	vColors.resize(vFilters.size());
 	
 	for (int i = (int)OldColorSize; i < vColors.size(); i++) {
-		vColors[i] = aDefaultColors[0];
+		vColors[i] = ImVec4(1.000f, 0.992f, 0.000f, 1.000f);
 	}
 	
 }

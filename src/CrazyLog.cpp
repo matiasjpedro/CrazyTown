@@ -304,11 +304,82 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 		if(pLastStaticFileLoaded)
 			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), pLastStaticFileLoaded->valuestring);
 		
+		cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "default_colors");
+			
+		unsigned ColorsCounter = 0;
+		int ColorsCount = cJSON_GetArraySize(pColorArray);
+		vDefaultColors.resize(ColorsCount);
+			
+		cJSON * pColor = nullptr;
+		cJSON_ArrayForEach(pColor, pColorArray)
+		{
+			ImVec4 Color;
+			StringUtils::HexToRGB(pColor->valuestring, &Color.x);
+			Color.x /= 255;
+			Color.y /= 255;
+			Color.z /= 255;
+			Color.w /= 255;
+			vDefaultColors[ColorsCounter] = Color;
+				
+			ColorsCounter++;
+		}
+		
 		free(pJsonRoot);
 		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
 }
 
+void CrazyLog::SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx) {
+	FileContent OutFile = {0};
+	
+	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
+	cJSON * pJsonRoot = nullptr;
+	
+	cJSON * pJsonColorArray = cJSON_CreateArray();
+		
+	for (unsigned j = 0; j < (unsigned)vDefaultColors.Size; ++j)
+	{
+		ImVec4& Color = vDefaultColors[j];
+			
+		char aColorBuf[9];
+		sprintf(aColorBuf, "#%02X%02X%02X%02X", 
+		        (int)(Color.x*255.f), 
+		        (int)(Color.y*255.f), 
+		        (int)(Color.z*255.f),
+		        (int)(Color.w*255.f));
+			
+		cJSON * pColorValue = cJSON_CreateString(aColorBuf);
+		cJSON_AddItemToArray(pJsonColorArray, pColorValue);
+	}
+	
+	if (File.pFile)
+	{
+		pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+		
+		if (cJSON_HasObjectItem(pJsonRoot, "default_colors")) 
+		{
+			cJSON_ReplaceItemInObjectCaseSensitive(pJsonRoot, "default_colors", pJsonColorArray);
+		}
+		else
+		{
+			cJSON_AddItemToObjectCS(pJsonRoot,"default_colors", pJsonColorArray);
+		}
+		
+		pPlatformCtx->pFreeFileContentFunc(&File);
+	}
+	else
+	{
+		pJsonRoot = cJSON_CreateObject();
+		cJSON_AddItemToObjectCS(pJsonRoot,"default_colors", pJsonColorArray);
+	}
+	
+	OutFile.pFile = cJSON_Print(pJsonRoot);
+	OutFile.Size = strlen((char*)OutFile.pFile);
+	
+	pPlatformCtx->pWriteFileFunc(&OutFile, SETTINGS_NAME);
+	free(pJsonRoot);	
+	
+}
 void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue) {
 	FileContent OutFile = {0};
 	
@@ -481,7 +552,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
 	{
-		if (Buf[old_size] == '\n')
+		if (Buf[old_size] == '\n' || Buf[old_size] == '\r')
 		{
 			vLineOffsets.push_back(old_size + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
@@ -568,7 +639,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	}
 	
 	ImGui::SameLine();
-	if (ImGui::Button("+##Filter")) {
+	if (ImGui::Button("+##Filter", ImVec2(20,0))) {
 		ImGui::OpenPopup("FilterOptions");
 	}
 		
@@ -1226,7 +1297,7 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 	
 	ImGui::SameLine();
-	if (ImGui::Button("+##Presets"))
+	if (ImGui::Button("+##Presets", ImVec2(20,0)))
 		ImGui::OpenPopup("PresetsOptions");
 	
 	return bSelectedFilterChanged;
@@ -1247,33 +1318,63 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 		static int LastSelectedColorIdx = 0;
 		if (ImGui::BeginPopup("ColorPresetsPicker"))
 		{
-			char ColorIdxStr[3] = { 0 };
-			for (unsigned i = 0; i < ArrayCount(aDefaultColors); i++) 
+			char ColorIdxStr[16] = { 0 };
+			for (int i = 0; i < vDefaultColors.size(); i++) 
 			{
-				itoa(i, ColorIdxStr, 10);
+				snprintf(ColorIdxStr, sizeof(ColorIdxStr), "##cps%i", i);
 				
 				ImGui::SameLine();
-				ImGui::ColorEdit4(ColorIdxStr, (float*)&aDefaultColors[i].x, 
-				                  ImGuiColorEditFlags_NoPicker 
-				                  | ImGuiColorEditFlags_NoInputs 
-				                  | ImGuiColorEditFlags_NoTooltip 
-				                  | ImGuiColorEditFlags_NoLabel);
-				
-				if (ImGui::IsItemHovered() && ImGui::IsKeyReleased(ImGuiKey_MouseLeft)) 
+				if (ImGui::ColorButton(ColorIdxStr, vDefaultColors[i],
+				                       ImGuiColorEditFlags_NoPicker 
+				                       | ImGuiColorEditFlags_NoInputs 
+				                       | ImGuiColorEditFlags_NoTooltip 
+				                       | ImGuiColorEditFlags_NoLabel))
 				{
-					Filter.vColors[LastSelectedColorIdx] = aDefaultColors[i];
-					
+					Filter.vColors[LastSelectedColorIdx] = vDefaultColors[i];
+				
 					if (FilterSelectedIdx != 0) {
 						LoadedFilters[FilterSelectedIdx].Filter.vColors[LastSelectedColorIdx] = Filter.vColors[LastSelectedColorIdx];
-				
+			
 						// TODO(matiasp): Patch the json color instead of saving all the filters again
 						SaveLoadedFilters(pPlatformCtx);
 					}
-					
+				
 					ImGui::CloseCurrentPopup();
-					
 				}
+				
+				ImGui::SameLine();
 			}
+			
+			
+			static ImVec4 SelectedColor = ImVec4(0, 0, 0, 1);
+			
+			ImGui::SameLine();
+			if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
+			{
+				vDefaultColors.push_back(SelectedColor);
+				SaveDefaultColorsInSettings(pPlatformCtx);
+			}
+			
+			ImGui::SameLine();
+			bool bColorHasChanged = ImGui::ColorEdit4("NewDefaultColor", (float*)&SelectedColor.x, 
+			                                          ImGuiColorEditFlags_NoInputs 
+			                                          | ImGuiColorEditFlags_NoAlpha
+			                                          | ImGuiColorEditFlags_NoOptions 
+			                                          | ImGuiColorEditFlags_NoTooltip);
+			ImGui::Dummy(ImVec2(0,0));
+			ImGui::SameLine();
+			
+			for (int i = 0; i < vDefaultColors.size(); i++)
+			{
+				snprintf(ColorIdxStr, sizeof(ColorIdxStr), "-##cpr%i", i);
+				if (ImGui::Button(ColorIdxStr)) {
+					vDefaultColors.erase(&vDefaultColors[i]);
+					SaveDefaultColorsInSettings(pPlatformCtx);
+				}
+				
+				ImGui::SameLine(0, 12);
+			}
+			
 			
 			ImGui::EndPopup();
 		}

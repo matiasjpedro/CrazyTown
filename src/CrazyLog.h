@@ -58,6 +58,7 @@ struct CrazyLog
 	
 	// TODO(matiasp): maybe I should combine this with the line offset and have all the line information in once place
 	ImVector<HighlightLineMatches> vHighlightLineMatches;
+	ImVector<ImVec4> vDefaultColors;
 	
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderQueryName[MAX_PATH];
@@ -112,6 +113,7 @@ struct CrazyLog
 	void SaveFilter(PlatformContext* pPlatformCtx, int FilterIdx, CrazyTextFilter* pFilter);
 	
 	void LoadSettings(PlatformContext* pPlatformCtx);
+	void SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx);
 	void SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue);
 	
 	void AddLog(const char* pFileContent, int FileSize);
