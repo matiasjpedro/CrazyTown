@@ -46,8 +46,8 @@ struct CrazyTextFilter
 	// [Internal]
 	struct CrazyTextRange 
 	{
-		uint64_t BeginOffset;
-		uint64_t EndOffset;
+		uint16_t BeginOffset;
+		uint16_t EndOffset;
 		uint8_t OperatorFlags;
 		int8_t ScopeNum;
 
@@ -58,7 +58,7 @@ struct CrazyTextFilter
 			 ScopeNum = -1;
 		}
 		
-		CrazyTextRange(uint64_t _BeginOffset, uint64_t _EndOffset, uint8_t _Flags) 
+		CrazyTextRange(uint16_t _BeginOffset, uint16_t _EndOffset, uint8_t _Flags) 
 		{ 
 			BeginOffset = _BeginOffset; 
 			EndOffset = _EndOffset; 

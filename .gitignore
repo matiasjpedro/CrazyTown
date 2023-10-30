@@ -10,6 +10,7 @@
 *.exp
 *.idb
 
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -36,5 +37,6 @@
 
 /data/*.txt
 /data/*.ini
+/data/*.json
 /data/FILTERS
 /data/QUERIES

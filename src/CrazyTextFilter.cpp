@@ -27,8 +27,8 @@ void CrazyTextFilter::Build()
 	vScopes.reserve(10);
 	
 	size_t InputBufferLen = strlen(aInputBuf);
-	CrazyTextRange input_range(0, InputBufferLen, 0);
-	input_range.Split(&aInputBuf[0], &aInputBuf[InputBufferLen], &vFilters, &vScopes);
+	CrazyTextRange InputRange(0, (uint16_t)InputBufferLen, 0);
+	InputRange.Split(&aInputBuf[0], &aInputBuf[InputBufferLen], &vFilters, &vScopes);
 
 	for (int i = 0; i != vFilters.Size; i++)
 	{
@@ -48,8 +48,8 @@ void CrazyTextFilter::Build()
 			&& (ImCharIsBlankA(pFilterEnd[-1]) || pFilterEnd[-1] == ')' || pFilterEnd[-1] == 0))
 			pFilterEnd--;
 		
-		f.BeginOffset = pFilterBegin - &aInputBuf[0];
-		f.EndOffset = pFilterEnd - &aInputBuf[0];
+		f.BeginOffset = uint16_t(pFilterBegin - &aInputBuf[0]);
+		f.EndOffset = uint16_t(pFilterEnd - &aInputBuf[0]);
 		
 		// Once I have clear out unwanted character check if I should add the not operator
 		if (aInputBuf[f.BeginOffset] == '!')
@@ -76,10 +76,8 @@ void CrazyTextFilter::Build()
 	size_t OldColorSize = vColors.size();
 	vColors.resize(vFilters.size());
 	
-	// Pick default colors for the new colors
 	for (int i = (int)OldColorSize; i < vColors.size(); i++) {
-		int DefaultColorIdx = i % ArrayCount(aDefaultColors);
-		vColors[i] = aDefaultColors[DefaultColorIdx];
+		vColors[i] = aDefaultColors[0];
 	}
 	
 }
@@ -91,6 +89,9 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 
 	if (pText == NULL)
 		pText = "";
+	
+	if (*pText == '\r')
+		return false;
 	
 	//TODO(Matiasp): Come back to this filter, it looks way more complicated of that it should.
 	bool bFistValueAlreadySet = false;
@@ -216,7 +217,7 @@ void CrazyTextFilter::CrazyTextRange::Split(const char* pBegin, const char* pEnd
 	{
 		if (*pCursorEnd == '(')
 		{
-			pvScopesOut->push_back(CrazyTextRange(pCursorEnd - pBegin, 0, 0));
+			pvScopesOut->push_back(CrazyTextRange(uint16_t(pCursorEnd - pBegin), 0, 0));
 			ScopeCounter = 0;
 		}
 		else if (*pCursorEnd == ')')
@@ -226,7 +227,7 @@ void CrazyTextFilter::CrazyTextRange::Split(const char* pBegin, const char* pEnd
 			// should I send an error?
 			if (ScopeIdx >= 0)
 			{
-				(*pvScopesOut)[ScopeIdx].EndOffset = pCursorEnd - pBegin;
+				(*pvScopesOut)[ScopeIdx].EndOffset = uint16_t(pCursorEnd - pBegin);
 			}
 			
 			ScopeCounter++;
@@ -242,7 +243,7 @@ void CrazyTextFilter::CrazyTextRange::Split(const char* pBegin, const char* pEnd
 				uint8_t Flags = 1 << PrevOp;
 				
 				// -1 to don't count the separator
-				pvOut->push_back(CrazyTextRange(pCursorBegin - pBegin, pCursorEnd - pBegin - 1, Flags));
+				pvOut->push_back(CrazyTextRange(uint16_t(pCursorBegin - pBegin), uint16_t(pCursorEnd - pBegin - 1), Flags));
 				
 				PrevOp = (FilterOperator)i;
 				
@@ -258,7 +259,7 @@ void CrazyTextFilter::CrazyTextRange::Split(const char* pBegin, const char* pEnd
 	if (pCursorBegin != pCursorEnd)
 	{
 		uint8_t Flags = 1 << PrevOp;
-		pvOut->push_back(CrazyTextRange(pCursorBegin - pBegin, pCursorEnd - pBegin, Flags));
+		pvOut->push_back(CrazyTextRange(uint16_t(pCursorBegin - pBegin), uint16_t(pCursorEnd - pBegin), Flags));
 	}
 }
 	
