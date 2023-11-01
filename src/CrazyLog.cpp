@@ -14,7 +14,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.00f;
+static float g_Version = 1.01f;
 
 static char g_NullTerminator = '\0';
 
@@ -305,27 +305,48 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), pLastStaticFileLoaded->valuestring);
 		
 		cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "default_colors");
-			
-		unsigned ColorsCounter = 0;
-		int ColorsCount = cJSON_GetArraySize(pColorArray);
-		vDefaultColors.resize(ColorsCount);
-			
-		cJSON * pColor = nullptr;
-		cJSON_ArrayForEach(pColor, pColorArray)
+		
+		// Load by default some colors if non are stored 
+		if (pColorArray == nullptr) 
 		{
-			ImVec4 Color;
-			StringUtils::HexToRGB(pColor->valuestring, &Color.x);
-			Color.x /= 255;
-			Color.y /= 255;
-			Color.z /= 255;
-			Color.w /= 255;
-			vDefaultColors[ColorsCounter] = Color;
+			for (unsigned j = 0; j < ArrayCount(aDefaultColors) ; ++j) 
+			{
+				vDefaultColors.resize(ArrayCount(aDefaultColors));
+				vDefaultColors[j] = aDefaultColors[j];
+			}
+		}
+		else
+		{
+			unsigned ColorsCounter = 0;
+			int ColorsCount = cJSON_GetArraySize(pColorArray);
+			vDefaultColors.resize(ColorsCount);
+			
+			cJSON * pColor = nullptr;
+			cJSON_ArrayForEach(pColor, pColorArray)
+			{
+				ImVec4 Color;
+				StringUtils::HexToRGB(pColor->valuestring, &Color.x);
+				Color.x /= 255;
+				Color.y /= 255;
+				Color.z /= 255;
+				Color.w /= 255;
+				vDefaultColors[ColorsCounter] = Color;
 				
-			ColorsCounter++;
+				ColorsCounter++;
+			}
 		}
 		
 		free(pJsonRoot);
 		pPlatformCtx->pFreeFileContentFunc(&File);
+	}
+	else
+	{
+		// Load by default some colors if non are stored
+		for (unsigned j = 0; j < ArrayCount(aDefaultColors) ; ++j) 
+		{
+			vDefaultColors.resize(ArrayCount(aDefaultColors));
+			vDefaultColors[j] = aDefaultColors[j];
+		}
 	}
 }
 
@@ -552,7 +573,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
 	{
-		if (Buf[old_size] == '\n' || Buf[old_size] == '\r')
+		if (Buf[old_size] == '\n')
 		{
 			vLineOffsets.push_back(old_size + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
@@ -1306,12 +1327,6 @@ bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 
 bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 {
-	// HACKY we should put the color in the filter
-	while (Filter.vFilters.Size > Filter.vColors.Size)
-	{
-		Filter.vColors.push_back(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-	}
-	
 	bool bAnyFlagChanged = false;
 	if (ImGui::TreeNode("Cherrypick"))
 	{
@@ -1345,25 +1360,22 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				ImGui::SameLine();
 			}
 			
-			
 			static ImVec4 SelectedColor = ImVec4(0, 0, 0, 1);
 			
 			ImGui::SameLine();
-			if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
-			{
-				vDefaultColors.push_back(SelectedColor);
-				SaveDefaultColorsInSettings(pPlatformCtx);
-			}
+			ImGui::TextUnformatted("|");
 			
 			ImGui::SameLine();
-			bool bColorHasChanged = ImGui::ColorEdit4("NewDefaultColor", (float*)&SelectedColor.x, 
+			bool bColorHasChanged = ImGui::ColorEdit4("NewColor", (float*)&SelectedColor.x, 
 			                                          ImGuiColorEditFlags_NoInputs 
+			                                          | ImGuiColorEditFlags_NoOptions
+			                                          | ImGuiColorEditFlags_NoDragDrop
+			                                          | ImGuiColorEditFlags_NoTooltip
 			                                          | ImGuiColorEditFlags_NoAlpha
-			                                          | ImGuiColorEditFlags_NoOptions 
 			                                          | ImGuiColorEditFlags_NoTooltip);
+			
 			ImGui::Dummy(ImVec2(0,0));
 			ImGui::SameLine();
-			
 			for (int i = 0; i < vDefaultColors.size(); i++)
 			{
 				snprintf(ColorIdxStr, sizeof(ColorIdxStr), "-##cpr%i", i);
@@ -1375,6 +1387,13 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				ImGui::SameLine(0, 12);
 			}
 			
+			ImGui::Dummy(ImVec2(5,0));
+			ImGui::SameLine();
+			if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
+			{
+				vDefaultColors.push_back(SelectedColor);
+				SaveDefaultColorsInSettings(pPlatformCtx);
+			}
 			
 			ImGui::EndPopup();
 		}

@@ -1,5 +1,6 @@
 #include "CrazyTextFilter.h"
 
+
 CrazyTextFilter::CrazyTextFilter(const char* pDefaultFilter) 
 {
 	aInputBuf[0] = 0;

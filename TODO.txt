@@ -1,5 +1,13 @@
 ================ NOTES 
 
+// Now each time we add a condition to the filter it will pick up a different default color.
+// Replace the color picker with default colors selection.
+// Now the settings and the filters are being save as .json
+// Added new option to override existing saved filter
+// Added version num
+// Added the functionality to copy/paste current filter into the clipboard (useful for sharing and to paste in multiple CT instances).
+// Added 2 new context menu in Filter/Presets to fit more options.
+
 ================ Backlog
 
 // Support to listen from a websocket?
@@ -22,15 +30,25 @@
 // do multithread for the pass filter
 // load the txt in a multithread pass
 
+// should I save the cherry pick?
+
+// Next dispatch load file + filter in a different thread to avoid locking the app when huge .logs are being loaded/filter.
+
+// How I can do to prevent color being offset when changing the filter? 
+// I need to have a way to understand which filter was removed, let it sink a little bit
+// if they change words, and change sizes, there is no way to ensure to adjust it properly,
+// since I don't know which filter was removed and which was modified
+
+
+// should I save the sets in the users?
+
 ================ InProgress
 
-// Disable buttons and show why are those disabled
-// See multithreading chili videos
-// do multithread for the pass filter
-// load the txt in a multithread pass
+// Profile Highlight + PassFilter
 
 ================ Done
 
+// Have a way to delete/modify/add default colors
 // Have the ability to resave it? when selecting save you could select new or an existent one
 // Added colors preset to the selection instead of the picker
 // copy filter to the clipboard and paste filter from the clipboard
