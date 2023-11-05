@@ -1362,37 +1362,48 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			static ImVec4 SelectedColor = ImVec4(0, 0, 0, 1);
 			
-			ImGui::SameLine();
-			ImGui::TextUnformatted("|");
-			
-			ImGui::SameLine();
-			bool bColorHasChanged = ImGui::ColorEdit4("NewColor", (float*)&SelectedColor.x, 
-			                                          ImGuiColorEditFlags_NoInputs 
-			                                          | ImGuiColorEditFlags_NoOptions
-			                                          | ImGuiColorEditFlags_NoDragDrop
-			                                          | ImGuiColorEditFlags_NoTooltip
-			                                          | ImGuiColorEditFlags_NoAlpha
-			                                          | ImGuiColorEditFlags_NoTooltip);
-			
-			ImGui::Dummy(ImVec2(0,0));
-			ImGui::SameLine();
-			for (int i = 0; i < vDefaultColors.size(); i++)
+			if (bIsEditingColors)
 			{
-				snprintf(ColorIdxStr, sizeof(ColorIdxStr), "-##cpr%i", i);
-				if (ImGui::Button(ColorIdxStr)) {
-					vDefaultColors.erase(&vDefaultColors[i]);
+				if (ImGui::Button("Save"))
+				{
 					SaveDefaultColorsInSettings(pPlatformCtx);
+					bIsEditingColors = false;
 				}
 				
-				ImGui::SameLine(0, 12);
-			}
+				ImGui::SameLine();
+				bool bColorHasChanged = ImGui::ColorEdit4("NewColor", (float*)&SelectedColor.x, 
+				                                          ImGuiColorEditFlags_NoInputs 
+				                                          | ImGuiColorEditFlags_NoOptions
+				                                          | ImGuiColorEditFlags_NoDragDrop
+				                                          | ImGuiColorEditFlags_NoTooltip
+				                                          | ImGuiColorEditFlags_NoAlpha
+				                                          | ImGuiColorEditFlags_NoTooltip);
 			
-			ImGui::Dummy(ImVec2(5,0));
-			ImGui::SameLine();
-			if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
+				ImGui::Dummy(ImVec2(0,0));
+				ImGui::SameLine();
+				for (int i = 0; i < vDefaultColors.size(); i++)
+				{
+					snprintf(ColorIdxStr, sizeof(ColorIdxStr), "-##cpr%i", i);
+					if (ImGui::Button(ColorIdxStr)) {
+						vDefaultColors.erase(&vDefaultColors[i]);
+					}
+				
+					ImGui::SameLine(0, 12);
+				}
+			
+				ImGui::Dummy(ImVec2(0,0));
+				ImGui::SameLine(0, 57);
+				if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
+				{
+					vDefaultColors.push_back(SelectedColor);
+				}
+			}
+			else
 			{
-				vDefaultColors.push_back(SelectedColor);
-				SaveDefaultColorsInSettings(pPlatformCtx);
+				if (ImGui::Button("Edit"))
+				{
+					bIsEditingColors = true;
+				}
 			}
 			
 			ImGui::EndPopup();
@@ -1407,7 +1418,7 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			                                          | ImGuiColorEditFlags_NoTooltip 
 			                                          | ImGuiColorEditFlags_NoLabel);
 	
-			if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft) && ImGui::IsItemHovered()) 
+			if (ImGui::IsKeyPressed(ImGuiKey_MouseLeft) && ImGui::IsItemHovered()) 
 			{
 				LastSelectedColorIdx = i;
 				ImGui::OpenPopup("ColorPresetsPicker");

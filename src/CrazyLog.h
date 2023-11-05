@@ -90,6 +90,7 @@ struct CrazyLog
 	bool bWantsToOverridePreset;
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
+	bool bIsEditingColors;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
