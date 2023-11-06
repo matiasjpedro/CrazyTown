@@ -1,6 +1,7 @@
 #include "CrazyLog.h"
 #include "StringUtils.h"
 #include "CrazyTextFilter.h"
+#include "ThreadUtils.h"
 
 #include "ConsolaTTF.cpp"
 
@@ -14,7 +15,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.02f;
+static float g_Version = 1.03f;
 
 static char g_NullTerminator = '\0';
 
@@ -927,6 +928,18 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::End();
 }
 
+static void Test1(int line_no, HighlightLineMatches* pHighlightLineMatches, void* ctx) 
+{
+	CrazyLog* LogCtx = (CrazyLog*)ctx;
+	const char* buf = LogCtx->Buf.begin();
+	const char* buf_end = LogCtx->Buf.end();
+	
+	const char* line_start = buf + LogCtx->vLineOffsets[(int)line_no];
+	const char* line_end = (line_no + 1 < LogCtx->vLineOffsets.Size) ? (buf + LogCtx->vLineOffsets[(int)line_no + 1] - 1) : buf_end;
+	
+	LogCtx->CacheHighlightLineMatches(line_start, line_end, pHighlightLineMatches);
+}
+
 void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 {
 	const char* buf = Buf.begin();
@@ -936,19 +949,50 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	{
 		vFiltredLinesCached.resize(0);
 	}
-				
-	for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
+	
+	if (Filter.vFilters.size() > 0 && vHighlightLineMatches.size() > 0)
 	{
-		const char* line_start = buf + vLineOffsets[line_no];
-		const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-		if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
-		{
-			vFiltredLinesCached.push_back(line_no);
-		}
 		
-		CacheHighlightLineMatches(line_start, line_end, &vHighlightLineMatches[line_no]);
+#if 1
+		ExecuteParallel<HighlightLineMatches>(std::thread::hardware_concurrency(),
+			&vHighlightLineMatches[FiltredLinesCount], 
+			vHighlightLineMatches.Size - FiltredLinesCount,
+			&Test1, 
+			this, 
+			true);
+	
+		// We could also multi thread this part
+		for (int line_no = FiltredLinesCount; line_no < vHighlightLineMatches.Size; line_no++)
+		{
+			if (vHighlightLineMatches[line_no].vLineMatches.Size == 0)
+				continue;
+		
+			const char* line_start = buf + vLineOffsets[line_no];
+			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+		
+			//And then I can iterate the lines that have catched lines
+			if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
+			{
+				vFiltredLinesCached.push_back(line_no);
+			}
+		}
+	
+#else
+		for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
+		{
+			const char* line_start = buf + vLineOffsets[line_no];
+			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+			if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
+			{
+				vFiltredLinesCached.push_back(line_no);
+			}
+		
+			CacheHighlightLineMatches(line_start, line_end, &vHighlightLineMatches[line_no]);
+		}
+#endif
+		
 	}
-				
+	
 	FiltredLinesCount = vLineOffsets.Size;
 	bAlreadyCached = true;
 }
@@ -1264,7 +1308,6 @@ void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	
 }
-
 
 bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)
 {

@@ -44,7 +44,7 @@
 
 ================ InProgress
 
-// Profile Highlight + PassFilter
+// No freeze application.
 
 ================ Done
 
