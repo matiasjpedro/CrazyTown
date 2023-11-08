@@ -593,6 +593,7 @@ void CrazyLog::AddLog(const char* pFileContent, int FileSize)
 		{
 			vLineOffsets.push_back(OldSize + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
+			vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 		}
 	}
 	
@@ -609,6 +610,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	Buf.append(pFileContent, pFileContent + FileSize);
 	vLineOffsets.push_back(0);
 	vHighlightLineMatches.push_back(HighlightLineMatches());
+	vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 	
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -617,6 +619,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 		{
 			vLineOffsets.push_back(old_size + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
+			vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 		}
 	}
 	
@@ -1076,8 +1079,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			{
 				ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
 				
-				const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
-				const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
+				const char* pHighlightWordBegin = pLineStart + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
+				const char* pHighlightWordEnd = pLineStart + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
 				if (pLineCursor <= pHighlightWordBegin)
 				{
 					ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -1187,8 +1190,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				{
 					ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
 					
-					const char* pHighlightWordBegin = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordBeginOffset;
-					const char* pHighlightWordEnd = buf + vHighlightLineMatches[line_no].vLineMatches[i].WordEndOffset + 1;
+					const char* pHighlightWordBegin = line_start + vHighlightLineMatches[line_no].vLineMatches[i].WordBeginOffset;
+					const char* pHighlightWordEnd = line_start + vHighlightLineMatches[line_no].vLineMatches[i].WordEndOffset + 1;
 					if (pLineCursor <= pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -1649,7 +1652,7 @@ bool CrazyLog::AnyFilterActive () const
 
 void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd, HighlightLineMatches* pFiltredLineMatch)
 {
-	pFiltredLineMatch->vLineMatches.clear();
+	pFiltredLineMatch->vLineMatches.resize(0);
 	
 	for (int i = 0; i != Filter.vFilters.Size; i++)
 	{
@@ -1667,7 +1670,8 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 		CacheHighlightMatchingWord(pLineBegin, pLineEnd, i, pFiltredLineMatch);
 	}
 	
-	qsort(pFiltredLineMatch->vLineMatches.Data, pFiltredLineMatch->vLineMatches.Size, sizeof(HighlightLineMatchEntry), HighlightLineMatchEntry::SortFunc);
+	if (pFiltredLineMatch->vLineMatches.Size > 0)
+		qsort(pFiltredLineMatch->vLineMatches.Data, pFiltredLineMatch->vLineMatches.Size, sizeof(HighlightLineMatchEntry), HighlightLineMatchEntry::SortFunc);
 }
 
 void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx, 
@@ -1678,13 +1682,13 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 	const char* pWordBegin = &Filter.aInputBuf[f.BeginOffset];
 	const char* pWordEnd = &Filter.aInputBuf[f.EndOffset];
 	
-	//char aWordBuffer[MAX_PATH];
-	//memcpy(pWordBuffer, pWordBegin, pWordEnd - 
-	
 	if (!pWordEnd)
 		pWordEnd = pWordBegin + strlen(pWordBegin);
 
 	const char FirstWordChar = (char)ImToUpper(*pWordBegin);
+	
+	const char* pLineStart = pLineBegin;
+		
 	while ((!pLineEnd && *pLineBegin) || (pLineEnd && pLineBegin < pLineEnd))
 	{
 		// If our line begin cursor match the first char, then try to see if it matches the entire word
@@ -1700,10 +1704,14 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 					break;
 			}
 			
+			// NOTE(matiasp): This is quite expensive to do for line
 			// If we reached the end of the word it means that the entire word is equal
 			if (pWordCursor == pWordEnd)
 			{
-				pFiltredLineMatch->vLineMatches.push_back(HighlightLineMatchEntry(FilterIdx, pLineBegin - Buf.begin(), (pLineCursor - 1) - Buf.begin()));
+				pFiltredLineMatch->vLineMatches.push_back(
+					HighlightLineMatchEntry((uint8_t)FilterIdx, 
+					                        (uint16_t)(pLineBegin - pLineStart), 
+					                        (uint16_t)((pLineCursor - 1) - pLineStart)));
 			}
 		}
 		

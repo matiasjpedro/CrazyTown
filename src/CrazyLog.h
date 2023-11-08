@@ -25,11 +25,12 @@ struct NamedFilter
 
 struct HighlightLineMatchEntry
 {
-	int FilterIdxMatching;
-	const int64_t WordBeginOffset;
-	const int64_t WordEndOffset;
+	const uint16_t WordBeginOffset;
+	const uint16_t WordEndOffset;
 	
-	HighlightLineMatchEntry(int in_FilterIdx, const int64_t in_WordBeginOffset, const int64_t in_WordEndOffset) :
+	uint8_t FilterIdxMatching;
+	
+	HighlightLineMatchEntry(uint8_t in_FilterIdx, const uint16_t in_WordBeginOffset, const uint16_t in_WordEndOffset) :
 							FilterIdxMatching(in_FilterIdx),
 							WordBeginOffset(in_WordBeginOffset),
 							WordEndOffset(in_WordEndOffset)
