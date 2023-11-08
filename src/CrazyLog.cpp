@@ -10,6 +10,7 @@
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
+#define MAX_THREADS 32
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -21,6 +22,7 @@ static char g_NullTerminator = '\0';
 
 void CrazyLog::Init()
 {
+	SelectedThreadCount = 1;
 	FontScale = 1.f;
 	SelectionSize = 1.f;
 	FileContentFetchCooldown = -1.f;
@@ -34,6 +36,7 @@ void CrazyLog::Init()
 	style.FrameRounding = 6.f;
 	style.GrabRounding = 6.f;
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
+	MaxThreadCount = std::thread::hardware_concurrency();
 }
 
 void CrazyLog::Clear()
@@ -305,6 +308,14 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 		if(pLastStaticFileLoaded)
 			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), pLastStaticFileLoaded->valuestring);
 		
+		cJSON * pIsMtEnabled = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "is_multithread_enabled");
+		if (pIsMtEnabled)
+			bIsMultithreadEnabled = cJSON_IsTrue(pIsMtEnabled);
+		
+		cJSON * pSelectedThreadCount = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "selected_thread_count");
+		if (pSelectedThreadCount)
+			SelectedThreadCount = (int)pSelectedThreadCount->valuedouble;
+		
 		cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "default_colors");
 		
 		// Load by default some colors if non are stored 
@@ -402,7 +413,8 @@ void CrazyLog::SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx) {
 	free(pJsonRoot);	
 	
 }
-void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue) {
+
+void CrazyLog::SaveTypeInSettings(PlatformContext* pPlatformCtx, const char* pKey, int Type, const void* pValue) {
 	FileContent OutFile = {0};
 	
 	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
@@ -410,7 +422,20 @@ void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* p
 	if (File.pFile)
 	{
 		pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
-		cJSON * pJsonValue = cJSON_CreateString(pValue);
+		cJSON * pJsonValue = nullptr;
+		if (Type == cJSON_String) 
+		{
+			pJsonValue = cJSON_CreateString((const char*)pValue);
+		}
+		else if (Type == cJSON_Number)
+		{
+			pJsonValue = cJSON_CreateNumber(*(const int *)pValue);
+		}
+		else if (Type == cJSON_True || Type == cJSON_False)
+		{
+			pJsonValue = cJSON_CreateBool(*(const bool *)pValue);
+		}
+		
 		if(cJSON_HasObjectItem(pJsonRoot, pKey))
 			cJSON_ReplaceItemInObjectCaseSensitive(pJsonRoot, pKey, pJsonValue);
 		else
@@ -421,7 +446,21 @@ void CrazyLog::SaveStringInSettings(PlatformContext* pPlatformCtx, const char* p
 	else
 	{
 		pJsonRoot = cJSON_CreateObject();
-		cJSON * pJsonValue = cJSON_CreateString(pValue);
+		
+		cJSON * pJsonValue = nullptr;
+		if (Type == cJSON_String) 
+		{
+			pJsonValue = cJSON_CreateString((const char*)pValue);
+		}
+		else if (Type == cJSON_Number)
+		{
+			pJsonValue = cJSON_CreateNumber(*(const int *)pValue);
+		}
+		else if (Type == cJSON_True || Type == cJSON_False)
+		{
+			pJsonValue = cJSON_CreateBool(*(const bool *)pValue);
+		}
+		
 		cJSON_AddItemToObjectCS(pJsonRoot, pKey, pJsonValue);
 	}
 	
@@ -859,6 +898,17 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			if (ImGui::BeginMenu("Options"))
 			{
 				ImGui::Checkbox("Auto-scroll", &bAutoScroll);
+				bool bIsUsingMTChanged = ImGui::Checkbox("Multithread (Experimental)", &bIsMultithreadEnabled);
+				if (bIsUsingMTChanged)
+					SaveTypeInSettings(pPlatformCtx, "is_multithread_enabled", cJSON_True, &bIsMultithreadEnabled);
+					
+				if (bIsMultithreadEnabled)
+				{
+					bool bThreadCountChanged = ImGui::SliderInt("ThreadCount", &SelectedThreadCount, 1, MaxThreadCount);
+					if (bThreadCountChanged)
+						SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedThreadCount);
+				}
+				
 				ImGui::EndMenu();
 			}
 			
@@ -928,23 +978,27 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::End();
 }
 
-static void Test1(int line_no, HighlightLineMatches* pHighlightLineMatches, void* ctx) 
+static void FilterMT(int LineNo, void* pCtx, ImVector<int>* pOut) 
 {
-	CrazyLog* LogCtx = (CrazyLog*)ctx;
-	const char* buf = LogCtx->Buf.begin();
-	const char* buf_end = LogCtx->Buf.end();
+	CrazyLog* pLogCtx = (CrazyLog*)pCtx;
 	
-	const char* line_start = buf + LogCtx->vLineOffsets[(int)line_no];
-	const char* line_end = (line_no + 1 < LogCtx->vLineOffsets.Size) ? (buf + LogCtx->vLineOffsets[(int)line_no + 1] - 1) : buf_end;
+	const char* pBuf = pLogCtx->Buf.begin();
+	const char* pBuf_end = pLogCtx->Buf.end();
 	
-	LogCtx->CacheHighlightLineMatches(line_start, line_end, pHighlightLineMatches);
+	const char* line_start = pBuf + pLogCtx->vLineOffsets[LineNo];
+	const char* line_end = (LineNo + 1 < pLogCtx->vLineOffsets.Size) 
+		? (pBuf + pLogCtx->vLineOffsets[LineNo + 1] - 1) : pBuf_end;
+	
+	if (pLogCtx->Filter.PassFilter(pLogCtx->FilterFlags, line_start, line_end)) 
+	{
+		pOut->push_back(LineNo);
+	}
+	
+	pLogCtx->CacheHighlightLineMatches(line_start, line_end, &pLogCtx->vHighlightLineMatches[LineNo]);
 }
 
 void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 {
-	const char* buf = Buf.begin();
-	const char* buf_end = Buf.end();
-	
 	if (FiltredLinesCount == 0)
 	{
 		vFiltredLinesCached.resize(0);
@@ -953,43 +1007,34 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	if (Filter.vFilters.size() > 0 && vHighlightLineMatches.size() > 0)
 	{
 		
-#if 1
-		ExecuteParallel<HighlightLineMatches>(std::thread::hardware_concurrency(),
-			&vHighlightLineMatches[FiltredLinesCount], 
-			vHighlightLineMatches.Size - FiltredLinesCount,
-			&Test1, 
-			this, 
-			true);
-	
-		// We could also multi thread this part
-		for (int line_no = FiltredLinesCount; line_no < vHighlightLineMatches.Size; line_no++)
+		if (bIsMultithreadEnabled)
 		{
-			if (vHighlightLineMatches[line_no].vLineMatches.Size == 0)
-				continue;
+			unsigned ThreadsNum = min(MAX_THREADS, std::thread::hardware_concurrency());
+			ExecuteParallel<int, MAX_THREADS>(ThreadsNum,
+				&vLineOffsets[FiltredLinesCount], 
+				vLineOffsets.Size - FiltredLinesCount,
+				&FilterMT, 
+				this, 
+				true,
+				&vFiltredLinesCached);
+		}
+		else
+		{
+			const char* buf = Buf.begin();
+			const char* buf_end = Buf.end();
 		
-			const char* line_start = buf + vLineOffsets[line_no];
-			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-		
-			//And then I can iterate the lines that have catched lines
-			if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
+			for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
 			{
-				vFiltredLinesCached.push_back(line_no);
+				const char* line_start = buf + vLineOffsets[line_no];
+				const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
+				if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
+				{
+					vFiltredLinesCached.push_back(line_no);
+				}
+		
+				CacheHighlightLineMatches(line_start, line_end, &vHighlightLineMatches[line_no]);
 			}
 		}
-	
-#else
-		for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
-		{
-			const char* line_start = buf + vLineOffsets[line_no];
-			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-			if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
-			{
-				vFiltredLinesCached.push_back(line_no);
-			}
-		
-			CacheHighlightLineMatches(line_start, line_end, &vHighlightLineMatches[line_no]);
-		}
-#endif
 		
 	}
 	
@@ -1228,7 +1273,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			SearchLatestFile(pPlatformCtx);
 			
 			if (aFolderQueryName[0] != 0)
-				SaveStringInSettings(pPlatformCtx, "last_folder_query", aFolderQueryName);
+				SaveTypeInSettings(pPlatformCtx, "last_folder_query", cJSON_String, aFolderQueryName);
 		}
 		else if (bFolderQuery)
 		{
@@ -1282,7 +1327,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			LoadFile(pPlatformCtx);
 			if (aFilePathToLoad[0] != 0)
-				SaveStringInSettings(pPlatformCtx, "last_static_file_loaded", aFilePathToLoad);
+				SaveTypeInSettings(pPlatformCtx, "last_static_file_loaded", cJSON_String, aFilePathToLoad);
 		}
 		
 		ImGui::SameLine();
@@ -1672,3 +1717,4 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 #undef FILE_FETCH_INTERVAL
 #undef FOLDER_FETCH_INTERVAL
 #undef CONSOLAS_FONT_SIZE
+#undef MAX_THREADS

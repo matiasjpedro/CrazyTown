@@ -45,9 +45,11 @@
 ================ InProgress
 
 // No freeze application.
+// Make both version when we don't have a don't filter we can be way more Faster
 
 ================ Done
 
+// Tied up the code and make experimental build for MT
 // Have a way to delete/modify/add default colors
 // Have the ability to resave it? when selecting save you could select new or an existent one
 // Added colors preset to the selection instead of the picker

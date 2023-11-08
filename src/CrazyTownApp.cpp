@@ -29,16 +29,14 @@ void AppUpdate(float DeltaTime, PlatformContext* pPlatformCtx)
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	
 #if 0
+	
 	bool bShowDemo = true;
 	ImGui::ShowDemoWindow(&bShowDemo);
-#endif 
 	
-#if 1
+#else
+	
 	bool Open = true;
 	
-	// For the demo: add a debug button _BEFORE_ the normal log window contents
-	// We take advantage of a rarely used feature: multiple calls to Begin()/End() are appending to the _same_ window.
-	// Most of the contents of the window will be added by the log.Draw() call.RECT ClientRect;	
 	ImGuiViewport* pViewPort = ImGui::GetMainViewport();
 		
 	ImGui::SetNextWindowPos(pViewPort->WorkPos, ImGuiCond_Always);

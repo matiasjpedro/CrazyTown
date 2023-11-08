@@ -69,6 +69,8 @@ struct CrazyLog
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
+	int SelectedThreadCount;
+	int MaxThreadCount;
 	TargetMode SelectedTargetMode;
 
 	float FontScale;
@@ -82,6 +84,7 @@ struct CrazyLog
 	FileData LastLoadedFileData;
 	uint64_t FilterFlags;
 	
+	bool bIsMultithreadEnabled;
 	bool bAlreadyCached;
 	bool bFileLoaded;
 	bool bFolderQuery;
@@ -115,7 +118,7 @@ struct CrazyLog
 	
 	void LoadSettings(PlatformContext* pPlatformCtx);
 	void SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx);
-	void SaveStringInSettings(PlatformContext* pPlatformCtx, const char* pKey, const char* pValue);
+	void SaveTypeInSettings(PlatformContext* pPlatformCtx, const char* pKey, int Type, const void* pValue);
 	
 	void AddLog(const char* pFileContent, int FileSize);
 	void SetLog(const char* pFileContent, int FileSize);
