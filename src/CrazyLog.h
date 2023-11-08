@@ -13,7 +13,7 @@ enum TargetMode
 static char* apTargetModeStr[TM_COUNT] =
 {
 	"StaticText",
-	"StreamLastModifiedFileFromFolder - EXPERIMENTAL",
+	"StreamLastModifiedFileFromFolder",
 	"StreamFromWebSocket - TODO"
 };
 

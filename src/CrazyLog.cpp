@@ -994,6 +994,7 @@ static void FilterMT(int LineNo, void* pCtx, ImVector<int>* pOut)
 		pOut->push_back(LineNo);
 	}
 	
+	// Need to optimize this shit
 	pLogCtx->CacheHighlightLineMatches(line_start, line_end, &pLogCtx->vHighlightLineMatches[LineNo]);
 }
 
@@ -1319,7 +1320,6 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bStreamMode = false;
 			bFolderQuery = false;
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
-			memset(aFolderQueryName, 0, sizeof(aFolderQueryName));
 		}
 		
 		ImGui::SetNextItemWidth(-110);
@@ -1677,6 +1677,9 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 	
 	const char* pWordBegin = &Filter.aInputBuf[f.BeginOffset];
 	const char* pWordEnd = &Filter.aInputBuf[f.EndOffset];
+	
+	//char aWordBuffer[MAX_PATH];
+	//memcpy(pWordBuffer, pWordBegin, pWordEnd - 
 	
 	if (!pWordEnd)
 		pWordEnd = pWordBegin + strlen(pWordBegin);
