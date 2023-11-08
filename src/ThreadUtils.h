@@ -11,17 +11,18 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 	const int itemPerThread = size / (numThreads + waitUntilFinish);
 	const T* end = data + size;
 	
-	ImVector<T> vThreadsCache[MAX_THREADS + 1];
+	ImVector<T> vThreadsBuffer[MAX_THREADS + 1];
+	memset(&vThreadsBuffer, 0, sizeof(vThreadsBuffer));
 	
 	// TODO(matiasp): Just use scratch allocator that should be enough.
-	for (int i = 0; i < MAX_THREADS + 1; ++i)
-	{
-		int Remaining = size - (itemPerThread * (i + 1));
-		if (Remaining < 0)
-			break;
-		
-		vThreadsCache[i].reserve(itemPerThread);;
-	}
+	//for (int i = 0; i < MAX_THREADS + 1; ++i)
+	//{
+	//	int Remaining = size - (itemPerThread * (i + 1));
+	//	if (Remaining < 0)
+	//		break;
+	//	
+	//	vThreadsBuffer[i].reserve(itemPerThread);;
+	//}
 	
 	std::thread threads[MAX_THREADS];
 
@@ -38,7 +39,7 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 
 	for (int i = 0; i < numThreads; ++i)
 	{
-		new(threads + i)std::thread(threadJob, data, &vThreadsCache[i]);
+		new(threads + i)std::thread(threadJob, data, &vThreadsBuffer[i]);
 		data += itemPerThread;
 	}
 	
@@ -48,7 +49,7 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 		{
 			// work in this thread too
 			int idx = size - (int)(end - data);
-			f(idx, ctx, &vThreadsCache[MAX_THREADS]);
+			f(idx, ctx, &vThreadsBuffer[MAX_THREADS]);
 			data++;
 		}
 		
@@ -61,7 +62,7 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 		unsigned TotalSize = 0;
 		for (int i = 0; i < MAX_THREADS + 1; ++i)
 		{
-			TotalSize += vThreadsCache[i].Size;
+			TotalSize += vThreadsBuffer[i].Size;
 		}
 		
 		pOutResult->resize(TotalSize);
@@ -70,14 +71,14 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 		
 		for (int i = 0; i < MAX_THREADS + 1; ++i)
 		{
-			if (vThreadsCache[i].Size == 0)
+			if (vThreadsBuffer[i].Size == 0)
 				continue;
 			
 			memcpy(&(*pOutResult)[CopiedSize], 
-			       vThreadsCache[i].Data, 
-			       sizeof(int) * vThreadsCache[i].Size);
+			       vThreadsBuffer[i].Data, 
+			       sizeof(int) * vThreadsBuffer[i].Size);
 			
-			CopiedSize += vThreadsCache[i].Size;
+			CopiedSize += vThreadsBuffer[i].Size;
 			
 			if (CopiedSize >= TotalSize)
 				break;
