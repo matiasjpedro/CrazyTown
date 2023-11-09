@@ -16,7 +16,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.03f;
+static float g_Version = 1.04f;
 
 static char g_NullTerminator = '\0';
 
@@ -593,7 +593,7 @@ void CrazyLog::AddLog(const char* pFileContent, int FileSize)
 		{
 			vLineOffsets.push_back(OldSize + 1);
 			vHighlightLineMatches.push_back(HighlightLineMatches());
-			vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
+			//vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 		}
 	}
 	
@@ -610,7 +610,7 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	Buf.append(pFileContent, pFileContent + FileSize);
 	vLineOffsets.push_back(0);
 	vHighlightLineMatches.push_back(HighlightLineMatches());
-	vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
+	//vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 	
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -988,9 +988,11 @@ static void FilterMT(int LineNo, void* pCtx, ImVector<int>* pOut)
 	const char* pBuf = pLogCtx->Buf.begin();
 	const char* pBuf_end = pLogCtx->Buf.end();
 	
+	LineNo += pLogCtx->FiltredLinesCount;
 	const char* line_start = pBuf + pLogCtx->vLineOffsets[LineNo];
 	const char* line_end = (LineNo + 1 < pLogCtx->vLineOffsets.Size) 
 		? (pBuf + pLogCtx->vLineOffsets[LineNo + 1] - 1) : pBuf_end;
+	
 	
 	if (pLogCtx->Filter.PassFilter(pLogCtx->FilterFlags, line_start, line_end)) 
 	{
@@ -1013,8 +1015,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		
 		if (bIsMultithreadEnabled)
 		{
-			unsigned ThreadsNum = min(MAX_THREADS, std::thread::hardware_concurrency());
-			ExecuteParallel<int, MAX_THREADS>(ThreadsNum,
+			ExecuteParallel<int, MAX_THREADS>(SelectedThreadCount,
 				&vLineOffsets[FiltredLinesCount], 
 				vLineOffsets.Size - FiltredLinesCount,
 				&FilterMT, 

@@ -65,7 +65,8 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 			TotalSize += vThreadsBuffer[i].Size;
 		}
 		
-		pOutResult->resize(TotalSize);
+		unsigned OriginalSize = pOutResult->Size;
+		pOutResult->resize(OriginalSize + TotalSize);
 		
 		unsigned CopiedSize = 0;
 		
@@ -74,7 +75,7 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 			if (vThreadsBuffer[i].Size == 0)
 				continue;
 			
-			memcpy(&(*pOutResult)[CopiedSize], 
+			memcpy(&(*pOutResult)[OriginalSize + CopiedSize], 
 			       vThreadsBuffer[i].Data, 
 			       sizeof(int) * vThreadsBuffer[i].Size);
 			
