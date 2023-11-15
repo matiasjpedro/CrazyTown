@@ -22,7 +22,7 @@ static char g_NullTerminator = '\0';
 
 void CrazyLog::Init()
 {
-	SelectedThreadCount = 1;
+	SelectedThreadCount = 0;
 	FontScale = 1.f;
 	SelectionSize = 1.f;
 	FileContentFetchCooldown = -1.f;
@@ -48,8 +48,6 @@ void CrazyLog::Clear()
 	Buf.clear();
 	vLineOffsets.clear();
 	vLineOffsets.push_back(0);
-	vHighlightLineMatches.clear_destruct();
-	vHighlightLineMatches.push_back(HighlightLineMatches());
 
 	ClearCache();
 	
@@ -592,8 +590,6 @@ void CrazyLog::AddLog(const char* pFileContent, int FileSize)
 		if (Buf[OldSize] == '\n')
 		{
 			vLineOffsets.push_back(OldSize + 1);
-			vHighlightLineMatches.push_back(HighlightLineMatches());
-			//vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 		}
 	}
 	
@@ -605,12 +601,9 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 {
 	Buf.Buf.clear();
 	vLineOffsets.clear();
-	vHighlightLineMatches.clear_destruct();
 	
 	Buf.append(pFileContent, pFileContent + FileSize);
 	vLineOffsets.push_back(0);
-	vHighlightLineMatches.push_back(HighlightLineMatches());
-	//vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 	
 	int old_size = 0;
 	for (int new_size = Buf.size(); old_size < new_size; old_size++)
@@ -618,8 +611,6 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 		if (Buf[old_size] == '\n')
 		{
 			vLineOffsets.push_back(old_size + 1);
-			vHighlightLineMatches.push_back(HighlightLineMatches());
-			vHighlightLineMatches[vHighlightLineMatches.Size - 1].vLineMatches.reserve_discard(5);
 		}
 	}
 	
@@ -907,7 +898,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 					
 				if (bIsMultithreadEnabled)
 				{
-					bool bThreadCountChanged = ImGui::SliderInt("ThreadCount", &SelectedThreadCount, 1, MaxThreadCount);
+					bool bThreadCountChanged = ImGui::SliderInt("ExtraThreadCount", &SelectedThreadCount, 0, MaxThreadCount);
 					if (bThreadCountChanged)
 						SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedThreadCount);
 				}
@@ -998,9 +989,6 @@ static void FilterMT(int LineNo, void* pCtx, ImVector<int>* pOut)
 	{
 		pOut->push_back(LineNo);
 	}
-	
-	// Need to optimize this shit
-	pLogCtx->CacheHighlightLineMatches(line_start, line_end, &pLogCtx->vHighlightLineMatches[LineNo]);
 }
 
 void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
@@ -1010,9 +998,8 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		vFiltredLinesCached.resize(0);
 	}
 	
-	if (Filter.vFilters.size() > 0 && vHighlightLineMatches.size() > 0)
+	if (Filter.vFilters.size() > 0)
 	{
-		
 		if (bIsMultithreadEnabled)
 		{
 			ExecuteParallel<int, MAX_THREADS>(SelectedThreadCount,
@@ -1037,7 +1024,6 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 					vFiltredLinesCached.push_back(line_no);
 				}
 		
-				CacheHighlightLineMatches(line_start, line_end, &vHighlightLineMatches[line_no]);
 			}
 		}
 		
@@ -1062,6 +1048,9 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	const char* buf_end = Buf.end();
 	ImGuiListClipper clipper;
 	clipper.Begin(vFiltredLinesCached.Size);
+	
+	TempLineMatches.vLineMatches.reserve(20);
+		
 	while (clipper.Step())
 	{
 		for (int ClipperIdx = clipper.DisplayStart; ClipperIdx < clipper.DisplayEnd; ClipperIdx++)
@@ -1076,12 +1065,14 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	
 			const char* pLineCursor = pLineStart;
 			
-			for (int j = 0; j < vHighlightLineMatches[line_no].vLineMatches.Size; j++)
+			CacheHighlightLineMatches(pLineStart, pLineEnd, &TempLineMatches);
+			
+			for (int j = 0; j < TempLineMatches.vLineMatches.Size; j++)
 			{
-				ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[j].FilterIdxMatching];
+				ImVec4 FilterColor = Filter.vColors[TempLineMatches.vLineMatches[j].FilterIdxMatching];
 				
-				const char* pHighlightWordBegin = pLineStart + vHighlightLineMatches[line_no].vLineMatches[j].WordBeginOffset;
-				const char* pHighlightWordEnd = pLineStart + vHighlightLineMatches[line_no].vLineMatches[j].WordEndOffset + 1;
+				const char* pHighlightWordBegin = pLineStart + TempLineMatches.vLineMatches[j].WordBeginOffset;
+				const char* pHighlightWordEnd = pLineStart + TempLineMatches.vLineMatches[j].WordEndOffset + 1;
 				if (pLineCursor <= pHighlightWordBegin)
 				{
 					ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -1115,6 +1106,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 					FiltredScrollValue = ImGui::GetScrollY();
 		
 					bIsPeeking = true;
+					
 					SetLastCommand("ENTER PEEK VIEW");
 				}
 			}
@@ -1160,6 +1152,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		}
 	}
 	
+	TempLineMatches.vLineMatches.clear();
+	
 	clipper.End();
 }
 
@@ -1173,6 +1167,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 	
 	ImGuiListClipper clipper;
 	clipper.Begin(vLineOffsets.Size);
+	
+	TempLineMatches.vLineMatches.reserve(20);
 	while (clipper.Step())
 	{
 		for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
@@ -1182,17 +1178,19 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			
 			bool bIsItemHovered = false;
 			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed;
+			
+			CacheHighlightLineMatches(line_start, line_end, &TempLineMatches);
 					
-			if (bIsPeeking && vHighlightLineMatches[line_no].vLineMatches.Size > 0)
+			if (bIsPeeking && TempLineMatches.vLineMatches.Size > 0)
 			{
 				const char* pLineCursor = line_start;
 				
-				for (int i = 0; i < vHighlightLineMatches[line_no].vLineMatches.Size; i++)
+				for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
 				{
-					ImVec4 FilterColor = Filter.vColors[vHighlightLineMatches[line_no].vLineMatches[i].FilterIdxMatching];
+					ImVec4 FilterColor = Filter.vColors[TempLineMatches.vLineMatches[i].FilterIdxMatching];
 					
-					const char* pHighlightWordBegin = line_start + vHighlightLineMatches[line_no].vLineMatches[i].WordBeginOffset;
-					const char* pHighlightWordEnd = line_start + vHighlightLineMatches[line_no].vLineMatches[i].WordEndOffset + 1;
+					const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
+					const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
 					if (pLineCursor <= pHighlightWordBegin)
 					{
 						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
@@ -1250,6 +1248,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 					
 		}
 	}
+	
+	TempLineMatches.vLineMatches.clear();
 	
 	clipper.End();
 }
@@ -1484,7 +1484,7 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				}
 			
 				ImGui::Dummy(ImVec2(0,0));
-				ImGui::SameLine(0, 57);
+				ImGui::SameLine(0, 43);
 				if (ImGui::Button("+##AddDefaultColor",ImVec2(20,0)))
 				{
 					vDefaultColors.push_back(SelectedColor);

@@ -56,10 +56,9 @@ struct CrazyLog
 	ImVector<int> vLineOffsets; 
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
-	
-	// TODO(matiasp): maybe I should combine this with the line offset and have all the line information in once place
-	ImVector<HighlightLineMatches> vHighlightLineMatches;
 	ImVector<ImVec4> vDefaultColors;
+	
+	HighlightLineMatches TempLineMatches;
 	
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderQueryName[MAX_PATH];

@@ -15,14 +15,16 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 	memset(&vThreadsBuffer, 0, sizeof(vThreadsBuffer));
 	
 	// TODO(matiasp): Just use scratch allocator that should be enough.
-	//for (int i = 0; i < MAX_THREADS + 1; ++i)
-	//{
-	//	int Remaining = size - (itemPerThread * (i + 1));
-	//	if (Remaining < 0)
-	//		break;
-	//	
-	//	vThreadsBuffer[i].reserve(itemPerThread);;
-	//}
+#if 0
+	for (int i = 0; i < MAX_THREADS + 1; ++i)
+	{
+		int Remaining = size - (itemPerThread * (i + 1));
+		if (Remaining < 0)
+			break;
+		
+		vThreadsBuffer[i].reserve(itemPerThread);;
+	}
+#endif
 	
 	std::thread threads[MAX_THREADS];
 
