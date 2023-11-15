@@ -1003,10 +1003,8 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		if (bIsMultithreadEnabled)
 		{
 			// TODO(matiasp): This should be in the win32 code
-			{
-				LARGE_INTEGER CounterBeforeUpdate;
-				QueryPerformanceCounter(&CounterBeforeUpdate);
-			}
+			LARGE_INTEGER CounterBeforeUpdate;
+			QueryPerformanceCounter(&CounterBeforeUpdate);
 			
 			ExecuteParallel<int, MAX_THREADS>(SelectedThreadCount,
 				&vLineOffsets[FiltredLinesCount], 
