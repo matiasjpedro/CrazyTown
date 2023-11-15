@@ -16,7 +16,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.04f;
+static float g_Version = 1.05f;
 
 static char g_NullTerminator = '\0';
 
@@ -1002,6 +1002,12 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	{
 		if (bIsMultithreadEnabled)
 		{
+			// TODO(matiasp): This should be in the win32 code
+			{
+				LARGE_INTEGER CounterBeforeUpdate;
+				QueryPerformanceCounter(&CounterBeforeUpdate);
+			}
+			
 			ExecuteParallel<int, MAX_THREADS>(SelectedThreadCount,
 				&vLineOffsets[FiltredLinesCount], 
 				vLineOffsets.Size - FiltredLinesCount,
@@ -1009,6 +1015,22 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 				this, 
 				true,
 				&vFiltredLinesCached);
+			
+			// TODO(matiasp): This should be in the win32 code
+			{
+				LARGE_INTEGER LastUpdateCounter;
+				QueryPerformanceCounter(&LastUpdateCounter);
+			
+				LARGE_INTEGER PerfCountFrequencyResult;
+				QueryPerformanceFrequency(&PerfCountFrequencyResult);
+				
+				float dt = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
+			
+				char aDeltaTimeBuffer[64];
+				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", dt);
+				SetLastCommand(aDeltaTimeBuffer);
+			}
+			
 		}
 		else
 		{

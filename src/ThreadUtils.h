@@ -14,18 +14,6 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 	ImVector<T> vThreadsBuffer[MAX_THREADS + 1];
 	memset(&vThreadsBuffer, 0, sizeof(vThreadsBuffer));
 	
-	// TODO(matiasp): Just use scratch allocator that should be enough.
-#if 0
-	for (int i = 0; i < MAX_THREADS + 1; ++i)
-	{
-		int Remaining = size - (itemPerThread * (i + 1));
-		if (Remaining < 0)
-			break;
-		
-		vThreadsBuffer[i].reserve(itemPerThread);;
-	}
-#endif
-	
 	std::thread threads[MAX_THREADS];
 
 	auto threadJob = [f, itemPerThread, end, ctx, size](T* data, ImVector<T>* pOut) -> void
@@ -35,9 +23,7 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 			int idx = size - (int)(end - &data[i]);
 			f(idx, ctx, pOut);
 		}
-			
 	};
-
 
 	for (int i = 0; i < numThreads; ++i)
 	{
@@ -86,7 +72,5 @@ static void ExecuteParallel(const int numThreads, T* data, const int size,
 			if (CopiedSize >= TotalSize)
 				break;
 		}
-		
-		// Do something with the thread cache?
 	}
 }
