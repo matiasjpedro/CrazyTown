@@ -17,7 +17,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.05f;
+static float g_Version = 1.06f;
 
 static char g_NullTerminator = '\0';
 
