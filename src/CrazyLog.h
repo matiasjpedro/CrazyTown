@@ -69,8 +69,8 @@ struct CrazyLog
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
-	int SelectedThreadCount;
-	int MaxThreadCount;
+	int SelectedExtraThreadCount;
+	int MaxExtraThreadCount;
 	TargetMode SelectedTargetMode;
 
 	float FontScale;

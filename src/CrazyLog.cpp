@@ -1,7 +1,8 @@
+#include <thread>
+
 #include "CrazyLog.h"
 #include "StringUtils.h"
 #include "CrazyTextFilter.h"
-#include "ThreadUtils.h"
 
 #include "ConsolaTTF.cpp"
 
@@ -10,7 +11,7 @@
 #define FILE_FETCH_INTERVAL 1.f
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
-#define MAX_THREADS 32
+#define MAX_EXTRA_THREADS 31
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -22,7 +23,7 @@ static char g_NullTerminator = '\0';
 
 void CrazyLog::Init()
 {
-	SelectedThreadCount = 0;
+	SelectedExtraThreadCount = 0;
 	FontScale = 1.f;
 	SelectionSize = 1.f;
 	FileContentFetchCooldown = -1.f;
@@ -36,7 +37,7 @@ void CrazyLog::Init()
 	style.FrameRounding = 6.f;
 	style.GrabRounding = 6.f;
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
-	MaxThreadCount = std::thread::hardware_concurrency();
+	MaxExtraThreadCount = std::thread::hardware_concurrency() - 1;
 }
 
 void CrazyLog::Clear()
@@ -312,7 +313,7 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 		
 		cJSON * pSelectedThreadCount = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "selected_thread_count");
 		if (pSelectedThreadCount)
-			SelectedThreadCount = (int)pSelectedThreadCount->valuedouble;
+			SelectedExtraThreadCount = min(MaxExtraThreadCount, (int)pSelectedThreadCount->valuedouble);
 		
 		cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "default_colors");
 		
@@ -898,9 +899,9 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 					
 				if (bIsMultithreadEnabled)
 				{
-					bool bThreadCountChanged = ImGui::SliderInt("ExtraThreadCount", &SelectedThreadCount, 0, MaxThreadCount);
+					bool bThreadCountChanged = ImGui::SliderInt("ExtraThreadCount", &SelectedExtraThreadCount, 0, MaxExtraThreadCount);
 					if (bThreadCountChanged)
-						SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedThreadCount);
+						SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedExtraThreadCount);
 				}
 				
 				ImGui::EndMenu();
@@ -972,20 +973,23 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::End();
 }
 
-static void FilterMT(int LineNo, void* pCtx, ImVector<int>* pOut) 
+template<typename T, size_t PADDING>
+struct PaddedVector 
 {
-	CrazyLog* pLogCtx = (CrazyLog*)pCtx;
+	ImVector<T> vPaddedVector;
+	char aPadding[PADDING > 0 ? PADDING : 1];
+};
+
+static void FilterMT(int LineNo, CrazyLog* pLog, ImVector<int>* pOut) 
+{
+	const char* pBuf = pLog->Buf.begin();
+	const char* pBufEnd = pLog->Buf.end();
 	
-	const char* pBuf = pLogCtx->Buf.begin();
-	const char* pBuf_end = pLogCtx->Buf.end();
+	const char* pLineStart = pBuf + pLog->vLineOffsets[LineNo];
+	const char* pLineEnd = (LineNo + 1 < pLog->vLineOffsets.Size) 
+		? (pBuf + pLog->vLineOffsets[LineNo + 1] - 1) : pBufEnd;
 	
-	LineNo += pLogCtx->FiltredLinesCount;
-	const char* line_start = pBuf + pLogCtx->vLineOffsets[LineNo];
-	const char* line_end = (LineNo + 1 < pLogCtx->vLineOffsets.Size) 
-		? (pBuf + pLogCtx->vLineOffsets[LineNo + 1] - 1) : pBuf_end;
-	
-	
-	if (pLogCtx->Filter.PassFilter(pLogCtx->FilterFlags, line_start, line_end)) 
+	if (pLog->Filter.PassFilter(pLog->FilterFlags, pLineStart, pLineEnd)) 
 	{
 		pOut->push_back(LineNo);
 	}
@@ -1006,13 +1010,81 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 			LARGE_INTEGER CounterBeforeUpdate;
 			QueryPerformanceCounter(&CounterBeforeUpdate);
 			
-			ExecuteParallel<int, MAX_THREADS>(SelectedThreadCount,
-				&vLineOffsets[FiltredLinesCount], 
-				vLineOffsets.Size - FiltredLinesCount,
-				&FilterMT, 
-				this, 
-				true,
-				&vFiltredLinesCached);
+			// Parallel Execution
+			{
+				const int PendingSizeToFilter = vLineOffsets.Size - FiltredLinesCount;
+				const int ItemsPerThread = PendingSizeToFilter / (SelectedExtraThreadCount + 1);
+				const int* pDataCursor = &vLineOffsets[FiltredLinesCount];
+				const int* pEnd = pDataCursor + PendingSizeToFilter;
+	
+				// Adding Padding to avoid false sharing when increasing the Size/Capacity value of the vectors 
+				PaddedVector<int,128> vThreadsBuffer[MAX_EXTRA_THREADS + 1];
+				memset(&vThreadsBuffer, 0, sizeof(vThreadsBuffer));
+	
+				std::thread aThreads[MAX_EXTRA_THREADS];
+				CrazyLog* pLog = this;
+				auto ThreadJob = [ItemsPerThread, pEnd, pLog, PendingSizeToFilter](const int* pDataCursor, ImVector<int>* pOut) -> void
+				{
+					for (int i = 0; i < ItemsPerThread; ++i) 
+					{
+						int LineNo = (PendingSizeToFilter - (int)(pEnd - &pDataCursor[i])) + pLog->FiltredLinesCount;
+						FilterMT(LineNo, pLog, pOut);
+					}
+				};
+
+				for (int i = 0; i < SelectedExtraThreadCount; ++i)
+				{
+					new(aThreads + i)std::thread(ThreadJob, pDataCursor, &vThreadsBuffer[i].vPaddedVector);
+					pDataCursor += ItemsPerThread;
+				}
+	
+				while (pDataCursor < pEnd)
+				{
+					// work in this thread too
+					int LineNo = (PendingSizeToFilter - (int)(pEnd - pDataCursor)) + pLog->FiltredLinesCount;
+					FilterMT(LineNo, pLog, &vThreadsBuffer[SelectedExtraThreadCount].vPaddedVector);
+					pDataCursor++;
+				}
+	
+				// wait until all threads finished
+				for (int i = 0; i < SelectedExtraThreadCount; ++i)
+				{
+					aThreads[i].join();
+				}
+	
+				// calculate how much I need to dump in the result buffer
+				// resize the vector with the final size
+#if 1
+				unsigned TotalSize = 0;
+				for (int i = 0; i < SelectedExtraThreadCount + 1; ++i)
+				{
+					TotalSize += vThreadsBuffer[i].vPaddedVector.Size;
+				}
+	
+				unsigned OriginalSize = vFiltredLinesCached.Size;
+				vFiltredLinesCached.resize(OriginalSize + TotalSize);
+	
+				// dump the new content into the filter result
+				unsigned CopiedSize = 0;
+				for (int i = 0; i < SelectedExtraThreadCount + 1; ++i)
+				{
+					if (vThreadsBuffer[i].vPaddedVector.Size == 0)
+						continue;
+		
+					memcpy(&vFiltredLinesCached[OriginalSize + CopiedSize], 
+						vThreadsBuffer[i].vPaddedVector.Data, 
+						sizeof(int) * vThreadsBuffer[i].vPaddedVector.Size);
+		
+					CopiedSize += vThreadsBuffer[i].vPaddedVector.Size;
+		
+					if (CopiedSize >= TotalSize)
+						break;
+				}
+#endif
+				
+			}
+			
+			
 			
 			// TODO(matiasp): This should be in the win32 code
 			{
@@ -1032,18 +1104,38 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		}
 		else
 		{
-			const char* buf = Buf.begin();
-			const char* buf_end = Buf.end();
+			
+			// TODO(matiasp): This should be in the win32 code
+			LARGE_INTEGER CounterBeforeUpdate;
+			QueryPerformanceCounter(&CounterBeforeUpdate);
+			
+			const char* pBuf = Buf.begin();
+			const char* pBufEnd = Buf.end();
 		
-			for (int line_no = FiltredLinesCount; line_no < vLineOffsets.Size; line_no++)
+			for (int LineNo = FiltredLinesCount; LineNo < vLineOffsets.Size; LineNo++)
 			{
-				const char* line_start = buf + vLineOffsets[line_no];
-				const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
-				if (Filter.PassFilter(FilterFlags, line_start, line_end)) 
+				const char* pLineStart = pBuf + vLineOffsets[LineNo];
+				const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
+				if (Filter.PassFilter(FilterFlags, pLineStart, pLineEnd)) 
 				{
-					vFiltredLinesCached.push_back(line_no);
+					vFiltredLinesCached.push_back(LineNo);
 				}
 		
+			}
+			
+			// TODO(matiasp): This should be in the win32 code
+			{
+				LARGE_INTEGER LastUpdateCounter;
+				QueryPerformanceCounter(&LastUpdateCounter);
+			
+				LARGE_INTEGER PerfCountFrequencyResult;
+				QueryPerformanceFrequency(&PerfCountFrequencyResult);
+				
+				float dt = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
+			
+				char aDeltaTimeBuffer[64];
+				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", dt);
+				SetLastCommand(aDeltaTimeBuffer);
 			}
 		}
 		
@@ -1749,4 +1841,4 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 #undef FILE_FETCH_INTERVAL
 #undef FOLDER_FETCH_INTERVAL
 #undef CONSOLAS_FONT_SIZE
-#undef MAX_THREADS
+#undef MAX_EXTRA_THREADS
