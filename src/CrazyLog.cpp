@@ -37,7 +37,11 @@ void CrazyLog::Init()
 	style.FrameRounding = 6.f;
 	style.GrabRounding = 6.f;
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
-	MaxExtraThreadCount = std::thread::hardware_concurrency() - 1;
+	MaxExtraThreadCount = max(0, std::thread::hardware_concurrency() - 1);
+	
+	// Lets enable it by default
+	bIsMultithreadEnabled = true;
+	SelectedExtraThreadCount = min(3, MaxExtraThreadCount / 2);
 }
 
 void CrazyLog::Clear()
@@ -1002,7 +1006,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		vFiltredLinesCached.resize(0);
 	}
 	
-	if (Filter.vFilters.size() > 0)
+	if (Filter.vFilters.size() > 0 && vLineOffsets.Size > 0)
 	{
 		if (bIsMultithreadEnabled)
 		{
