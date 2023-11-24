@@ -1,5 +1,90 @@
 #include "CrazyTextFilter.h"
 
+uint32_t __inline ctz( uint32_t value )
+{
+	DWORD trailing_zero = 0;
+
+	if ( _BitScanForward( &trailing_zero, value ) )
+	{
+		return trailing_zero;
+	}
+	else
+	{
+		// This is undefined, I better choose 32 than 0
+		return 32;
+	}
+}
+
+namespace bits {
+
+	template <typename T>
+	T clear_leftmost_set(const T value) {
+		return value & (value - 1);
+	}
+
+
+	template <typename T>
+	unsigned get_first_bit_set(const T value) {
+		return ctz(value);
+	}
+
+
+} // namespace bits
+
+bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, 
+                            const char* pNeedle, const char* pNeedleUpper, const char* pNeedleLower, size_t NeedleSize)
+{
+	
+	const __m256i first_upper = _mm256_set1_epi8(pNeedleUpper[0]);
+	const __m256i last_upper  = _mm256_set1_epi8(pNeedleUpper[NeedleSize - 1]);
+	
+	const __m256i first_lower = _mm256_set1_epi8(pNeedleLower[0]);
+	const __m256i last_lower  = _mm256_set1_epi8(pNeedleLower[NeedleSize - 1]);
+
+	for (size_t i = 0; i < HaystackSize; i += 32) {
+
+		const __m256i block_first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
+		const __m256i block_last  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
+		
+		const __m256i eq_first= _mm256_or_si256(_mm256_cmpeq_epi8(first_upper, block_first), _mm256_cmpeq_epi8(first_lower, block_first));
+		const __m256i eq_last  = _mm256_or_si256(_mm256_cmpeq_epi8(last_upper, block_last), _mm256_cmpeq_epi8(last_lower, block_last));
+		
+		uint32_t mask = _mm256_movemask_epi8(_mm256_and_si256(eq_first, eq_last));
+
+		while (mask != 0) {
+
+			const auto bitpos = bits::get_first_bit_set(mask);
+			
+			const char* substr = pHaystack + i + bitpos + 1;
+			
+			// This is to avoid bleeding outside of the haystack size
+			if (&substr[NeedleSize - 2] > pHaystack + HaystackSize)
+				return false;
+			
+			//if (memicmp(substr, pNeedle + 1, NeedleSize - 2) == 0) {
+			//	return true;
+			//}
+			
+			const char* pNeedleCursor = &pNeedleUpper[1];
+			bool bMatchEntireWord = true;
+			for (int z = 0; z < NeedleSize - 2; ++z) {
+					
+				if (pNeedleCursor[z] != ImToUpper(substr[z])) {
+					bMatchEntireWord = false;
+					break;
+				}
+			}
+			
+			if (bMatchEntireWord)
+				return true;
+			
+			mask = bits::clear_leftmost_set(mask);
+		}
+	}
+	
+	return false;
+}
+
 bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, 
                				const char* pNeedle, const char* pNeedleUpper, const char* pNeedleLower, size_t NeedleSize)
 {
@@ -143,7 +228,7 @@ void CrazyTextFilter::Build()
 	}
 }
 
-#define USE_SWAR 0
+#define USE_SWAR 1
 
 bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd) const
 {
@@ -189,7 +274,7 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				size_t HaystackSize = pTextEnd - pText;
 				size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
 		
-				bool bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, pNeedleUpper, pNeedleLower, NeedleSize);
+				bool bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, pNeedleUpper, pNeedleLower, NeedleSize);
 				bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;
 #else
 				const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
@@ -261,7 +346,7 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			size_t HaystackSize = pTextEnd - pText;
 			size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
 		
-			bool bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, pNeedleUpper, pNeedleLower, NeedleSize);
+			bool bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, pNeedleUpper, pNeedleLower, NeedleSize);
 			bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;
 #else
 			const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
