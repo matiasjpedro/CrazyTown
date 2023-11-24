@@ -1101,7 +1101,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 				float dt = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
 			
 				char aDeltaTimeBuffer[64];
-				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", dt);
+				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f Results %i", dt, vFiltredLinesCached.Size);
 				SetLastCommand(aDeltaTimeBuffer);
 			}
 			

@@ -74,6 +74,10 @@ struct CrazyTextFilter
 	};
 	
 	
+	// Used for faster bit comparision
+	char aInputBufLowerCase[256];
+	char aInputBufUpperCase[256];
+	
 	char aInputBuf[256];
 	ImVector<CrazyTextRange> vFilters;
 	ImVector<ImVec4> vColors;
