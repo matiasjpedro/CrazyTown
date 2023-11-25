@@ -15,7 +15,7 @@
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
-#define clamp (v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
+#define clamp(v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
 static float g_Version = 1.06f;
 
@@ -41,7 +41,7 @@ void CrazyLog::Init()
 	
 	// Lets enable it by default
 	bIsMultithreadEnabled = true;
-	SelectedExtraThreadCount = min(3, MaxExtraThreadCount / 2);
+	SelectedExtraThreadCount = clamp(3, MaxExtraThreadCount, 0);
 }
 
 void CrazyLog::Clear()
