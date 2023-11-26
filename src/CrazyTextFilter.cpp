@@ -249,8 +249,10 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			
 				bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
 				
-				const char* pNeedle = bCheckNot ? &aInputBuf[vFilters[i].BeginOffset] + 1 : &aInputBuf[vFilters[i].BeginOffset];
-				size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
+				uint16_t BeginOffset = bCheckNot ? vFilters[i].BeginOffset + 1 : vFilters[i].BeginOffset;
+				
+				const char* pNeedle = &aInputBuf[BeginOffset];
+				size_t NeedleSize = vFilters[i].EndOffset - BeginOffset;
 				
 				bool bContainsNeedle = false;
 				
@@ -276,16 +278,16 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				{
 					if (!!(vFilters[i].OperatorFlags & 1 << FO_OR))
 					{
-						bScopeResult |= bCheckNot ? !bMatch : bMatch;
+						bScopeResult |= bMatch;
 					}
 					else if (!!(vFilters[i].OperatorFlags & 1 << FO_AND))
 					{
-						bScopeResult &= bCheckNot ? !bMatch : bMatch;
+						bScopeResult &= bMatch;
 					}
 				}
 				else
 				{
-					bScopeResult = bCheckNot ? !bMatch : bMatch;
+					bScopeResult = bMatch;
 					bFirstScopeValueAlreadySet = true;
 				}
 				
@@ -322,13 +324,13 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				continue;
 			}
 			
-			
-			
 			bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
 			
-			const char* pNeedle = bCheckNot ? &aInputBuf[vFilters[i].BeginOffset] + 1 : &aInputBuf[vFilters[i].BeginOffset];
-			size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
+			uint16_t BeginOffset = bCheckNot ? vFilters[i].BeginOffset + 1 : vFilters[i].BeginOffset;
 				
+			const char* pNeedle = &aInputBuf[BeginOffset];
+			size_t NeedleSize = vFilters[i].EndOffset - BeginOffset;
+			
 			bool bContainsNeedle = false;
 				
 			if (NeedleSize < 4) 
@@ -353,16 +355,16 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			{
 				if (!!(vFilters[i].OperatorFlags & 1 << FO_OR))
 				{
-					Result |= bCheckNot ? !bMatch : bMatch;
+					Result |= bMatch;
 				}
 				else if (!!(vFilters[i].OperatorFlags & 1 << FO_AND))
 				{
-					Result &= bCheckNot ? !bMatch : bMatch;
+					Result &= bMatch;
 				}
 			}
 			else
 			{
-				Result = bCheckNot ? !bMatch : bMatch;
+				Result = bMatch;
 				bFistValueAlreadySet = true;
 			}
 		}
