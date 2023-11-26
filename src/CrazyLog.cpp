@@ -17,7 +17,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp(v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.06f;
+static float g_Version = 1.07f;
 
 static char g_NullTerminator = '\0';
 
@@ -1058,7 +1058,6 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	
 				// calculate how much I need to dump in the result buffer
 				// resize the vector with the final size
-#if 1
 				unsigned TotalSize = 0;
 				for (int i = 0; i < SelectedExtraThreadCount + 1; ++i)
 				{
@@ -1084,8 +1083,6 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 					if (CopiedSize >= TotalSize)
 						break;
 				}
-#endif
-				
 			}
 			
 			
@@ -1098,10 +1095,10 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 				LARGE_INTEGER PerfCountFrequencyResult;
 				QueryPerformanceFrequency(&PerfCountFrequencyResult);
 				
-				float dt = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
+				float FilterTime = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
 			
 				char aDeltaTimeBuffer[64];
-				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f Results %i", dt, vFiltredLinesCached.Size);
+				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f", FilterTime);
 				SetLastCommand(aDeltaTimeBuffer);
 			}
 			
@@ -1135,10 +1132,10 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 				LARGE_INTEGER PerfCountFrequencyResult;
 				QueryPerformanceFrequency(&PerfCountFrequencyResult);
 				
-				float dt = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
+				float FilterTime = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
 			
 				char aDeltaTimeBuffer[64];
-				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", dt);
+				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", FilterTime);
 				SetLastCommand(aDeltaTimeBuffer);
 			}
 		}
@@ -1151,7 +1148,8 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 
 void CrazyLog::SetLastCommand(const char* pLastCommand)
 {
-	snprintf(aLastCommand, sizeof(aLastCommand), "ver %.2f - %s", g_Version, pLastCommand);
+	snprintf(aLastCommand, sizeof(aLastCommand), "ver %.2f - TotalLines %i ResultLines %i - LastCommand: %s",
+	         g_Version, vLineOffsets.Size, vFiltredLinesCached.Size, pLastCommand);
 }
 
 void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)

@@ -15,21 +15,15 @@ uint32_t __inline ctz( uint32_t value )
 	}
 }
 
-namespace bits {
 
-	template <typename T>
-	T clear_leftmost_set(const T value) {
-		return value & (value - 1);
-	}
+uint32_t clear_leftmost_set(const uint32_t value) {
+	return value & (value - 1);
+}
 
 
-	template <typename T>
-	unsigned get_first_bit_set(const T value) {
-		return ctz(value);
-	}
-
-
-} // namespace bits
+uint32_t get_first_bit_set(const uint32_t value) {
+	return ctz(value);
+}
 
 bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const char* pNeedle, size_t NeedleSize)
 {
@@ -55,7 +49,7 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 
 		while (mask != 0) {
 
-			const auto bitpos = bits::get_first_bit_set(mask);
+			const uint32_t bitpos = get_first_bit_set(mask);
 			
 			const char* substr = pHaystack + i + bitpos + 1;
 			
@@ -75,7 +69,7 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 			if (bMatchEntireWord)
 				return true;
 			
-			mask = bits::clear_leftmost_set(mask);
+			mask = clear_leftmost_set(mask);
 		}
 	}
 	
@@ -84,10 +78,10 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 
 bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const char* pNeedle, size_t NeedleSize)
 {
-	constexpr uint64_t FirstBitSet = 0x0101010101010101llu; //each uint8_t -> 0000 0001
-	constexpr uint64_t AllButLastBitSet = 0x7f7f7f7f7f7f7f7fllu; //each uint8_t -> 0111 1111
-	constexpr uint64_t LastBitSet = 0x8080808080808080llu; // each uint8_t -> 1000 0000
-	constexpr uint64_t UpcaseMask = 0xdfdfdfdfdfdfdfdfllu; // each uint8_t -> 1101 1111
+	constexpr uint64_t FirstBitSet = 0x0101010101010101llu; 	 // each uint8_t -> 0000 0001
+	constexpr uint64_t AllButLastBitSet = 0x7f7f7f7f7f7f7f7fllu; // each uint8_t -> 0111 1111
+	constexpr uint64_t LastBitSet = 0x8080808080808080llu; 		 // each uint8_t -> 1000 0000
+	constexpr uint64_t UpcaseMask = 0xdfdfdfdfdfdfdfdfllu; 		 // each uint8_t -> 1101 1111
 	constexpr uint8_t UpcaseMask8 = 0xdf;
 	
 	const uint64_t first = FirstBitSet * static_cast<uint8_t>(pNeedle[0]);
@@ -255,27 +249,28 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			
 				bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
 				
-#if USE_SWAR
 				const char* pNeedle = bCheckNot ? &aInputBuf[vFilters[i].BeginOffset] + 1 : &aInputBuf[vFilters[i].BeginOffset];
-			
-				size_t HaystackSize = pTextEnd - pText;
 				size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
-		
+				
+				bool bContainsNeedle = false;
+				
+				if (NeedleSize < 4) 
+				{
+					const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
+					bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
+				}
+				else
+				{
+					
+					size_t HaystackSize = pTextEnd - pText;
 #if USE_AVX
-				bool bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
+					bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
 #else
-				bool bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
+					bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
 #endif
+				}
 				
 				bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;
-#else
-				const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
-				const char* pFilterEnd = &aInputBuf[vFilters[i].EndOffset];
-				
-				bool bMatch = bCheckNot ? 
-					ImStristr(pText, pTextEnd, pFilterBegin+1, pFilterEnd) != NULL:
-					ImStristr(pText, pTextEnd, pFilterBegin, pFilterEnd) != NULL;
-#endif
 		
 				if (bFirstScopeValueAlreadySet)
 				{
@@ -330,26 +325,29 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			
 			
 			bool bCheckNot = !!(vFilters[i].OperatorFlags & 1 << FO_NOT);
-#if USE_SWAR
+			
 			const char* pNeedle = bCheckNot ? &aInputBuf[vFilters[i].BeginOffset] + 1 : &aInputBuf[vFilters[i].BeginOffset];
-			
-			size_t HaystackSize = pTextEnd - pText;
 			size_t NeedleSize = vFilters[i].EndOffset - vFilters[i].BeginOffset;
-		
+				
+			bool bContainsNeedle = false;
+				
+			if (NeedleSize < 4) 
+			{
+				const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
+				bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
+			}
+			else
+			{
+					
+				size_t HaystackSize = pTextEnd - pText;
 #if USE_AVX
-			bool bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
+				bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
 #else
-			bool bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
+				bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
 #endif
+			}
+				
 			bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;
-#else
-			const char* pFilterBegin = &aInputBuf[vFilters[i].BeginOffset];
-			const char* pFilterEnd = &aInputBuf[vFilters[i].EndOffset];
-			
-			bool bMatch = bCheckNot ? 
-				ImStristr(pText, pTextEnd, pFilterBegin+1, pFilterEnd) != NULL:
-				ImStristr(pText, pTextEnd, pFilterBegin, pFilterEnd) != NULL;
-#endif
 			
 			if (bFistValueAlreadySet)
 			{

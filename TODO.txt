@@ -32,6 +32,7 @@
 
 ================ Done
 
+// Added AVX, SWAR algorithm to filter lines 10x more fast
 // Changed the way in which I cache the highlight in order to be better for MT processing and save memory
 // Tied up the code and make experimental build for MT
 // Have a way to delete/modify/add default colors
