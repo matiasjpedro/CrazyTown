@@ -37,6 +37,8 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 	first = _mm256_and_si256(first, UpcaseMask256);
 	last = _mm256_and_si256(last, UpcaseMask256);
 	
+	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
+	
 	for (size_t i = 0; i < HaystackSize; i += 32) {
 
 		const __m256i block_first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
@@ -54,12 +56,12 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 			const char* substr = pHaystack + i + bitpos + 1;
 			
 			// This is to avoid bleeding outside of the haystack size
-			if (&substr[NeedleSize - 2] > pHaystack + HaystackSize)
+			if (&substr[LastCharIdxBetween] > pHaystack + HaystackSize)
 				return false;
 			
-			const char* pNeedleCursor = &pNeedle[1];
+			const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 			bool bMatchEntireWord = true;
-			for (int z = 0; z < NeedleSize - 2; ++z) {
+			for (int z = 0; z < LastCharIdxBetween; ++z) {
 				if ((pNeedleCursor[z] & UpcaseMask8) != (substr[z] & UpcaseMask8)) {
 					bMatchEntireWord = false;
 					break;
@@ -89,6 +91,8 @@ bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const ch
 	
 	uint64_t* block_first = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack));
 	uint64_t* block_last  = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack + NeedleSize - 1));
+	
+	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
 
 	for (auto i=0u; i < HaystackSize; i+=8, block_first++, block_last++) {
 		const uint64_t eq = ((*block_first ^ first) & UpcaseMask) | ((*block_last ^ last) & UpcaseMask);
@@ -103,14 +107,14 @@ bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const ch
 			if (zeros & 0x80) {
 				
 				const char* substr = reinterpret_cast<char*>(block_first) + j + 1;
-				const char* pNeedleCursor = &pNeedle[1];
+				const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 				
 				// This is to avoid bleeding out of the haystack size
-				if (&substr[NeedleSize - 2] > pHaystack + HaystackSize)
+				if (&substr[LastCharIdxBetween] > pHaystack + HaystackSize)
 					return false;
 				
 				bool bMatchEntireWord = true;
-				for (int z = 0; z < NeedleSize - 2; ++z) {
+				for (int z = 0; z < LastCharIdxBetween; ++z) {
 					if ((pNeedleCursor[z] & UpcaseMask8) != (substr[z] & UpcaseMask8)) {
 						bMatchEntireWord = false;
 						break;
@@ -210,7 +214,6 @@ void CrazyTextFilter::Build()
 	}
 }
 
-#define USE_SWAR 1
 #define USE_AVX 1
 
 bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd) const
@@ -256,12 +259,13 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 				
 				bool bContainsNeedle = false;
 				
-				if (NeedleSize < 4) 
-				{
-					const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
-					bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
-				}
-				else
+				// TODO(matiasp): guard for loads outside the 32 bytes
+				//if (HaystackSize < 32) 
+				//{
+				//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
+				//	bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
+				//}
+				//else
 				{
 					
 					size_t HaystackSize = pTextEnd - pText;
@@ -333,12 +337,13 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			
 			bool bContainsNeedle = false;
 				
-			if (NeedleSize < 4) 
-			{
-				const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
-				bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
-			}
-			else
+			// TODO(matiasp): guard for loads outside the 32 bytes
+			//if (HaystackSize < 32) 
+			//{
+			//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
+			//	bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
+			//}
+			//else
 			{
 					
 				size_t HaystackSize = pTextEnd - pText;

@@ -24,14 +24,18 @@
 // since I don't know which filter was removed and which was modified
 
 
+// Guard on less than 32 bytes strings?
 // should I save the sets in the users?
+// No freeze application.
 
 ================ InProgress
 
-// No freeze application.
+// Fix Colors offst
 
 ================ Done
 
+// Fix 1 character word
+// Fix 2 character word
 // Added AVX, SWAR algorithm to filter lines 10x more fast
 // Changed the way in which I cache the highlight in order to be better for MT processing and save memory
 // Tied up the code and make experimental build for MT
