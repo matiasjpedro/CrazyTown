@@ -82,7 +82,7 @@ struct CrazyLog
 	float FiltredScrollValue;
 
 	FileData LastLoadedFileData;
-	uint64_t FilterFlags;
+	uint64_t EnableMask;
 	
 	bool bIsMultithreadEnabled;
 	bool bAlreadyCached;

@@ -16,24 +16,18 @@
 
 // Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
 
-// should I save the cherry pick?
-
-// How I can do to prevent color being offset when changing the filter? 
-// I need to have a way to understand which filter was removed, let it sink a little bit
-// if they change words, and change sizes, there is no way to ensure to adjust it properly,
-// since I don't know which filter was removed and which was modified
-
-
 // Guard on less than 32 bytes strings?
-// should I save the sets in the users?
 // No freeze application.
 
 ================ InProgress
 
-// Fix Colors offst
+// When copy the filter copy the toggles aswell
 
 ================ Done
 
+// Apply random colors to everyfilter
+// Add Filters Should have, IDString, Color, Toggle, to keep the persistance when removing adding filters.
+// Add one IDString implementation to my app
 // Fix 1 character word
 // Fix 2 character word
 // Added AVX, SWAR algorithm to filter lines 10x more fast

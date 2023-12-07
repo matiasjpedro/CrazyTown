@@ -62,3 +62,15 @@ struct PlatformContext
 	
 	bool bWantsToRebuildFontTexture;
 };
+
+// NOTE(Matiasp): Silly Simple hash algo with low collision
+uint32_t HashString(const char* pStringBegin, const char* pStringEnd, uint32_t seed = 0)
+{
+	uint32_t hash = seed;
+	while (pStringBegin != pStringEnd)
+	{
+		hash = hash * 101  +  *pStringBegin++;
+	}
+	
+	return hash;
+}

@@ -143,19 +143,22 @@ CrazyTextFilter::CrazyTextFilter(const char* pDefaultFilter)
 	}
 }
 
-bool CrazyTextFilter::Draw(const char* pLabel, float Width)
+bool CrazyTextFilter::Draw(ImVector<ImVec4>* pvDefaultColors, const char* pLabel, float Width)
 {
 	if (Width != 0.0f)
 		ImGui::SetNextItemWidth(Width);
 	bool value_changed = ImGui::InputText(pLabel, aInputBuf, IM_ARRAYSIZE(aInputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
 	if (value_changed)
-		Build();
+		Build(pvDefaultColors);
 	return value_changed;
 	
 }
 
-void CrazyTextFilter::Build()
+void CrazyTextFilter::Build(ImVector<ImVec4>* pvDefaultColors, bool bRememberOldSettings)
 {
+	ImVector<CrazyTextRangeSettings> vOldSettings = vSettings;
+	ImVector<CrazyTextRange> vOldFilters = vFilters;
+	
 	ImVector<CrazyTextRange> vScopes;
 	vScopes.reserve(10);
 	
@@ -206,17 +209,80 @@ void CrazyTextFilter::Build()
 		vFilters[i].ScopeNum = ScopeNum;
 	}
 	
-	size_t OldColorSize = vColors.size();
-	vColors.resize(vFilters.size());
-	
-	for (int i = (int)OldColorSize; i < vColors.size(); i++) {
-		vColors[i] = ImVec4(1.000f, 0.992f, 0.000f, 1.000f);
+	size_t OldSize = vSettings.Size;
+	vSettings.resize(vFilters.size());
+	for (int i = 0; i != vSettings.Size; i++)
+	{
+		CrazyTextRange& f = vFilters[i];
+		
+		char* pFilterBegin = &aInputBuf[f.BeginOffset];
+		char* pFilterEnd = &aInputBuf[f.EndOffset];
+		
+		vSettings[i].Id = HashString(pFilterBegin, pFilterEnd);
 	}
+	
+	for (int i = 0; i != vSettings.Size; i++) 
+	{
+		// NOTE(matiasp): This is probably the worst thing that I made for this project
+		// because I'm rebuilding the entire filter every time that I build
+		// I need to remember which colors/toggle was set for each filter
+		// this is mainly to avoid offsets when I remove/add a filter in the middle
+		if (bRememberOldSettings)
+		{
+			bool bFoundCandidate = false;
+			for (int j = 0; j != vOldSettings.Size; j++) 
+			{
+				if (vSettings[i].Id != vOldSettings[j].Id) 
+					continue;
+		
+				// We found one with the same id we can copy it
+				vSettings[i] = vOldSettings[j];
+				
+				bFoundCandidate = true;
+		
+				// In case the same world in multiple scopes this will make sure that
+				// pick the correct one because it's a perfect match
+				if (vFilters[i].ScopeNum == vOldFilters[j].ScopeNum) {
+					break;
+				}
+			}
+			
+			if (!bFoundCandidate) {
+				
+				if (i < vOldSettings.size()) 
+				{
+					vSettings[i].Color = vOldSettings[i].Color;
+					vSettings[i].bIsEnabled = vOldSettings[i].bIsEnabled;
+				}
+				else
+				{
+					if (pvDefaultColors && pvDefaultColors->Size > 0) 
+					{
+						ImVector<ImVec4>& vDefaultColors = *pvDefaultColors;
+						int ColorIdx = i % (vDefaultColors.Size - 1);
+						vSettings[i].Color = vDefaultColors[ColorIdx];
+					}
+					else
+					{
+						vSettings[i].Color = ImVec4(1.000f, 0.992f, 0.000f, 1.000f);
+					}
+					
+					vSettings[i].bIsEnabled = true;
+				}
+				
+			}
+		}
+		else
+		{
+			vSettings[i].bIsEnabled = true;
+		}
+	}
+		
 }
 
 #define USE_AVX 1
 
-bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd) const
+bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 {
 	if (vFilters.empty())
 		return true;
@@ -242,7 +308,7 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 			unsigned bScopeOperatorFlag = vFilters[i].OperatorFlags;
 			while (i < vFilters.Size && FilterScopeNum == vFilters[i].ScopeNum) 
 			{
-				if (!(EnableMask & (1ull << i)))
+				if (!vSettings[i].bIsEnabled)
 				{
 					i++;
 					continue;
@@ -323,7 +389,7 @@ bool CrazyTextFilter::PassFilter(uint64_t EnableMask, const char* pText, const c
 		}
 		else
 		{
-			if (!(EnableMask & (1ull << i)))
+			if (!vSettings[i].bIsEnabled)
 			{
 				continue;
 			}

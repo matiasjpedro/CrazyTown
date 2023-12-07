@@ -31,15 +31,20 @@ static char* apSeparatorStr[FO_COUNT] =
 	"!"
 };
 
+struct CrazyTextRangeSettings {
+	uint32_t Id;
+	ImVec4 Color;
+	bool bIsEnabled;
+};
+
 struct CrazyTextFilter 
 {
 	CrazyTextFilter(const char* pDefaultFilter = "");
 	
-	bool Draw(const char* pLabel = "Filter (inc,-exc)", float Width = 0.0f); 
-	bool PassFilter(uint64_t EnableMask, const char* pText, const char* pTextEnd = NULL) const;
-	bool PassGroup(uint64_t EnableMask, const char* pText, const char* pTextEnd, 
-	               uint8_t GroupNum, uint8_t ScopeNum, uint8_t& IterationIdx) const;
-	void Build();
+	bool Draw(ImVector<ImVec4>* pvDefaultColors = nullptr, const char* pLabel = "Filter", float Width = 0.0f); 
+	bool PassFilter(const char* pText, const char* pTextEnd = NULL) const;
+	
+	void Build(ImVector<ImVec4>* pvDefaultColors = nullptr, bool bRememberOldSettings = true);
 	void Clear() { aInputBuf[0] = 0; Build(); }
 	bool IsActive() const { return !vFilters.empty(); }
 
@@ -73,7 +78,8 @@ struct CrazyTextFilter
 		           ImVector<CrazyTextRange>* pvScopesOut) const;
 	};
 	
-	char aInputBuf[256];
+	char aInputBuf[512];
+	
 	ImVector<CrazyTextRange> vFilters;
-	ImVector<ImVec4> vColors;
+	ImVector<CrazyTextRangeSettings> vSettings;
 };

@@ -17,7 +17,9 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define clamp(v, mx, mn) (v < mn) ? mn : (v > mx) ? mx : v; 
 
-static float g_Version = 1.07f;
+#define SAVE_ENABLE_MASK 0
+
+static float g_Version = 1.09f;
 
 static char g_NullTerminator = '\0';
 
@@ -30,7 +32,7 @@ void CrazyLog::Init()
 	FolderFetchCooldown = -1.f;
 	PeekScrollValue = -1.f;
 	FiltredScrollValue = -1.f;
-	FilterFlags = 0xFFFFFFFF;
+	EnableMask = 0xFFFFFFFF;
 	SetLastCommand("LAST COMMAND");
 	ImGui::StyleColorsClassic();
     ImGuiStyle& style = ImGui::GetStyle();
@@ -189,6 +191,7 @@ void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 		cJSON * pFiltersArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "Filters");
 		cJSON * pFilter = nullptr;
 		cJSON * pColor = nullptr;
+		cJSON * pEnabled = nullptr;
 		
 		unsigned FiltersCounter = 1;
 		int FiltersCount = cJSON_GetArraySize(pFiltersArray);
@@ -207,11 +210,13 @@ void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 			strcpy_s(pNamedFilter->Filter.aInputBuf, sizeof(pNamedFilter->Filter.aInputBuf),  pFilterValue->valuestring);
 			
 			cJSON * pColorArray = cJSON_GetObjectItemCaseSensitive(pFilter, "colors");
+			cJSON * pEnableMaskArray = cJSON_GetObjectItemCaseSensitive(pFilter, "enable_mask");
 			
-			unsigned ColorsCounter = 0;
 			int ColorsCount = cJSON_GetArraySize(pColorArray);
-			pNamedFilter->Filter.vColors.resize(ColorsCount);
+			int EnablesCount = cJSON_GetArraySize(pColorArray);
+			pNamedFilter->Filter.vSettings.resize(max(ColorsCount, EnablesCount));
 			
+			unsigned ColorCounter = 0;
 			cJSON_ArrayForEach(pColor, pColorArray)
 			{
 				ImVec4 Color;
@@ -221,12 +226,20 @@ void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 				Color.z /= 255;
 				Color.w /= 255;
 				
-				memcpy(&pNamedFilter->Filter.vColors[ColorsCounter], &Color, sizeof(ImVec4));
-				
-				ColorsCounter++;
+				pNamedFilter->Filter.vSettings[ColorCounter].Color = Color;
+				ColorCounter++;
 			}
 			
-			pNamedFilter->Filter.Build();
+#if SAVE_ENABLE_MASK
+			unsigned EnablesCounter = 0;
+			cJSON_ArrayForEach(pEnabled, pEnableMaskArray)
+			{
+				pNamedFilter->Filter.vSettings[EnablesCounter].bIsEnabled = cJSON_IsTrue(pEnabled);
+				EnablesCounter++;
+			}
+#endif
+			
+			pNamedFilter->Filter.Build(false);
 			
 			FiltersCounter++;
 		}
@@ -253,7 +266,7 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	cJSON * pFilterValue = nullptr;
 	cJSON * pFilterName = nullptr;
 	cJSON * pFilterColor = nullptr;
-	cJSON * pFColor = nullptr;
+	cJSON * pFilterEnabled = nullptr;
 	
 	cJSON * pFilterObj = nullptr;
 	cJSON_AddItemToObject(pJsonRoot, "Filters", pJsonFilterArray);
@@ -270,9 +283,9 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 		
 		cJSON * pJsonColorArray = cJSON_AddArrayToObject(pFilterObj, "colors");
 		
-		for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vColors.Size; ++j)
+		for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vSettings.Size; ++j)
 		{
-			ImVec4& Color = LoadedFilters[i].Filter.vColors[j];
+			ImVec4& Color = LoadedFilters[i].Filter.vSettings[j].Color;
 			
 			char aColorBuf[9];
 			sprintf(aColorBuf, "#%02X%02X%02X%02X", 
@@ -284,6 +297,15 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 			pFilterColor = cJSON_CreateString(aColorBuf);
 			cJSON_AddItemToObject(pJsonColorArray, "color", pFilterColor);
 		}
+		
+#if SAVE_ENABLE_MASK
+		cJSON * pJsonEnabledMaskArray = cJSON_AddArrayToObject(pFilterObj, "enable_mask");
+		for (unsigned j = 0; j < (unsigned)LoadedFilters[i].Filter.vSettings.Size; ++j)
+		{
+			pFilterEnabled = cJSON_CreateBool(LoadedFilters[i].Filter.vSettings[j].bIsEnabled);
+			cJSON_AddItemToObject(pJsonEnabledMaskArray, "enabled", pFilterEnabled);
+		}
+#endif
 		
 		cJSON_AddItemToObject(pJsonFilterArray, "filter", pFilterObj);
 	}
@@ -487,7 +509,7 @@ void CrazyLog::PasteFilter(PlatformContext* pPlatformCtx) {
 			
 	unsigned ColorsCounter = 0;
 	int ColorsCount = cJSON_GetArraySize(pColorArray);
-	Filter.vColors.resize(ColorsCount);
+	Filter.vSettings.resize(ColorsCount);
 	
 	cJSON * pColor = nullptr;
 			
@@ -500,12 +522,12 @@ void CrazyLog::PasteFilter(PlatformContext* pPlatformCtx) {
 		Color.z /= 255;
 		Color.w /= 255;
 				
-		memcpy(&Filter.vColors[ColorsCounter], &Color, sizeof(ImVec4));
+		memcpy(&Filter.vSettings[ColorsCounter].Color, &Color, sizeof(ImVec4));
 				
 		ColorsCounter++;
 	}
 			
-	Filter.Build();
+	Filter.Build(false);
 		
 	free(pFilterObj);
 }
@@ -518,9 +540,9 @@ void CrazyLog::CopyFilter(PlatformContext* pPlatformCtx, CrazyTextFilter* pFilte
 	cJSON_AddItemToObject(pFilterObj, "value", pFilterValue);
 		
 	cJSON * pJsonColorArray = cJSON_AddArrayToObject(pFilterObj, "colors");
-	for (unsigned j = 0; j < (unsigned)pFilter->vColors.Size; ++j)
+	for (unsigned j = 0; j < (unsigned)pFilter->vSettings.Size; ++j)
 	{
-		ImVec4& Color = pFilter->vColors[j];
+		ImVec4& Color = pFilter->vSettings[j].Color;
 			
 		char aColorBuf[9];
 		sprintf(aColorBuf, "#%02X%02X%02X%02X", 
@@ -557,7 +579,7 @@ void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx)
 void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter) 
 {
 	// Make sure to build it so it construct the filters + colors
-	pFilter->Build();
+	pFilter->Build(&vDefaultColors);
 	
 	size_t FilterNameLen = StringUtils::Length(pFilterName);
 	
@@ -574,7 +596,7 @@ void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, Craz
 void CrazyLog::SaveFilter(PlatformContext* pPlatformCtx, int FilterIdx, CrazyTextFilter* pFilter) 
 {
 	// Make sure to build it so it construct the filters + colors
-	pFilter->Build();
+	pFilter->Build(&vDefaultColors);
 	
 	LoadedFilters[FilterIdx].Filter = *pFilter;
 	
@@ -667,22 +689,11 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("Filters");
 	
-	bool bFilterChanged = Filter.Draw("Filter", -110.0f);
+	bool bFilterChanged = Filter.Draw(&vDefaultColors, "Filter", -110.0f);
 	ImGui::SameLine();
 	HelpMarker(	"Filter usage: Just use it as C conditions \n"
 	           "Example: ((word1 || word2) && !word3)\n\n"
 	           "You can also copy/paste filters to/from the clipboard.\n");
-	
-	
-	
-	// If the size of the filters changed, make sure to start with those filters enabled.
-	if (LastFrameFiltersCount < Filter.vFilters.Size) 
-	{
-		for (int i = LastFrameFiltersCount; i < Filter.vFilters.Size; i++) 
-		{
-			FilterFlags |= 1ull << i;
-		}
-	}
 	
 	LastFrameFiltersCount = Filter.vFilters.Size;
 	if (ImGui::BeginPopup("FilterOptions"))
@@ -778,7 +789,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		bCherryPickHasChanged = DrawCherrypick(DeltaTime, pPlatformCtx);
 		if (bSelectedFilterChanged) 
 		{
-			FilterFlags = 0xFFFFFFFF;
+			EnableMask = 0xFFFFFFFF;
 			
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
@@ -993,7 +1004,7 @@ static void FilterMT(int LineNo, CrazyLog* pLog, ImVector<int>* pOut)
 	const char* pLineEnd = (LineNo + 1 < pLog->vLineOffsets.Size) 
 		? (pBuf + pLog->vLineOffsets[LineNo + 1] - 1) : pBufEnd;
 	
-	if (pLog->Filter.PassFilter(pLog->FilterFlags, pLineStart, pLineEnd)) 
+	if (pLog->Filter.PassFilter(pLineStart, pLineEnd)) 
 	{
 		pOut->push_back(LineNo);
 	}
@@ -1117,7 +1128,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 			{
 				const char* pLineStart = pBuf + vLineOffsets[LineNo];
 				const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
-				if (Filter.PassFilter(FilterFlags, pLineStart, pLineEnd)) 
+				if (Filter.PassFilter(pLineStart, pLineEnd)) 
 				{
 					vFiltredLinesCached.push_back(LineNo);
 				}
@@ -1183,7 +1194,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			
 			for (int j = 0; j < TempLineMatches.vLineMatches.Size; j++)
 			{
-				ImVec4 FilterColor = Filter.vColors[TempLineMatches.vLineMatches[j].FilterIdxMatching];
+				ImVec4 FilterColor = Filter.vSettings[TempLineMatches.vLineMatches[j].FilterIdxMatching].Color;
 				
 				const char* pHighlightWordBegin = pLineStart + TempLineMatches.vLineMatches[j].WordBeginOffset;
 				const char* pHighlightWordEnd = pLineStart + TempLineMatches.vLineMatches[j].WordEndOffset + 1;
@@ -1301,7 +1312,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				
 				for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
 				{
-					ImVec4 FilterColor = Filter.vColors[TempLineMatches.vLineMatches[i].FilterIdxMatching];
+					ImVec4 FilterColor = Filter.vSettings[TempLineMatches.vLineMatches[i].FilterIdxMatching].Color;
 					
 					const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
 					const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
@@ -1551,10 +1562,10 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				                       | ImGuiColorEditFlags_NoTooltip 
 				                       | ImGuiColorEditFlags_NoLabel))
 				{
-					Filter.vColors[LastSelectedColorIdx] = vDefaultColors[i];
+					Filter.vSettings[LastSelectedColorIdx].Color = vDefaultColors[i];
 				
 					if (FilterSelectedIdx != 0) {
-						LoadedFilters[FilterSelectedIdx].Filter.vColors[LastSelectedColorIdx] = Filter.vColors[LastSelectedColorIdx];
+						LoadedFilters[FilterSelectedIdx].Filter.vSettings[LastSelectedColorIdx].Color = Filter.vSettings[LastSelectedColorIdx].Color;
 			
 						// TODO(matiasp): Patch the json color instead of saving all the filters again
 						SaveLoadedFilters(pPlatformCtx);
@@ -1618,7 +1629,7 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 		for (int i = 0; i != Filter.vFilters.Size; i++)
 		{
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			bool bColorHasChanged = ImGui::ColorEdit4(pScratchStart, (float*)&Filter.vColors[i].x, 
+			bool bColorHasChanged = ImGui::ColorEdit4(pScratchStart, (float*)&Filter.vSettings[i].Color.x, 
 			                                          ImGuiColorEditFlags_NoPicker 
 			                                          | ImGuiColorEditFlags_NoInputs 
 			                                          | ImGuiColorEditFlags_NoTooltip 
@@ -1635,9 +1646,29 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			pPlatformCtx->ScratchMem.PushBack(FilterSize, (void*)(&Filter.aInputBuf[Filter.vFilters[i].BeginOffset]));
 			pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator);
 				
-			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &FilterFlags, 1ull << i);
-			if (bChanged)
+			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &EnableMask, 1ull << i);
+			if (bChanged) 
+			{
+				// Keep the filter setting in sync
+				Filter.vSettings[i].bIsEnabled = (EnableMask & (1ull << i));
 				bAnyFlagChanged = true;
+				
+#if SAVE_ENABLE_MASK
+				if (FilterSelectedIdx != 0) {
+					LoadedFilters[FilterSelectedIdx].Filter.vSettings[i].bIsEnabled = Filter.vSettings[i].bIsEnabled;
+					SaveLoadedFilters(pPlatformCtx);
+				}
+#endif
+				
+			} 
+			else
+			{
+				// Keep the Mask in sync with the setting
+				if (Filter.vSettings[i].bIsEnabled)
+					EnableMask |= (1ull << i);
+				else
+					EnableMask &= ~(1ull << i);
+			}
 		}
 			
 		ImGui::TreePop();
@@ -1757,7 +1788,7 @@ bool CrazyLog::AnyFilterActive () const
 {
 	for (int i = 0; i != Filter.vFilters.Size; i++)
 	{
-		bool bFilterEnabled = (FilterFlags & (1ull << i));
+		bool bFilterEnabled = Filter.vSettings[i].bIsEnabled;
 		if (bFilterEnabled)
 			return true;
 	}
@@ -1771,7 +1802,7 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 	
 	for (int i = 0; i != Filter.vFilters.Size; i++)
 	{
-		bool bFilterEnabled = (FilterFlags & (1ull << i));
+		bool bFilterEnabled = Filter.vSettings[i].bIsEnabled;
 		if (!bFilterEnabled)
 			continue;
 		
@@ -1844,3 +1875,4 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 #undef FOLDER_FETCH_INTERVAL
 #undef CONSOLAS_FONT_SIZE
 #undef MAX_EXTRA_THREADS
+#undef SAVE_ENABLE_MASK
