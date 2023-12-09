@@ -1277,6 +1277,18 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 		}
 	}
 	
+	if (vFiltredLinesCached.Size == 0 && bIsCtrlressed && ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
+	{
+		if (ImGui::IsWindowHovered())
+		{
+			PeekScrollValue = ImGui::GetScrollY();
+			FiltredScrollValue = ImGui::GetScrollY();
+			
+			bIsPeeking = true;
+		}
+			
+	}
+	
 	TempLineMatches.vLineMatches.clear();
 	
 	clipper.End();
