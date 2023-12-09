@@ -16,12 +16,12 @@ uint32_t __inline ctz( uint32_t value )
 }
 
 
-uint32_t clear_leftmost_set(const uint32_t value) {
+uint32_t ClearLeftMostSet(const uint32_t value) {
 	return value & (value - 1);
 }
 
 
-uint32_t get_first_bit_set(const uint32_t value) {
+uint32_t GetFirstBitSet(const uint32_t value) {
 	return ctz(value);
 }
 
@@ -32,37 +32,37 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 	
 	const __m256i UpcaseMask256 = _mm256_set1_epi64x(UpcaseMask);
 	
-	__m256i first = _mm256_set1_epi8(pNeedle[0]);
-	__m256i last  = _mm256_set1_epi8(pNeedle[NeedleSize - 1]);
-	first = _mm256_and_si256(first, UpcaseMask256);
-	last = _mm256_and_si256(last, UpcaseMask256);
+	__m256i First = _mm256_set1_epi8(pNeedle[0]);
+	__m256i Last  = _mm256_set1_epi8(pNeedle[NeedleSize - 1]);
+	First = _mm256_and_si256(First, UpcaseMask256);
+	Last = _mm256_and_si256(Last, UpcaseMask256);
 	
 	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
 	
 	for (size_t i = 0; i < HaystackSize; i += 32) {
 
-		const __m256i block_first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
-		const __m256i block_last  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
+		const __m256i BlockFirst = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
+		const __m256i BlockLast  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
 		
-		const __m256i eq_first= _mm256_cmpeq_epi8(first, _mm256_and_si256(block_first, UpcaseMask256));
-		const __m256i eq_last  = _mm256_cmpeq_epi8(last, _mm256_and_si256(block_last, UpcaseMask256));
+		const __m256i EqualFirst= _mm256_cmpeq_epi8(First, _mm256_and_si256(BlockFirst, UpcaseMask256));
+		const __m256i EqualLast  = _mm256_cmpeq_epi8(Last, _mm256_and_si256(BlockLast, UpcaseMask256));
 		
-		uint32_t mask = _mm256_movemask_epi8(_mm256_and_si256(eq_first, eq_last));
+		uint32_t Mask = _mm256_movemask_epi8(_mm256_and_si256(EqualFirst, EqualLast));
 
-		while (mask != 0) {
+		while (Mask != 0) {
 
-			const uint32_t bitpos = get_first_bit_set(mask);
+			const uint32_t BitPos = GetFirstBitSet(Mask);
 			
-			const char* substr = pHaystack + i + bitpos + 1;
+			const char* pSubStr = pHaystack + i + BitPos + 1;
 			
 			// This is to avoid bleeding outside of the haystack size
-			if (&substr[LastCharIdxBetween] > pHaystack + HaystackSize)
+			if (&pSubStr[LastCharIdxBetween] > pHaystack + HaystackSize)
 				return false;
 			
 			const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 			bool bMatchEntireWord = true;
 			for (int z = 0; z < LastCharIdxBetween; ++z) {
-				if ((pNeedleCursor[z] & UpcaseMask8) != (substr[z] & UpcaseMask8)) {
+				if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
 					bMatchEntireWord = false;
 					break;
 				}
@@ -71,7 +71,7 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 			if (bMatchEntireWord)
 				return true;
 			
-			mask = clear_leftmost_set(mask);
+			Mask = ClearLeftMostSet(Mask);
 		}
 	}
 	
@@ -86,36 +86,36 @@ bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const ch
 	constexpr uint64_t UpcaseMask = 0xdfdfdfdfdfdfdfdfllu; 		 // each uint8_t -> 1101 1111
 	constexpr uint8_t UpcaseMask8 = 0xdf;
 	
-	const uint64_t first = FirstBitSet * static_cast<uint8_t>(pNeedle[0]);
-	const uint64_t last  = FirstBitSet * static_cast<uint8_t>(pNeedle[NeedleSize - 1]);
+	const uint64_t First = FirstBitSet * static_cast<uint8_t>(pNeedle[0]);
+	const uint64_t Last  = FirstBitSet * static_cast<uint8_t>(pNeedle[NeedleSize - 1]);
 	
-	uint64_t* block_first = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack));
-	uint64_t* block_last  = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack + NeedleSize - 1));
+	uint64_t* BlockFirst = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack));
+	uint64_t* BlockLast  = reinterpret_cast<uint64_t*>(const_cast<char*>(pHaystack + NeedleSize - 1));
 	
 	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
 
-	for (auto i=0u; i < HaystackSize; i+=8, block_first++, block_last++) {
-		const uint64_t eq = ((*block_first ^ first) & UpcaseMask) | ((*block_last ^ last) & UpcaseMask);
+	for (auto i=0u; i < HaystackSize; i+=8, BlockFirst++, BlockLast++) {
+		const uint64_t Equal = ((*BlockFirst ^ First) & UpcaseMask) | ((*BlockLast ^ Last) & UpcaseMask);
 
-		const uint64_t t0 = (~eq & AllButLastBitSet) + FirstBitSet;
-		const uint64_t t1 = (~eq & LastBitSet);
-		uint64_t zeros = t0 & t1;
+		const uint64_t T0 = (~Equal & AllButLastBitSet) + FirstBitSet;
+		const uint64_t T1 = (~Equal & LastBitSet);
+		uint64_t Zeros = T0 & T1;
 		
 		size_t j = 0;
 
-		while (zeros) {
-			if (zeros & 0x80) {
+		while (Zeros) {
+			if (Zeros & 0x80) {
 				
-				const char* substr = reinterpret_cast<char*>(block_first) + j + 1;
+				const char* pSubStr = reinterpret_cast<char*>(BlockFirst) + j + 1;
 				const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 				
 				// This is to avoid bleeding out of the haystack size
-				if (&substr[LastCharIdxBetween] > pHaystack + HaystackSize)
+				if (&pSubStr[LastCharIdxBetween] > pHaystack + HaystackSize)
 					return false;
 				
 				bool bMatchEntireWord = true;
 				for (int z = 0; z < LastCharIdxBetween; ++z) {
-					if ((pNeedleCursor[z] & UpcaseMask8) != (substr[z] & UpcaseMask8)) {
+					if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
 						bMatchEntireWord = false;
 						break;
 					}
@@ -125,7 +125,7 @@ bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const ch
 					return true;
 			}
 
-			zeros >>= 8;
+			Zeros >>= 8;
 			j += 1;
 		}
 	}
@@ -259,7 +259,7 @@ void CrazyTextFilter::Build(ImVector<ImVec4>* pvDefaultColors, bool bRememberOld
 					if (pvDefaultColors && pvDefaultColors->Size > 0) 
 					{
 						ImVector<ImVec4>& vDefaultColors = *pvDefaultColors;
-						int ColorIdx = i % (vDefaultColors.Size - 1);
+						int ColorIdx = i % (vDefaultColors.Size);
 						vSettings[i].Color = vDefaultColors[ColorIdx];
 					}
 					else
@@ -325,7 +325,7 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 				
 				bool bContainsNeedle = false;
 				
-				// TODO(matiasp): guard for loads outside the 32 bytes
+				// NOTE(matiasp): guard for loads outside the 32 bytes
 				//if (HaystackSize < 32) 
 				//{
 				//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
