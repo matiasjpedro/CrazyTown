@@ -105,6 +105,9 @@ void CrazyLog::LoadClipboard()
 		size_t TextSize = StringUtils::Length(pClipboardText);
 		SetLog(pClipboardText, (int)TextSize);
 	}
+	
+	SelectedTargetMode = TM_StaticText;
+	bModeChangedExternally = true;
 }
 
 bool CrazyLog::FetchFile(PlatformContext* pPlatformCtx) 
@@ -1397,6 +1400,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	ImGui::SetNextItemWidth(-110);
 	bool bModeJustChanged = ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
+	bModeJustChanged |= bModeChangedExternally;
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
 		if (bModeJustChanged)
@@ -1487,7 +1491,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 	}
 	
-	
+	bModeChangedExternally = false;
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)

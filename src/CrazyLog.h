@@ -94,6 +94,7 @@ struct CrazyLog
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	bool bIsEditingColors;
+	bool bModeChangedExternally;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
