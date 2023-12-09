@@ -325,7 +325,9 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 				
 				bool bContainsNeedle = false;
 				
-				// NOTE(matiasp): guard for loads outside the 32 bytes
+				// TODO(matiasp): Should I guard the load outside the 32 bytes?
+				// The following aligned memory is readable and I already handling 
+				// and I ignore the values that are outside the haystack size, so it should be fine...? 
 				//if (HaystackSize < 32) 
 				//{
 				//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
@@ -403,7 +405,9 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 			
 			bool bContainsNeedle = false;
 				
-			// TODO(matiasp): guard for loads outside the 32 bytes
+			// TODO(matiasp): Should I guard the load outside the 32 bytes?
+			// The following aligned memory is readable and I already handling 
+			// and I ignore the values that are outside the haystack size, so it should be fine...? 
 			//if (HaystackSize < 32) 
 			//{
 			//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
