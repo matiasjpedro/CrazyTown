@@ -25,7 +25,7 @@ uint32_t GetFirstBitSet(const uint32_t value) {
 	return ctz(value);
 }
 
-bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const char* pNeedle, size_t NeedleSize)
+bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const char* pNeedle, size_t NeedleSize, const char* pBufEnd)
 {
 	constexpr uint64_t UpcaseMask = 0xdfdfdfdfdfdfdfdfllu; 
 	constexpr uint8_t UpcaseMask8 = 0xdf;
@@ -39,40 +39,52 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 	
 	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
 	
-	for (size_t i = 0; i < HaystackSize; i += 32) {
-
-		const __m256i BlockFirst = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
-		const __m256i BlockLast  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
+	for (size_t i = 0; i < HaystackSize; i += 32) 
+	{
+		const bool bLoadingOutsideBounds = (pHaystack + i + 32) >= pBufEnd || (pHaystack + i + NeedleSize - 1 + 32) >= pBufEnd;
 		
-		const __m256i EqualFirst= _mm256_cmpeq_epi8(First, _mm256_and_si256(BlockFirst, UpcaseMask256));
-		const __m256i EqualLast  = _mm256_cmpeq_epi8(Last, _mm256_and_si256(BlockLast, UpcaseMask256));
+		// If I have enough buffer to compare the next 32 bytes then do it,
+		// otherwise finish the haystack search with the one char at a time comparison.
+		if (!bLoadingOutsideBounds)
+		{
+			const __m256i BlockFirst = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
+			const __m256i BlockLast  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
 		
-		uint32_t Mask = _mm256_movemask_epi8(_mm256_and_si256(EqualFirst, EqualLast));
+			const __m256i EqualFirst= _mm256_cmpeq_epi8(First, _mm256_and_si256(BlockFirst, UpcaseMask256));
+			const __m256i EqualLast  = _mm256_cmpeq_epi8(Last, _mm256_and_si256(BlockLast, UpcaseMask256));
+		
+			uint32_t Mask = _mm256_movemask_epi8(_mm256_and_si256(EqualFirst, EqualLast));
 
-		while (Mask != 0) {
+			while (Mask != 0) {
 
-			const uint32_t BitPos = GetFirstBitSet(Mask);
+				const uint32_t BitPos = GetFirstBitSet(Mask);
 			
-			const char* pSubStr = pHaystack + i + BitPos + 1;
+				const char* pSubStr = pHaystack + i + BitPos + 1;
 			
-			// This is to avoid bleeding outside of the haystack size
-			if (&pSubStr[LastCharIdxBetween] > pHaystack + HaystackSize)
-				return false;
+				// This is to avoid bleeding outside of the haystack size
+				if (&pSubStr[LastCharIdxBetween] > pHaystack + HaystackSize)
+					return false;
 			
-			const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
-			bool bMatchEntireWord = true;
-			for (int z = 0; z < LastCharIdxBetween; ++z) {
-				if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
-					bMatchEntireWord = false;
-					break;
+				const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
+				bool bMatchEntireWord = true;
+				for (int z = 0; z < LastCharIdxBetween; ++z) {
+					if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
+						bMatchEntireWord = false;
+						break;
+					}
 				}
+			
+				if (bMatchEntireWord)
+					return true;
+			
+				Mask = ClearLeftMostSet(Mask);
 			}
-			
-			if (bMatchEntireWord)
-				return true;
-			
-			Mask = ClearLeftMostSet(Mask);
 		}
+		else
+		{
+			return ImStristr(pHaystack + i,  pHaystack + HaystackSize, pNeedle, pNeedle + NeedleSize);
+		}
+		
 	}
 	
 	return false;
@@ -282,7 +294,7 @@ void CrazyTextFilter::Build(ImVector<ImVec4>* pvDefaultColors, bool bRememberOld
 
 #define USE_AVX 1
 
-bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
+bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd, const char* pBufEnd) const
 {
 	if (vFilters.empty())
 		return true;
@@ -325,20 +337,11 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 				
 				bool bContainsNeedle = false;
 				
-				// TODO(matiasp): Should I guard the load outside the 32 bytes?
-				// The following aligned memory is readable and I already handling 
-				// and I ignore the values that are outside the haystack size, so it should be fine...? 
-				//if (HaystackSize < 32) 
-				//{
-				//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
-				//	bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
-				//}
-				//else
 				{
 					
 					size_t HaystackSize = pTextEnd - pText;
 #if USE_AVX
-					bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
+					bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
 #else
 					bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
 #endif
@@ -405,20 +408,10 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd) const
 			
 			bool bContainsNeedle = false;
 				
-			// TODO(matiasp): Should I guard the load outside the 32 bytes?
-			// The following aligned memory is readable and I already handling 
-			// and I ignore the values that are outside the haystack size, so it should be fine...? 
-			//if (HaystackSize < 32) 
-			//{
-			//	const char* pNeedleEnd = &aInputBuf[vFilters[i].EndOffset];
-			//	bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedleEnd) != NULL;
-			//}
-			//else
 			{
-					
 				size_t HaystackSize = pTextEnd - pText;
 #if USE_AVX
-				bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize);
+				bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
 #else
 				bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
 #endif

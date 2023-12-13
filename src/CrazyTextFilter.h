@@ -42,7 +42,7 @@ struct CrazyTextFilter
 	CrazyTextFilter(const char* pDefaultFilter = "");
 	
 	bool Draw(ImVector<ImVec4>* pvDefaultColors = nullptr, const char* pLabel = "Filter", float Width = 0.0f); 
-	bool PassFilter(const char* pText, const char* pTextEnd = NULL) const;
+	bool PassFilter(const char* pText, const char* pTextEnd = NULL, const char* pBufEnd = NULL) const;
 	
 	void Build(ImVector<ImVec4>* pvDefaultColors = nullptr, bool bRememberOldSettings = true);
 	void Clear() { aInputBuf[0] = 0; Build(); }

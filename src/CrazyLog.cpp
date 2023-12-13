@@ -19,7 +19,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.09f;
+static float g_Version = 1.10f;
 
 static char g_NullTerminator = '\0';
 
@@ -1007,7 +1007,7 @@ static void FilterMT(int LineNo, CrazyLog* pLog, ImVector<int>* pOut)
 	const char* pLineEnd = (LineNo + 1 < pLog->vLineOffsets.Size) 
 		? (pBuf + pLog->vLineOffsets[LineNo + 1] - 1) : pBufEnd;
 	
-	if (pLog->Filter.PassFilter(pLineStart, pLineEnd)) 
+	if (pLog->Filter.PassFilter(pLineStart, pLineEnd, pBufEnd)) 
 	{
 		pOut->push_back(LineNo);
 	}
@@ -1131,7 +1131,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 			{
 				const char* pLineStart = pBuf + vLineOffsets[LineNo];
 				const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
-				if (Filter.PassFilter(pLineStart, pLineEnd)) 
+				if (Filter.PassFilter(pLineStart, pLineEnd, pBufEnd)) 
 				{
 					vFiltredLinesCached.push_back(LineNo);
 				}
