@@ -10,13 +10,10 @@
 ================ Next
 
 // Release builds should not create the temp dll
-// Add ms performance,
 // Check for memory leaks
 // Think on how to support multiple processes writing in the FolderQuery
 
 // Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
-
-// Guard on less than 32 bytes strings?
 // No freeze application.
 
 ================ InProgress

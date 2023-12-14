@@ -27,6 +27,9 @@ uint32_t GetFirstBitSet(const uint32_t value) {
 
 bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const char* pNeedle, size_t NeedleSize, const char* pBufEnd)
 {
+	size_t LastIteration = HaystackSize / 32;
+	const bool bWillExceedBufEnd = (pHaystack + (LastIteration*32) + NeedleSize - 1 + 32) >= pBufEnd;
+	
 	constexpr uint64_t UpcaseMask = 0xdfdfdfdfdfdfdfdfllu; 
 	constexpr uint8_t UpcaseMask8 = 0xdf;
 	
@@ -39,32 +42,28 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 	
 	size_t LastCharIdxBetween = NeedleSize < 3 ? NeedleSize - 1 : NeedleSize - 2;
 	
-	for (size_t i = 0; i < HaystackSize; i += 32) 
+	if (!bWillExceedBufEnd) 
 	{
-		const bool bLoadingOutsideBounds = (pHaystack + i + 32) >= pBufEnd || (pHaystack + i + NeedleSize - 1 + 32) >= pBufEnd;
-		
-		// If I have enough buffer to compare the next 32 bytes then do it,
-		// otherwise finish the haystack search with the one char at a time comparison.
-		if (!bLoadingOutsideBounds)
+		for (size_t i = 0; i < HaystackSize; i += 32) 
 		{
 			const __m256i BlockFirst = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i));
 			const __m256i BlockLast  = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(pHaystack + i + NeedleSize - 1));
-		
-			const __m256i EqualFirst= _mm256_cmpeq_epi8(First, _mm256_and_si256(BlockFirst, UpcaseMask256));
+	
+			const __m256i EqualFirst = _mm256_cmpeq_epi8(First, _mm256_and_si256(BlockFirst, UpcaseMask256));
 			const __m256i EqualLast  = _mm256_cmpeq_epi8(Last, _mm256_and_si256(BlockLast, UpcaseMask256));
-		
+	
 			uint32_t Mask = _mm256_movemask_epi8(_mm256_and_si256(EqualFirst, EqualLast));
 
 			while (Mask != 0) {
 
 				const uint32_t BitPos = GetFirstBitSet(Mask);
-			
+		
 				const char* pSubStr = pHaystack + i + BitPos + 1;
-			
+		
 				// This is to avoid bleeding outside of the haystack size
 				if (&pSubStr[LastCharIdxBetween] > pHaystack + HaystackSize)
 					return false;
-			
+		
 				const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 				bool bMatchEntireWord = true;
 				for (int z = 0; z < LastCharIdxBetween; ++z) {
@@ -73,18 +72,18 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 						break;
 					}
 				}
-			
+		
 				if (bMatchEntireWord)
 					return true;
-			
+		
 				Mask = ClearLeftMostSet(Mask);
 			}
-		}
-		else
-		{
-			return ImStristr(pHaystack + i,  pHaystack + HaystackSize, pNeedle, pNeedle + NeedleSize);
-		}
 		
+		}
+	}
+	else 
+	{
+		return ImStristr(pHaystack, pHaystack + HaystackSize, pNeedle, pNeedle + NeedleSize);
 	}
 	
 	return false;

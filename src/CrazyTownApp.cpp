@@ -87,5 +87,5 @@ void AppOnDrop(PlatformContext* pPlatformCtx, char* FileName)
 	pMem->Log.LoadFile(pPlatformCtx);
 	
 	pMem->Log.SelectedTargetMode = TM_StaticText;
-	pMem->Log.bModeChangedExternally = true;
+	pMem->Log.LastChangeReason = TMCR_DragAndDrop;
 }

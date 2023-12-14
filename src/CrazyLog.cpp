@@ -107,7 +107,7 @@ void CrazyLog::LoadClipboard()
 	}
 	
 	SelectedTargetMode = TM_StaticText;
-	bModeChangedExternally = true;
+	LastChangeReason = TMCR_PasteFromClipboard;
 }
 
 bool CrazyLog::FetchFile(PlatformContext* pPlatformCtx) 
@@ -242,7 +242,7 @@ void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 			}
 #endif
 			
-			pNamedFilter->Filter.Build(false);
+			pNamedFilter->Filter.Build(&vDefaultColors, false);
 			
 			FiltersCounter++;
 		}
@@ -530,7 +530,7 @@ void CrazyLog::PasteFilter(PlatformContext* pPlatformCtx) {
 		ColorsCounter++;
 	}
 			
-	Filter.Build(false);
+	Filter.Build(&vDefaultColors, false);
 		
 	free(pFilterObj);
 }
@@ -1399,14 +1399,18 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SeparatorText("Target");
 	
 	ImGui::SetNextItemWidth(-110);
-	bool bModeJustChanged = ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr));
-	bModeJustChanged |= bModeChangedExternally;
+	if(ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr)))
+		LastChangeReason = TMCR_NewModeSelected;
+	
+	bool bModeJustChanged = LastChangeReason != TMCR_NONE;
+	
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
 			bFolderQuery = false;
+			
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
 		
@@ -1464,7 +1468,12 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			bStreamMode = false;
 			bFolderQuery = false;
-			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
+			
+			// Don't clear the FilePath since we are setting it from the drag and drop logic
+			if (LastChangeReason == TMCR_DragAndDrop)
+				SaveTypeInSettings(pPlatformCtx, "last_static_file_loaded", cJSON_String, aFilePathToLoad);
+			else
+				memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
 		
 		ImGui::SetNextItemWidth(-110);
@@ -1491,7 +1500,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 	}
 	
-	bModeChangedExternally = false;
+	LastChangeReason = TMCR_NONE;
 }
 
 void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)

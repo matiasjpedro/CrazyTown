@@ -10,6 +10,15 @@ enum TargetMode
 	TM_COUNT
 };
 
+enum TargetModeChangeReason
+{
+	TMCR_NONE = 0,
+	TMCR_NewModeSelected,
+	TMCR_DragAndDrop,
+	TMCR_PasteFromClipboard,
+	TMCR_COUNT
+};
+
 static char* apTargetModeStr[TM_COUNT] =
 {
 	"StaticText",
@@ -72,6 +81,7 @@ struct CrazyLog
 	int SelectedExtraThreadCount;
 	int MaxExtraThreadCount;
 	TargetMode SelectedTargetMode;
+	TargetModeChangeReason LastChangeReason;
 
 	float FontScale;
 	float SelectionSize;
@@ -94,7 +104,6 @@ struct CrazyLog
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	bool bIsEditingColors;
-	bool bModeChangedExternally;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
