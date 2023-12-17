@@ -6,6 +6,9 @@
 
 #include "ConsolaTTF.cpp"
 
+#define BINARIES_URL "https://github.com/matiasjpedro/CrazyTown/tree/main/release"
+#define GIT_URL "https://github.com/matiasjpedro/CrazyTown"
+#define ISSUES_URL "https://github.com/matiasjpedro/CrazyTown/issues"
 #define FILTERS_FILE_NAME "FILTERS.json"
 #define SETTINGS_NAME "SETTINGS.json"
 #define FILE_FETCH_INTERVAL 1.f
@@ -19,7 +22,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.10f;
+static float g_Version = 1.11f;
 
 static char g_NullTerminator = '\0';
 
@@ -44,6 +47,8 @@ void CrazyLog::Init()
 	// Lets enable it by default
 	bIsMultithreadEnabled = true;
 	SelectedExtraThreadCount = clamp(3, MaxExtraThreadCount, 0);
+	
+	bIsAVXEnabled = true;
 }
 
 void CrazyLog::Clear()
@@ -339,6 +344,10 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 		cJSON * pIsMtEnabled = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "is_multithread_enabled");
 		if (pIsMtEnabled)
 			bIsMultithreadEnabled = cJSON_IsTrue(pIsMtEnabled);
+		
+		cJSON * pIsAVXEnabled = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "is_avx_enabled");
+		if (pIsAVXEnabled)
+			bIsAVXEnabled = cJSON_IsTrue(pIsAVXEnabled);
 		
 		cJSON * pSelectedThreadCount = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "selected_thread_count");
 		if (pSelectedThreadCount)
@@ -676,11 +685,13 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
 	unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 	
-	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags))
+	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags))
 	{
 		ImGui::End();
 		return;
 	}
+	
+	DrawMainBar(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Target
@@ -908,23 +919,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				Clear();
 			}
 		
-			if (ImGui::BeginMenu("Options"))
-			{
-				ImGui::Checkbox("Auto-scroll", &bAutoScroll);
-				bool bIsUsingMTChanged = ImGui::Checkbox("Multithread (Experimental)", &bIsMultithreadEnabled);
-				if (bIsUsingMTChanged)
-					SaveTypeInSettings(pPlatformCtx, "is_multithread_enabled", cJSON_True, &bIsMultithreadEnabled);
-					
-				if (bIsMultithreadEnabled)
-				{
-					bool bThreadCountChanged = ImGui::SliderInt("ExtraThreadCount", &SelectedExtraThreadCount, 0, MaxExtraThreadCount);
-					if (bThreadCountChanged)
-						SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedExtraThreadCount);
-				}
-				
-				ImGui::EndMenu();
-			}
-			
 			ImGui::EndPopup();
 		}
 		
@@ -1007,7 +1001,7 @@ static void FilterMT(int LineNo, CrazyLog* pLog, ImVector<int>* pOut)
 	const char* pLineEnd = (LineNo + 1 < pLog->vLineOffsets.Size) 
 		? (pBuf + pLog->vLineOffsets[LineNo + 1] - 1) : pBufEnd;
 	
-	if (pLog->Filter.PassFilter(pLineStart, pLineEnd, pBufEnd)) 
+	if (pLog->Filter.PassFilter(pLineStart, pLineEnd, pBufEnd, pLog->bIsAVXEnabled)) 
 	{
 		pOut->push_back(LineNo);
 	}
@@ -1131,7 +1125,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 			{
 				const char* pLineStart = pBuf + vLineOffsets[LineNo];
 				const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
-				if (Filter.PassFilter(pLineStart, pLineEnd, pBufEnd)) 
+				if (Filter.PassFilter(pLineStart, pLineEnd, pBufEnd, bIsAVXEnabled)) 
 				{
 					vFiltredLinesCached.push_back(LineNo);
 				}
@@ -1392,6 +1386,93 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 	TempLineMatches.vLineMatches.clear();
 	
 	clipper.End();
+}
+
+void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
+{
+	if (ImGui::BeginMenuBar())
+	{
+		if (ImGui::BeginMenu("Menu (TODO)"))
+		{
+			if (ImGui::MenuItem("Open Recent", NULL, false, false))
+			{
+				ImGui::MenuItem("TODO");
+			}
+			
+			ImGui::MenuItem("Save", NULL, false, false);
+			ImGui::MenuItem("Save As..", NULL, false, false);
+			ImGui::MenuItem("Quit", NULL, false, false);
+			
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Settings"))
+		{
+			if (ImGui::BeginMenu("Keybinds"))
+			{
+				ImGui::Text("KEYBINDS when hovering the output view: \n\n"
+				            "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
+				            "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
+				            "[Ctrl+V]             Will paste the clipboard into the output view. \n"
+				            "[Ctrl+MouseWheel]    Will scale the font. \n"
+				            "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
+				            "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
+				            "[Alt]                Will enter in word selection mode when hovering a word. \n"
+				            "[Shift]              Will enter in line selection mode when hovering a line. \n"
+				            "[MouseWheel]         While in word/line selection mode it will expand/shrink the selection. \n"
+				            "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
+				            "[MouseRightClick]    Will open the context menu with some options. \n");
+				
+				ImGui::EndMenu();
+			}
+			
+			ImGui::Separator();
+			
+			ImGui::Checkbox("Auto-scroll", &bAutoScroll);
+			bool bIsUsingAVXChanged = ImGui::Checkbox("Use AVX Instructions ", &bIsAVXEnabled);
+			if (bIsUsingAVXChanged)
+				SaveTypeInSettings(pPlatformCtx, "is_avx_enabled", cJSON_True, &bIsAVXEnabled);
+			
+			bool bIsUsingMTChanged = ImGui::Checkbox("Multithread", &bIsMultithreadEnabled);
+			if (bIsUsingMTChanged)
+				SaveTypeInSettings(pPlatformCtx, "is_multithread_enabled", cJSON_True, &bIsMultithreadEnabled);
+					
+			if (bIsMultithreadEnabled)
+			{
+				bool bThreadCountChanged = ImGui::SliderInt("ExtraThreadCount", &SelectedExtraThreadCount, 0, MaxExtraThreadCount);
+				if (bThreadCountChanged)
+					SaveTypeInSettings(pPlatformCtx, "selected_thread_count", cJSON_Number, &SelectedExtraThreadCount);
+			}
+			
+			ImGui::EndMenu();
+		}
+		//if (ImGui::MenuItem("MenuItem")) {} // You can also use MenuItem() inside a menu bar!
+		if (ImGui::BeginMenu("About"))
+		{
+			
+			ImGui::Text("@2023 Matias Pedro \nLicense: MIT \nVersion %.2f", g_Version);
+			
+			ImGui::Separator();
+			
+			if (ImGui::MenuItem("Check updates"))
+			{
+				pPlatformCtx->pOpenURLFunc(BINARIES_URL);
+			}
+			
+			if (ImGui::MenuItem("GIT"))
+			{
+				pPlatformCtx->pOpenURLFunc(GIT_URL);
+			}
+			
+			if (ImGui::MenuItem("Bugs? Suggestions?"))
+			{
+				pPlatformCtx->pOpenURLFunc(ISSUES_URL);
+			}
+				
+			
+			ImGui::EndMenu();
+		}
+		ImGui::EndMenuBar();
+	}
 }
 
 void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
@@ -1890,7 +1971,9 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 	}
 }
 
-
+#undef ISSUES_URL
+#undef BINARIES_URL
+#undef GIT_URL
 #undef FILTERS_FILE_NAME
 #undef SETTINGS_NAME
 #undef FILTER_INTERVAL

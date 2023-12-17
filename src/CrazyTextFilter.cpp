@@ -291,9 +291,7 @@ void CrazyTextFilter::Build(ImVector<ImVec4>* pvDefaultColors, bool bRememberOld
 		
 }
 
-#define USE_AVX 1
-
-bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd, const char* pBufEnd) const
+bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd, const char* pBufEnd, bool bUseAVX) const
 {
 	if (vFilters.empty())
 		return true;
@@ -339,11 +337,15 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd, const 
 				{
 					
 					size_t HaystackSize = pTextEnd - pText;
-#if USE_AVX
-					bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
-#else
-					bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
-#endif
+					if (bUseAVX)
+					{
+						bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
+					}
+					else
+					{
+						bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedle + NeedleSize);
+					}
+
 				}
 				
 				bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;
@@ -409,11 +411,16 @@ bool CrazyTextFilter::PassFilter(const char* pText, const char* pTextEnd, const 
 				
 			{
 				size_t HaystackSize = pTextEnd - pText;
-#if USE_AVX
-				bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
-#else
-				bContainsNeedle = HaystackContainsNeedle(pText, HaystackSize, pNeedle, NeedleSize);
-#endif
+				
+				if (bUseAVX)
+				{
+					bContainsNeedle = HaystackContainsNeedleAVX(pText, HaystackSize, pNeedle, NeedleSize, pBufEnd);
+				}
+				else
+				{
+					bContainsNeedle = ImStristr(pText, pTextEnd, pNeedle, pNeedle + NeedleSize);
+				}
+
 			}
 				
 			bool bMatch = bCheckNot ? !bContainsNeedle : bContainsNeedle;

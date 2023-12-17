@@ -39,6 +39,7 @@ typedef FileContent    (*ReadFileFunc)(char* pPath);
 typedef bool           (*WriteFileFunc)(FileContent* pFileContent, char* pPath);
 typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
 typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, FileData* pLastFetchFileData, FileData* pOutLastFileFolder);
+typedef void 		   (*OpenURLFunc)(const char* pURL);
 
 
 struct PlatformReloadContext 
@@ -59,6 +60,7 @@ struct PlatformContext
 	WriteFileFunc pWriteFileFunc;
 	FreeFileContentFunc pFreeFileContentFunc;
 	FetchLastFileFolderFunc pFetchLastFileFolderFunc;
+	OpenURLFunc pOpenURLFunc;
 	
 	bool bWantsToRebuildFontTexture;
 };

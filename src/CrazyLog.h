@@ -72,7 +72,7 @@ struct CrazyLog
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderQueryName[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
-	char aLastCommand[MAX_PATH];
+	char aLastCommand[MAX_PATH * 2];
 	int FilterToOverrideIdx;
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
@@ -95,6 +95,7 @@ struct CrazyLog
 	uint64_t EnableMask;
 	
 	bool bIsMultithreadEnabled;
+	bool bIsAVXEnabled;
 	bool bAlreadyCached;
 	bool bFileLoaded;
 	bool bFolderQuery;
@@ -146,6 +147,7 @@ struct CrazyLog
 	void DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
+	void DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx);
 	
 	char* GetWordStart(const char* pLineStart, char* pWordCursor);
 	char* GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount);

@@ -1,0 +1,26 @@
+1.08
+
+* Extended capacity of the filter input field
+* Now the SIMD filter works with filters of all sizes (previously it was only running with words bigger than 3 characters)
+* Implemented IDs for each word in the filter, so if we remove one that it's in the middle it does not offset all the colors/toggles.
+
+1.09
+
+* Fixed issue introduced in the previous version where it was not loading properly the colors of the presets
+* Now where adding new filter it will pickup a color for the default palette
+
+1.10
+
+* Now dropping a file or pasting from the clipboard it will change the target mode to static text
+* Drag and drop a file it will set the FilePath Name
+* Now we can peek an empty filtred result
+* Fixed crash when searching for a big filter item
+* Fixed crach when pasting a filter from the clipboard
+
+1.11
+
+* Added Menu bar
+* Added release binaries + patch notes to the repository
+
+
+

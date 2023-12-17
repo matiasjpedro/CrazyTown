@@ -42,6 +42,7 @@ void AppUpdate(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SetNextWindowPos(pViewPort->WorkPos, ImGuiCond_Always);
 	ImGui::SetNextWindowSize(pViewPort->WorkSize, ImGuiCond_Always);
 	
+	
 	pMem->Log.Draw(DeltaTime, pPlatformCtx, "Crazy Log", &Open);
 	
 #endif

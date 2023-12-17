@@ -312,6 +312,11 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, FileData* pLastFileTimeData, F
 	return bFoundNewFile;
 }
 
+void Win32OpenURL(const char* pURL)
+{
+	ShellExecuteA(NULL, "open", pURL, NULL, NULL, SW_SHOWNORMAL);
+}
+
 //==================================================
 // Time Section
 
@@ -456,6 +461,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
 	gPlatformContext.pFreeFileContentFunc = Win32FreeFile;
 	gPlatformContext.pFetchLastFileFolderFunc = Win32FetchLastFileFolder;
+	gPlatformContext.pOpenURLFunc = Win32OpenURL;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
 	gHotReloadableCode.pInitFunc(&gPlatformContext, &gPlatformReloadContext);
