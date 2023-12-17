@@ -1249,7 +1249,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 					char* pFilteredLineStart = const_cast<char*>(buf + vLineOffsets[FilteredLineNo]);
 					char* pFilteredLineEnd = const_cast<char*>((FilteredLineNo + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[FilteredLineNo + 1] - 1) : buf_end);
 		
-					int64_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
+					size_t Size = pFilteredLineEnd+1 - pFilteredLineStart;
 					bWroteOnScratch |= pPlatformCtx->ScratchMem.PushBack(Size, pFilteredLineStart) != nullptr;
 				}
 	
@@ -1359,7 +1359,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				int BottomLine = line_no;
 				int TopLine = min(line_no + (int)SelectionSize - 1, vLineOffsets.Size - 1);
 				const char* TopLineEnd = (TopLine + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[TopLine + 1] - 1) : buf_end;
-				int64_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
+				size_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
 						
 				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
 				if (pPlatformCtx->ScratchMem.PushBack(Size, (void*)(buf + vLineOffsets[BottomLine])) &&
@@ -1872,7 +1872,7 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 			char* pEndChar = GetWordEnd(pLineEnd, pWordCursor, (int)SelectionSize);
 			
 			char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-			int64_t RequiredSize = pEndChar - pStartChar;
+			size_t RequiredSize = pEndChar - pStartChar;
 			if (pPlatformCtx->ScratchMem.PushBack(RequiredSize, pStartChar) &&
 				pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator))
 			{

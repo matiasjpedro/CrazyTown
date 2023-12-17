@@ -66,7 +66,7 @@ bool HaystackContainsNeedleAVX(const char* pHaystack, size_t HaystackSize, const
 		
 				const char* pNeedleCursor = NeedleSize == 1 ? &pNeedle[0] : &pNeedle[1];
 				bool bMatchEntireWord = true;
-				for (int z = 0; z < LastCharIdxBetween; ++z) {
+				for (size_t z = 0; z < LastCharIdxBetween; ++z) {
 					if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
 						bMatchEntireWord = false;
 						break;
@@ -125,7 +125,7 @@ bool HaystackContainsNeedle(const char* pHaystack, size_t HaystackSize, const ch
 					return false;
 				
 				bool bMatchEntireWord = true;
-				for (int z = 0; z < LastCharIdxBetween; ++z) {
+				for (size_t z = 0; z < LastCharIdxBetween; ++z) {
 					if ((pNeedleCursor[z] & UpcaseMask8) != (pSubStr[z] & UpcaseMask8)) {
 						bMatchEntireWord = false;
 						break;
