@@ -3,7 +3,7 @@
 
 #### by Matias Pedro
 
-A portable and fast application to filter logs, written in C/C++.
+A portable application to easily filter logs, written in C/C++.
 
 [Binaries](https://github.com/matiasjpedro/CrazyTown/tree/main/release)
 
