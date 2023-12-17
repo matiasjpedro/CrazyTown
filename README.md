@@ -4,6 +4,7 @@
 #### by Matias Pedro
 
 A portable and fast application to filter logs, written in C/C++.
+[Binaries](https://github.com/matiasjpedro/CrazyTown/tree/main/release)
 
 #### Motivation
 
@@ -45,10 +46,11 @@ Currently I'm building it with MSVC, just run the misc/build.bat, and it will sp
 
 ## Develop tools used:
 
-[10xEditor](https://10xeditor.com/) source edit
+[10xEditor](https://10xeditor.com/) for source edit
 [RemedyBG](https://remedybg.itch.io/remedybg) for debugging
 
 ## Special Thanks:
 
 Medo Osman, Diego Sugue, Hernan Stescovich, Marcus Frandsen for test the app and provide unvaluable feedback.
-Nicolas Maier for helping refining the SIMD instruccions to extract up to the last drop of performance.
+@rikus for helping refining the SIMD instruccions to extract up to the last drop of performance.
+[HandmadeNetwork](https://handmade.network/) Special shotout to the discord, a lot of crazy talented people there that are always open to help with technical questions.
