@@ -29,15 +29,29 @@ feature set that I always thought it will be useful to have in an application li
 * Save/Delete/Override Filter presets.
 * Copy/Paste filter preset To/From Clipboard.
 * Word highlight.
-* Toggle each individual filter (Cherrypick)
+* Toggle each individual filter (Cherrypick).
 * Peeking functionality (Ctrl+Click) in the filtered line it will show you that line the the full view of the file.
-* Word Selection (Alt to enable word selection, scroll wheel to increase/decrease selection, middle click to copy to the clipboard).
-* Line Selection (Shift to enable word selection, scroll wheel to increase/decrease selection, middle click to copy to the clipboard).
+* Word Selection.
+* Line Selection.
 * Multithread filter parsing with almost perfect scalability until we hit diminish return.
 * AVX instructions for filter parsing (15/10x speeds than a linear haystack search).
-* Open source
+* Open source.
 
 ## Usage: TODO
+
+KEYBINDS when hovering the output view:
+
+[F5]                 Will refresh the loaded file. If new content is available it will append it.
+[Ctrl+C]             Will copy the content of the output to the clipboard.
+[Ctrl+V]             Will paste the clipboard into the output view. 
+[Ctrl+MouseWheel]    Will scale the font. 
+[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs.
+[MouseButtonBack]    Will go back from peeking into the filtered view.
+[Alt]                Will enter in word selection mode when hovering a word. 
+[Shift]              Will enter in line selection mode when hovering a line. 
+[MouseWheel]         While in word/line selection mode it will expand/shrink the selection.
+[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard.
+[MouseRightClick]    Will open the context menu with some options.
 
 I'm gonna record a video showcasing the features and the usage of it.
 
