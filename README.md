@@ -4,9 +4,10 @@
 #### by Matias Pedro
 
 A portable and fast application to filter logs, written in C/C++.
+
 [Binaries](https://github.com/matiasjpedro/CrazyTown/tree/main/release)
 
-#### Motivation
+## Motivation
 
 As a gameplay programmer I found myself putting a lot of hours looking at logs provided by QA to track down the root cause
 of specific issues. I tried a couple of Log filter applications in the past and when the filter started to become a little bit
@@ -14,7 +15,7 @@ complex or if the file was big those ended up becoming unresponsible or ultra sl
 to code my own, using and learning all the techniques that I could apply to make it blazingly fast. I combined that speed with a
 feature set that I always thought it will be useful to have in an application like this.
 
-#### Used Libraries:
+## Used Libraries:
 
 [cJSON](https://github.com/DaveGamble/cJSON) for saving settings
 [ImGUI](https://github.com/ocornut/imgui) for ui handling
@@ -52,5 +53,5 @@ Currently I'm building it with MSVC, just run the misc/build.bat, and it will sp
 ## Special Thanks:
 
 Medo Osman, Diego Sugue, Hernan Stescovich, Marcus Frandsen for test the app and provide unvaluable feedback.
-@rikus for helping refining the SIMD instruccions to extract up to the last drop of performance.
+@Rikus for helping refining the SIMD instruccions to extract up to the last drop of performance.
 [HandmadeNetwork](https://handmade.network/) Special shotout to the discord, a lot of crazy talented people there that are always open to help with technical questions.
