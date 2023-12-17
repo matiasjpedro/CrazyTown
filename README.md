@@ -9,7 +9,7 @@ A portable and fast application to filter logs, written in C/C++.
 
 ## Motivation
 
-As a gameplay programmer I found myself wasting a lot of hours looking at logs provided by QA to track down the root cause
+As a gameplay programmer I found myself spending a lot of hours looking at logs provided by QA to track down the root cause
 of specific issues. I tried a couple of Log filter applications in the past and when the filter started to become a little bit
 complex or if the file was big those ended up becoming unresponsible or ultra slow. So for the sake of fun and learning I decide
 to code my own, using and learning all the techniques that I could apply to make it blazingly fast. I combined that speed with a
