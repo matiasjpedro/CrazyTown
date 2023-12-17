@@ -1,5 +1,26 @@
 @echo off
 
+rem MSVC environment setup ---------------------------------------------------------------------
+
+rem set vcvars64path="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64"
+
+cl >nul 2>&1
+
+if %errorlevel% neq 0 (
+	if defined vcvars64path (
+    	call %vcvars64path%
+	) else (
+		echo You're executing this bat without setting the MSVC environment first.
+		echo Uncomment vcvars64path and set the proper path.
+		pause ul
+		exit /b 
+	)
+) 
+
+
+rem BUILD setup ------------------------------------------------------------------------------
+
+
 setlocal enabledelayedexpansion
 
 set CommonCompilerFlags= -MTd -nologo -EHa- -Gm- -GR- -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4211 -wd4075 -ZI -FC /DEBUG
