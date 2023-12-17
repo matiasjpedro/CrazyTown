@@ -41,17 +41,17 @@ feature set that I always thought it will be useful to have in an application li
 
 KEYBINDS when hovering the output view:
 
-[F5]                 Will refresh the loaded file. If new content is available it will append it.
-[Ctrl+C]             Will copy the content of the output to the clipboard.
-[Ctrl+V]             Will paste the clipboard into the output view. 
-[Ctrl+MouseWheel]    Will scale the font. 
-[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs.
-[MouseButtonBack]    Will go back from peeking into the filtered view.
-[Alt]                Will enter in word selection mode when hovering a word. 
-[Shift]              Will enter in line selection mode when hovering a line. 
-[MouseWheel]         While in word/line selection mode it will expand/shrink the selection.
-[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard.
-[MouseRightClick]    Will open the context menu with some options.
+*[F5]                 Will refresh the loaded file. If new content is available it will append it.
+*[Ctrl+C]             Will copy the content of the output to the clipboard.
+*[Ctrl+V]             Will paste the clipboard into the output view. 
+*[Ctrl+MouseWheel]    Will scale the font. 
+*[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs.
+*[MouseButtonBack]    Will go back from peeking into the filtered view.
+*[Alt]                Will enter in word selection mode when hovering a word. 
+*[Shift]              Will enter in line selection mode when hovering a line. 
+*[MouseWheel]         While in word/line selection mode it will expand/shrink the selection.
+*[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard.
+*[MouseRightClick]    Will open the context menu with some options.
 
 I'm gonna record a video showcasing the features and the usage of it.
 
