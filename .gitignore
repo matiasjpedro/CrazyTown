@@ -33,6 +33,7 @@
 *.out
 *.app
 /build/*
+/.vs/*
 
 /data/*.txt
 /data/*.ini
