@@ -1797,12 +1797,17 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			ImGui::SameLine();
 			size_t FilterSize = Filter.vFilters[i].EndOffset - Filter.vFilters[i].BeginOffset;
+			
 			pPlatformCtx->ScratchMem.PushBack(FilterSize, (void*)(&Filter.aInputBuf[Filter.vFilters[i].BeginOffset]));
+			
+			char ToggleIdStr[4] = { 0 };
+			snprintf(ToggleIdStr, sizeof(ToggleIdStr), "##%i", i);
+			size_t ToggleSize = StringUtils::Length(ToggleIdStr);
+			pPlatformCtx->ScratchMem.PushBack(ToggleSize, ToggleIdStr);
+			
 			pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator);
 				
-			char ToggleIdStr[MAX_PATH] = { 0 };
-			snprintf(ToggleIdStr, sizeof(ToggleIdStr), "%s##%i", pScratchStart, i);
-			bool bChanged = ImGui::CheckboxFlags(ToggleIdStr, (ImU64*) &EnableMask, 1ull << i);
+			bool bChanged = ImGui::CheckboxFlags(pScratchStart, (ImU64*) &EnableMask, 1ull << i);
 			if (bChanged) 
 			{
 				// Keep the filter setting in sync
