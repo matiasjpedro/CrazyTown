@@ -1,3 +1,9 @@
+1.12
+
+* Fixed toggle functionality when declaring two equally named filters. 
+* Added Save functionality (it overrides the loaded file with the filtered view)
+* Added Save as.. functionality (it saves the filtered version with the specified name)
+
 1.11
 
 * Added Menu bar
@@ -14,7 +20,7 @@
 1.09
 
 * Fixed issue introduced in the previous version where it was not loading properly the colors of the presets
-* Now where adding new filter it will pickup a color for the default palette
+* Now when adding new filter it will pickup a color for the default palette
 
 1.08
 

@@ -22,7 +22,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.11f;
+static float g_Version = 1.12f;
 
 static char g_NullTerminator = '\0';
 
