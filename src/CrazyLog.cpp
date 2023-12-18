@@ -163,6 +163,31 @@ void CrazyLog::SearchLatestFile(PlatformContext* pPlatformCtx)
 	FolderFetchCooldown = FOLDER_FETCH_INTERVAL;
 }
 
+void CrazyLog::SaveFilteredView(PlatformContext* pPlatformCtx, char* pFilePath)
+{
+	if (vFiltredLinesCached.Size == 0)
+		return;
+	
+	FileContent TempFileContent;
+	void* pFileHandle = pPlatformCtx->pGetFileHandleFunc(pFilePath, 2 /* CREATE_ALWAYS */);
+	
+	const char* pBuf = Buf.begin();
+	const char* pBufEnd = Buf.end();
+	
+	for (size_t i = 0; i < vFiltredLinesCached.Size; i++)
+	{
+		int LineNo = vFiltredLinesCached[(int)i];
+		const char* pLineStart = pBuf + vLineOffsets[LineNo];
+		const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
+		
+		TempFileContent.pFile = (void*)pLineStart;
+		TempFileContent.Size = (pLineEnd + 1) - pLineStart;
+		
+		bool bShouldClose = i == (vFiltredLinesCached.Size - 1);
+		pPlatformCtx->pStreamFileFunc(&TempFileContent, pFileHandle, bShouldClose);
+	}
+}
+
 bool CrazyLog::LoadFile(PlatformContext* pPlatformCtx) 
 {
 	if (aFilePathToLoad[0] == 0)
@@ -1392,16 +1417,39 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 {
 	if (ImGui::BeginMenuBar())
 	{
-		if (ImGui::BeginMenu("Menu (TODO)"))
+		if (ImGui::BeginMenu("Menu"))
 		{
-			if (ImGui::MenuItem("Open Recent", NULL, false, false))
+			//if (ImGui::MenuItem("Open Recent", NULL, false, false))
+			//{
+			//	ImGui::MenuItem("TODO");
+			//}
+			
+			if (ImGui::MenuItem("Save", nullptr, nullptr, aFilePathToLoad[0] != 0))
 			{
-				ImGui::MenuItem("TODO");
+				SaveFilteredView(pPlatformCtx, aFilePathToLoad);
 			}
 			
-			ImGui::MenuItem("Save", NULL, false, false);
-			ImGui::MenuItem("Save As..", NULL, false, false);
-			ImGui::MenuItem("Quit", NULL, false, false);
+			if (ImGui::BeginMenu("Save As.."))
+			{
+				// Get application path?	
+				char aFileName[MAX_PATH] = { 0 };
+				if (ImGui::InputText("Name", aFileName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+				{
+					char aExePath[MAX_PATH] = { 0 };
+					pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH);
+					
+					size_t ExePathLen = StringUtils::Length(aExePath);
+					strcpy_s(aExePath + ExePathLen, sizeof(aExePath) - ExePathLen,  aFileName);
+					
+					SaveFilteredView(pPlatformCtx, aExePath);
+				}
+				
+				ImGui::SameLine();
+				HelpMarker("It will create a new file with the specified name in the CrazyTown folder. "
+				           "Example: MyFileName.txt \n");
+				
+				ImGui::EndMenu();
+			}
 			
 			ImGui::EndMenu();
 		}

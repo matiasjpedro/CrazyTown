@@ -16,9 +16,13 @@
 // Select char by mouse movement (think on how I can integrate seemingly into the highlight array)
 // No freeze application.
 
+// Loaded elapsed time
+// When copy the filter copy the toggles aswell
+
 ================ InProgress
 
-// When copy the filter copy the toggles aswell
+// Open recent file
+// Stream recent file
 
 ================ Done
 

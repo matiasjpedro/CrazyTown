@@ -118,6 +118,7 @@ struct CrazyLog
 	bool FetchFile(PlatformContext* pPlatformCtx);
 	bool LoadFile(PlatformContext* pPlatformCtx);
 	void SearchLatestFile(PlatformContext* pPlatformCtx);
+	void SaveFilteredView(PlatformContext* pPlatformCtx, char* pFilePath);
 	
 	void LoadFilters(PlatformContext* pPlatformCtx);
 	void SaveLoadedFilters(PlatformContext* pPlatformCtx);

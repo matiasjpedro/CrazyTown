@@ -151,6 +151,56 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //==================================================
 // IO Section
 
+//CreationDisposition
+//#define CREATE_NEW          1
+//#define CREATE_ALWAYS       2
+//#define OPEN_EXISTING       3
+//#define OPEN_ALWAYS         4
+//#define TRUNCATE_EXISTING   5
+
+void Win32GetExePath(char* pExePathBuffer, size_t BufferSize)
+{
+	DWORD SizeOfFilename = GetModuleFileNameA(0, pExePathBuffer, (DWORD)BufferSize);
+	
+	for (unsigned i = SizeOfFilename - 1; i > 0; i--)
+	{
+		if (pExePathBuffer[i] == '\\') 
+		{
+			pExePathBuffer[i + 1] = '\0';
+			break;
+		}
+			
+	}
+}
+
+void* Win32GetFileHandle(char* pPath, unsigned CreationDisposition)
+{
+	HANDLE FileHandle =	CreateFileA(pPath, GENERIC_WRITE, 0, 0, CreationDisposition, 0, 0);
+	return FileHandle;
+}
+ 
+
+bool Win32StreamFile(FileContent* pFileContent, void* pHandle, bool bShouldCloseHandle) 
+{
+	bool Result = false;
+
+	HANDLE FileHandle = pHandle;
+	if(FileHandle != INVALID_HANDLE_VALUE)	
+	{
+		DWORD BytesWritten;
+		if(WriteFile(FileHandle, pFileContent->pFile, (DWORD)pFileContent->Size, &BytesWritten, 0))
+		{
+			// File write success
+			Result = (BytesWritten == pFileContent->Size);
+		}
+
+		if(bShouldCloseHandle)
+			CloseHandle(FileHandle);
+	}
+
+	return Result;
+}
+
 bool Win32WriteFile(FileContent* pFileContent, char* pPath) 
 {
 	bool Result = false;
@@ -459,6 +509,9 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	gPlatformContext.pReadFileFunc = Win32ReadFile;
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
+	gPlatformContext.pStreamFileFunc = Win32StreamFile;
+	gPlatformContext.pGetFileHandleFunc = Win32GetFileHandle;
+	gPlatformContext.pGetExePathFunc = Win32GetExePath;
 	gPlatformContext.pFreeFileContentFunc = Win32FreeFile;
 	gPlatformContext.pFetchLastFileFolderFunc = Win32FetchLastFileFolder;
 	gPlatformContext.pOpenURLFunc = Win32OpenURL;
