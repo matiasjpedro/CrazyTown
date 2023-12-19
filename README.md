@@ -1,5 +1,5 @@
 # CrazyTown
-![CrazyTownIMG](https://github.com/matiasjpedro/CrazyTown/assets/7761322/ae122f0e-a2a2-4916-9777-3c6ae77965ff)
+![CrazyTown](https://github.com/matiasjpedro/CrazyTown/assets/7761322/2d63ce4c-88d0-4cf2-ae34-d1fb0a2eef5a)
 
 #### by Matias Pedro
 
