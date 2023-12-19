@@ -1424,12 +1424,13 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			//	ImGui::MenuItem("TODO");
 			//}
 			
-			if (ImGui::MenuItem("Save", nullptr, nullptr, aFilePathToLoad[0] != 0))
+			if (ImGui::MenuItem("Save", nullptr, nullptr, aFilePathToLoad[0] != 0 && vFiltredLinesCached.Size > 0))
 			{
 				SaveFilteredView(pPlatformCtx, aFilePathToLoad);
+				LoadFile(pPlatformCtx);
 			}
 			
-			if (ImGui::BeginMenu("Save As.."))
+			if (ImGui::BeginMenu("Save As..", vFiltredLinesCached.Size > 0))
 			{
 				// Get application path?	
 				char aFileName[MAX_PATH] = { 0 };
@@ -1437,6 +1438,7 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				{
 					char aExePath[MAX_PATH] = { 0 };
 					pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH);
+					pPlatformCtx->pOpenURLFunc(aExePath);
 					
 					size_t ExePathLen = StringUtils::Length(aExePath);
 					strcpy_s(aExePath + ExePathLen, sizeof(aExePath) - ExePathLen,  aFileName);
@@ -1445,8 +1447,6 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				}
 				
 				ImGui::SameLine();
-				HelpMarker("It will create a new file with the specified name in the CrazyTown folder. "
-				           "Example: MyFileName.txt \n");
 				
 				ImGui::EndMenu();
 			}
@@ -1479,6 +1479,9 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			bool bIsUsingAVXChanged = ImGui::Checkbox("Use AVX Instructions ", &bIsAVXEnabled);
 			if (bIsUsingAVXChanged)
 				SaveTypeInSettings(pPlatformCtx, "is_avx_enabled", cJSON_True, &bIsAVXEnabled);
+			
+			ImGui::SameLine();
+			HelpMarker("Speeds up 15/10x the filter time. \n");
 			
 			bool bIsUsingMTChanged = ImGui::Checkbox("Multithread", &bIsMultithreadEnabled);
 			if (bIsUsingMTChanged)
