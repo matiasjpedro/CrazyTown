@@ -6,7 +6,7 @@
 
 #include "ConsolaTTF.cpp"
 
-#define BINARIES_URL "https://github.com/matiasjpedro/CrazyTown/tree/main/release"
+#define BINARIES_URL "https://github.com/matiasjpedro/CrazyTown/releases"
 #define GIT_URL "https://github.com/matiasjpedro/CrazyTown"
 #define ISSUES_URL "https://github.com/matiasjpedro/CrazyTown/issues"
 #define FILTERS_FILE_NAME "FILTERS.json"
@@ -1509,12 +1509,12 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				pPlatformCtx->pOpenURLFunc(BINARIES_URL);
 			}
 			
-			if (ImGui::MenuItem("GIT"))
+			if (ImGui::MenuItem("Github"))
 			{
 				pPlatformCtx->pOpenURLFunc(GIT_URL);
 			}
 			
-			if (ImGui::MenuItem("Bugs? Suggestions?"))
+			if (ImGui::MenuItem("Bugs? - Suggestions?"))
 			{
 				pPlatformCtx->pOpenURLFunc(ISSUES_URL);
 			}
