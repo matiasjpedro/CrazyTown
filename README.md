@@ -11,7 +11,7 @@ A portable application to easily filter logs, written in C/C++.
 
 As a gameplay programmer I found myself spending a lot of hours looking at logs provided by QA to track down the root cause
 of specific issues. I tried a couple of Log filter applications in the past and when the filter started to become a little bit
-complex or if the file was big those ended up becoming unresponsible or ultra slow. So for the sake of fun and learning I decide
+complex or if the file was big those ended up becoming unresponsive or ultra slow. So for the sake of fun and learning I decide
 to code my own, using and learning all the techniques that I could apply to make it blazingly fast. I combined that speed with a
 feature set that I always thought it will be useful to have in an application like this.
 
@@ -22,19 +22,20 @@ feature set that I always thought it will be useful to have in an application li
 
 ## Features:
 
+* Portable, .exe + .dll = 4 MB.
 * Filter using C synthax instead of complex regex.
 * Drag and drop files.
 * Copy/Paste text To/From Clipboard
-* Stream latest file from "x" folder.
 * Save/Delete/Override Filter presets.
-* Copy/Paste filter preset To/From Clipboard.
-* Word highlight.
+* Copy/Paste filter preset To/From Clipboard. (Useful to share filters with colleagues)
+* Filter highlight, different colors per filter.
 * Toggle each individual filter (Cherrypick).
 * Peeking functionality (Ctrl+Click) in the filtered line it will show you that line the the full view of the file.
 * Word Selection.
 * Line Selection.
 * Multithread filter parsing with almost perfect scalability until we hit diminish return.
 * AVX instructions for filter parsing (15/10x speeds than a linear haystack search).
+* Stream latest file from "x" folder. (Useful to get the output of whatever program that writes in folder like Unreal)
 * Open source.
 
 ## Usage: TODO
