@@ -382,10 +382,108 @@ inline float Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 	return (float)(End.QuadPart - Start.QuadPart) / (float)gPerfCountFrequency;
 }
 
+void ParseArgFlag(char* pFlagBegin, char* pFlagEnd)
+{
+	size_t FlagSize = pFlagEnd - pFlagBegin;
+	
+	if (strncmp(pFlagBegin, aCmdArgs[AT_FlagTest], FlagSize) == 0)
+	{
+		gPlatformContext.CmdArgs.bFlagTest = true;
+	}
+}
+void ParseArgOption(char* pOptionBegin, char* pOptionEnd, char* pOptionValueBegin, char* pOptionValueEnd)
+{
+	size_t OptionSize = pOptionEnd - pOptionBegin;
+	size_t OptionValueSize = pOptionValueEnd - pOptionValueBegin;
+	
+	if (OptionValueSize == 0)
+		return;
+	
+	if (strncmp(pOptionBegin, aCmdArgs[AT_WinPosX], OptionSize) == 0)
+	{
+		gPlatformContext.CmdArgs.WinPosX = atoi(pOptionValueBegin);
+	}
+	else if (strncmp(pOptionBegin, aCmdArgs[AT_WinPosY], OptionSize) == 0)
+	{
+		gPlatformContext.CmdArgs.WinPosY = atoi(pOptionValueBegin);
+	}
+	else if (strncmp(pOptionBegin, aCmdArgs[AT_WinSizeX], OptionSize) == 0)
+	{
+		gPlatformContext.CmdArgs.WinSizeX = atoi(pOptionValueBegin);
+	}
+	else if (strncmp(pOptionBegin, aCmdArgs[AT_WinSizeY], OptionSize) == 0)
+	{
+		gPlatformContext.CmdArgs.WinSizeY = atoi(pOptionValueBegin);
+	}
+	
+}
+
+void ParseArguments(char* pCmdLine)
+{
+	constexpr char ArgumentToken = '-';
+	
+	char* pCmdLineCursor = pCmdLine;
+	while (*pCmdLineCursor != '\0')
+	{
+		if (*pCmdLineCursor == ArgumentToken)
+		{
+			if (*(pCmdLineCursor + 1) == ArgumentToken)
+			{
+				char* pFlagBegin = pCmdLineCursor + 2;
+				while (!StringUtils::IsWhitspace(pCmdLineCursor) && *pCmdLineCursor != '\0') 
+				{ 
+					pCmdLineCursor++; 
+				}
+				
+				char* pFlagEnd = pCmdLineCursor;
+				
+				ParseArgFlag(pFlagBegin, pFlagEnd);
+			}
+			else
+			{
+				char* pOptionBegin = pCmdLineCursor + 1;
+				while (!StringUtils::IsWhitspace(pCmdLineCursor) && *pCmdLineCursor != '\0') 
+				{ 
+					pCmdLineCursor++; 
+				}
+				
+				char* pOptionEnd = pCmdLineCursor;
+				
+				while (StringUtils::IsWhitspace(pCmdLineCursor) && *pCmdLineCursor != '\0')
+				{
+					pCmdLineCursor++;
+				}
+				
+				char* pOptionValueBegin = pCmdLineCursor;
+				while (!StringUtils::IsWhitspace(pCmdLineCursor) && *pCmdLineCursor != '\0') 
+				{ 
+					pCmdLineCursor++; 
+				}
+				
+				char* pOptionValueEnd = pCmdLineCursor;
+				
+				ParseArgOption(pOptionBegin, pOptionEnd, pOptionValueBegin, pOptionValueEnd);
+			}
+				
+		}
+			
+		pCmdLineCursor++;
+	}
+}
+
+void SetDefaultArguments()
+{
+	gPlatformContext.CmdArgs.WinSizeX = 1200;
+	gPlatformContext.CmdArgs.WinSizeY = 800;
+}
+
 //==================================================
 
 int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode)
 {
+	SetDefaultArguments();
+	ParseArguments(CommandLine);
+	
 	char aEXEFullPath[MAX_PATH];
 	char* pPastLastSlash = nullptr;
 	char aHotReloadDLLFullPath[MAX_PATH];
@@ -448,8 +546,10 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		wc.lpszClassName, 
 		L"CrazyTown", 
 		WS_OVERLAPPEDWINDOW, 
-		0, 620, 
-		1200, 800, 
+		gPlatformContext.CmdArgs.WinPosX, 
+		gPlatformContext.CmdArgs.WinPosY, 
+		gPlatformContext.CmdArgs.WinSizeX,
+		gPlatformContext.CmdArgs.WinSizeY, 
 		nullptr, nullptr, 
 		wc.hInstance, 
 		nullptr);

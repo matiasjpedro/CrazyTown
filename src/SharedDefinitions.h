@@ -1,6 +1,33 @@
 #pragma once
 #include <cstdint>
 
+enum ArgType : unsigned
+{
+	AT_FlagTest,
+	AT_WinPosX,
+	AT_WinPosY,
+	AT_WinSizeX,
+	AT_WinSizeY,
+	AT_COUNT
+};
+	
+static const char* aCmdArgs[AT_COUNT]
+{
+	"flag_test",
+	"win_pos_x",
+	"win_pos_y",
+	"win_size_x",
+	"win_size_y"
+};
+
+struct CommandArguments
+{
+	bool bFlagTest;
+	int WinPosX;
+	int WinPosY;
+	int WinSizeX;
+	int WinSizeY;
+};
 struct FileContent 
 {
 	size_t Size;
@@ -54,6 +81,7 @@ struct PlatformReloadContext
 
 struct PlatformContext 
 {
+	CommandArguments CmdArgs;
 	uint64_t PermanentMemoryCapacity;
 	void* pPermanentMemory;
 	

@@ -4,6 +4,6 @@ RemedyBG.WorkDir: d:\Dev\CrazyTown\data
 Custom.ClientCommandsWorkDir: d:\Dev\CrazyTown\data 
 Custom.ExeName: CrazyTownWin32.exe
 Custom.ClientExePath: ..\build\CrazyTownWin32.exe
-Custom.ClientCommonArgs: -common
+Custom.ClientCommonArgs: -win_pos_y 600
 Custom.ClientOneArgs: -one
 Custom.ClientOneArgs: -one
