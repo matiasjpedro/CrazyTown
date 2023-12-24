@@ -484,7 +484,7 @@ void CrazyLog::RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPat
 	for (unsigned i = 0; i < (unsigned)vTargetFilePath.Size; i++)
 	{
 		if (vTargetFilePath[i].aFilePath[0] == '\0')
-			break;
+			continue;
 		
 		if (strncmp(vTargetFilePath[i].aFilePath, pFilePath, sizeof(FilePath::aFilePath)) == 0)
 		{
@@ -1559,7 +1559,7 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (ImGui::BeginMenu("Menu"))
 		{
 			
-			if (ImGui::BeginMenu("Open Recent..", vRecentFilePaths[0].aFilePath[0] != '\0'))
+			if (ImGui::BeginMenu("Open Recent..", FilePathsTail != -1))
 			{
 				bool bFirstDisplay = true;
 				for (int i = FilePathsTail; i != FilePathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentFilePaths))
@@ -1581,7 +1581,7 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				ImGui::EndMenu();
 			}
 			
-			if (ImGui::BeginMenu("Stream Recent..", vRecentStreamPaths[0].aFilePath[0] != '\0'))
+			if (ImGui::BeginMenu("Stream Recent..", StreamPathsTail != -1))
 			{
 				bool bFirstDisplay = true;
 				for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
@@ -1785,10 +1785,9 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			bFolderQuery = false;
 			
 			// Don't clear the FilePath since we are setting it from the drag and drop logic
-			if (bLoadTriggerExternally) 
-				RememberFilePath(pPlatformCtx, false, aFilePathToLoad);
-			else
+			if (!bLoadTriggerExternally) 
 				memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
+				
 		}
 		
 		ImGui::SetNextItemWidth(-110);
