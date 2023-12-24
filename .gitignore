@@ -38,5 +38,4 @@
 /data/*.txt
 /data/*.ini
 /data/*.json
-/data/FILTERS
-/data/QUERIES
+/TODO.txt
