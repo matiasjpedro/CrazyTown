@@ -6,6 +6,7 @@
 
 #include "ConsolaTTF.cpp"
 
+#define RING_BUFFER_BACKWARDS(idx, vBuffer) (idx - 1 != -1 ? idx - 1 : vBuffer.Size - 1)
 #define BINARIES_URL "https://github.com/matiasjpedro/CrazyTown/releases"
 #define GIT_URL "https://github.com/matiasjpedro/CrazyTown"
 #define ISSUES_URL "https://github.com/matiasjpedro/CrazyTown/issues"
@@ -15,6 +16,7 @@
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
 #define MAX_EXTRA_THREADS 31
+#define MAX_REMEMBER_PATHS 5
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -47,6 +49,11 @@ void CrazyLog::Init()
 	// Lets enable it by default
 	bIsMultithreadEnabled = true;
 	SelectedExtraThreadCount = clamp(3, MaxExtraThreadCount, 0);
+	
+	FilePathsTail = -1;
+	StreamPathsTail = -1;
+	vRecentFilePaths.resize(MAX_REMEMBER_PATHS, { 0 });
+	vRecentStreamPaths.resize(MAX_REMEMBER_PATHS, { 0 });
 	
 	bIsAVXEnabled = true;
 }
@@ -358,14 +365,6 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 	{
 		cJSON * pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
 		
-		cJSON * pLastFolderQuery = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "last_folder_query");
-		if(pLastFolderQuery)
-			strcpy_s(aFolderQueryName, sizeof(aFolderQueryName), pLastFolderQuery->valuestring);
-		
-		cJSON * pLastStaticFileLoaded = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "last_static_file_loaded");
-		if(pLastStaticFileLoaded)
-			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), pLastStaticFileLoaded->valuestring);
-		
 		cJSON * pIsMtEnabled = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "is_multithread_enabled");
 		if (pIsMtEnabled)
 			bIsMultithreadEnabled = cJSON_IsTrue(pIsMtEnabled);
@@ -410,6 +409,54 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 			}
 		}
 		
+		cJSON * pRecentStreamPathsArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "recent_stream_paths");
+		int StreamsPathsSize = cJSON_GetArraySize(pRecentStreamPathsArray);
+		cJSON * pRecentStreamPath = nullptr;
+		if (pRecentStreamPathsArray) {
+			vRecentStreamPaths.resize(StreamsPathsSize);
+		
+			int PathsCounter = 0;
+			cJSON_ArrayForEach(pRecentStreamPath, pRecentStreamPathsArray)
+			{
+				strcpy_s(vRecentStreamPaths[PathsCounter++].aFilePath, sizeof(FilePath::aFilePath),
+				         pRecentStreamPath->valuestring);
+			}
+		}
+		
+		
+		cJSON * pRecentFilePathsArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "recent_file_paths");
+		int FilePathsSize = cJSON_GetArraySize(pRecentFilePathsArray);
+		cJSON * pRecentFilePath = nullptr;
+		if (pRecentFilePathsArray) {
+			vRecentFilePaths.resize(FilePathsSize);
+		
+			int PathsCounter = 0;
+			cJSON_ArrayForEach(pRecentFilePath, pRecentFilePathsArray)
+			{
+				strcpy_s(vRecentFilePaths[PathsCounter++].aFilePath, sizeof(FilePath::aFilePath),
+				         pRecentFilePath->valuestring);
+			}
+		}
+		
+		cJSON * pStreamPathsTail = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "stream_paths_tail");
+		if (pStreamPathsTail)
+			StreamPathsTail = (int)pStreamPathsTail->valuedouble;
+		else if (StreamsPathsSize > 0)
+			StreamPathsTail = StreamsPathsSize -1;
+		
+		cJSON * pFilePathsTail = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "file_paths_tail");
+		if (pFilePathsTail)
+			FilePathsTail = (int)pFilePathsTail->valuedouble;
+		else if (FilePathsSize > 0)
+			FilePathsTail = FilePathsSize -1;
+		
+		if(StreamPathsTail != -1)
+			strcpy_s(aFolderQueryName, sizeof(aFolderQueryName), vRecentStreamPaths[StreamPathsTail].aFilePath);
+		
+		if(FilePathsTail != -1)
+			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), vRecentFilePaths[FilePathsTail].aFilePath);
+		
+		
 		free(pJsonRoot);
 		pPlatformCtx->pFreeFileContentFunc(&File);
 	}
@@ -422,6 +469,99 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 			vDefaultColors[j] = aDefaultColors[j];
 		}
 	}
+}
+
+void CrazyLog::RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPath, char* pFilePath) {
+	
+	const char* pTailSettingName = bIsStreamPath ? "stream_paths_tail" : "file_paths_tail";
+	const char* pBufferSettingName = bIsStreamPath ? "recent_stream_paths" : "recent_file_paths";
+	
+	ImVector<FilePath>& vTargetFilePath = bIsStreamPath ? vRecentStreamPaths : vRecentFilePaths;
+	int& PathsTail = bIsStreamPath ? StreamPathsTail : FilePathsTail;
+	
+	int AlreadyExistIdx = -1;
+	// Check if this path already exist in our buffer
+	for (unsigned i = 0; i < (unsigned)vTargetFilePath.Size; i++)
+	{
+		if (vTargetFilePath[i].aFilePath[0] == '\0')
+			break;
+		
+		if (strncmp(vTargetFilePath[i].aFilePath, pFilePath, sizeof(FilePath::aFilePath)) == 0)
+		{
+			AlreadyExistIdx = i;
+			break;
+		}
+	}
+	
+	// If it's already the latest one, then don't do nothing. 
+	if (AlreadyExistIdx != -1 && AlreadyExistIdx == PathsTail)
+		return;
+
+	PathsTail = ++PathsTail % MAX_REMEMBER_PATHS;
+	
+	// If it already exist then offset the buffer by 1 idx starting from the located idx
+	// by doing that we will be removing the older entry and bump the other entries 1 position.
+	if (AlreadyExistIdx != -1)
+	{
+		for (int i = AlreadyExistIdx; i != PathsTail; i = RING_BUFFER_BACKWARDS(i, vTargetFilePath))
+		{
+			int PrevIdx = RING_BUFFER_BACKWARDS(i, vTargetFilePath);
+			strcpy_s(vTargetFilePath[i].aFilePath, sizeof(FilePath::aFilePath), vTargetFilePath[PrevIdx].aFilePath);
+		}
+	}
+	
+	// Then push the path to the head of the buffer
+	strcpy_s(vTargetFilePath[PathsTail].aFilePath, sizeof(FilePath::aFilePath), pFilePath);
+	
+	cJSON * pJsonPathsTail = cJSON_CreateNumber(PathsTail);
+	
+	FileContent OutFile = {0};
+	
+	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
+	cJSON * pJsonRoot = nullptr;
+	
+	cJSON * pJsonRecentPathArray = cJSON_CreateArray();
+		
+	for (unsigned j = 0; j < (unsigned)vTargetFilePath.Size; ++j)
+	{
+		FilePath& Path = vTargetFilePath[j];
+			
+		cJSON * pFilePathValue = cJSON_CreateString(Path.aFilePath);
+		cJSON_AddItemToArray(pJsonRecentPathArray, pFilePathValue);
+	}
+	
+	if (File.pFile)
+	{
+		pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+		
+		if (cJSON_HasObjectItem(pJsonRoot, pBufferSettingName)) 
+		{
+			cJSON_ReplaceItemInObjectCaseSensitive(pJsonRoot, pBufferSettingName, pJsonRecentPathArray);
+		}
+		else
+		{
+			cJSON_AddItemToObjectCS(pJsonRoot, pBufferSettingName, pJsonRecentPathArray);
+		}
+		
+		if(cJSON_HasObjectItem(pJsonRoot, pTailSettingName))
+			cJSON_ReplaceItemInObjectCaseSensitive(pJsonRoot, pTailSettingName, pJsonPathsTail);
+		else
+			cJSON_AddItemToObjectCS(pJsonRoot, pTailSettingName, pJsonPathsTail);
+		
+		pPlatformCtx->pFreeFileContentFunc(&File);
+	}
+	else
+	{
+		pJsonRoot = cJSON_CreateObject();
+		cJSON_AddItemToObjectCS(pJsonRoot, pBufferSettingName, pJsonRecentPathArray);
+		cJSON_AddItemToObjectCS(pJsonRoot, pTailSettingName, pJsonPathsTail);
+	}
+	
+	OutFile.pFile = cJSON_Print(pJsonRoot);
+	OutFile.Size = strlen((char*)OutFile.pFile);
+	
+	pPlatformCtx->pWriteFileFunc(&OutFile, SETTINGS_NAME);
+	free(pJsonRoot);	
 }
 
 void CrazyLog::SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx) {
@@ -473,7 +613,6 @@ void CrazyLog::SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx) {
 	
 	pPlatformCtx->pWriteFileFunc(&OutFile, SETTINGS_NAME);
 	free(pJsonRoot);	
-	
 }
 
 void CrazyLog::SaveTypeInSettings(PlatformContext* pPlatformCtx, const char* pKey, int Type, const void* pValue) {
@@ -1419,10 +1558,51 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 	{
 		if (ImGui::BeginMenu("Menu"))
 		{
-			//if (ImGui::MenuItem("Open Recent", NULL, false, false))
-			//{
-			//	ImGui::MenuItem("TODO");
-			//}
+			
+			if (ImGui::BeginMenu("Open Recent..", vRecentFilePaths[0].aFilePath[0] != '\0'))
+			{
+				bool bFirstDisplay = true;
+				for (int i = FilePathsTail; i != FilePathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentFilePaths))
+				{
+					if (vRecentFilePaths[i].aFilePath[0] == '\0')
+						break;
+					
+					bFirstDisplay = false;
+					
+					if (ImGui::MenuItem(vRecentFilePaths[i].aFilePath))
+					{
+						memcpy(aFilePathToLoad, vRecentFilePaths[i].aFilePath, sizeof(FilePath::aFilePath));
+						
+						SelectedTargetMode = TM_StaticText;
+						LastChangeReason = TMCR_RecentSelected;
+					}
+				}
+				
+				ImGui::EndMenu();
+			}
+			
+			if (ImGui::BeginMenu("Stream Recent..", vRecentStreamPaths[0].aFilePath[0] != '\0'))
+			{
+				bool bFirstDisplay = true;
+				for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
+				{
+					if (vRecentStreamPaths[i].aFilePath[0] == '\0')
+						break;
+					
+					bFirstDisplay = false;
+					
+					if (ImGui::MenuItem(vRecentStreamPaths[i].aFilePath))
+					{
+						memcpy(aFolderQueryName, vRecentStreamPaths[i].aFilePath, sizeof(FilePath::aFilePath));
+						
+						SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
+						LastChangeReason = TMCR_RecentSelected;
+					}
+				}
+				
+				ImGui::EndMenu();
+			}
+			
 			
 			if (ImGui::MenuItem("Save", nullptr, nullptr, aFilePathToLoad[0] != 0 && vFiltredLinesCached.Size > 0))
 			{
@@ -1538,6 +1718,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
+		bool bLoadTriggerExternally = LastChangeReason == TMCR_RecentSelected;
+		
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
@@ -1547,15 +1729,15 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::SetNextItemWidth(-110);
-		if (ImGui::InputText("FolderQuery", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		if (ImGui::InputText("FolderQuery", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) || bLoadTriggerExternally)
 		{
 			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
 			
 			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
 			
-			if (aFolderQueryName[0] != 0)
-				SaveTypeInSettings(pPlatformCtx, "last_folder_query", cJSON_String, aFolderQueryName);
+			if (aFolderQueryName[0] != 0) 
+				RememberFilePath(pPlatformCtx, true, aFolderQueryName);
 		}
 		else if (bFolderQuery)
 		{
@@ -1589,31 +1771,32 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		if(aFilePathToLoad[0] != 0)
 			ImGui::Text("Streaming file: %s", aFilePathToLoad);
-		
+	
 		ImGui::SetNextItemWidth(-110);
 		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.1f, 3.0f);
 		
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
+		bool bLoadTriggerExternally = LastChangeReason == TMCR_DragAndDrop || LastChangeReason == TMCR_RecentSelected;
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
 			bFolderQuery = false;
 			
 			// Don't clear the FilePath since we are setting it from the drag and drop logic
-			if (LastChangeReason == TMCR_DragAndDrop)
-				SaveTypeInSettings(pPlatformCtx, "last_static_file_loaded", cJSON_String, aFilePathToLoad);
+			if (bLoadTriggerExternally) 
+				RememberFilePath(pPlatformCtx, false, aFilePathToLoad);
 			else
 				memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
 		
 		ImGui::SetNextItemWidth(-110);
-		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) || bLoadTriggerExternally)
 		{
 			LoadFile(pPlatformCtx);
 			if (aFilePathToLoad[0] != 0)
-				SaveTypeInSettings(pPlatformCtx, "last_static_file_loaded", cJSON_String, aFilePathToLoad);
+				RememberFilePath(pPlatformCtx, false, aFilePathToLoad);
 		}
 		
 		ImGui::SameLine();
@@ -2042,3 +2225,4 @@ void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pL
 #undef CONSOLAS_FONT_SIZE
 #undef MAX_EXTRA_THREADS
 #undef SAVE_ENABLE_MASK
+#undef MAX_REMEMBER_PATHS

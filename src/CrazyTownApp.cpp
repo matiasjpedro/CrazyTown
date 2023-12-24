@@ -85,7 +85,6 @@ void AppOnDrop(PlatformContext* pPlatformCtx, char* FileName)
 {
 	AppMemory *pMem = (AppMemory *)pPlatformCtx->pPermanentMemory;
 	memcpy(pMem->Log.aFilePathToLoad, FileName, ArrayCount(pMem->Log.aFilePathToLoad));
-	pMem->Log.LoadFile(pPlatformCtx);
 	
 	pMem->Log.SelectedTargetMode = TM_StaticText;
 	pMem->Log.LastChangeReason = TMCR_DragAndDrop;

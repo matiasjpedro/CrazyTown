@@ -15,6 +15,7 @@ enum TargetModeChangeReason
 	TMCR_NONE = 0,
 	TMCR_NewModeSelected,
 	TMCR_DragAndDrop,
+	TMCR_RecentSelected,
 	TMCR_PasteFromClipboard,
 	TMCR_COUNT
 };
@@ -58,6 +59,11 @@ struct HighlightLineMatches
 	ImVector<HighlightLineMatchEntry> vLineMatches;
 };
 
+struct FilePath
+{
+	char aFilePath[MAX_PATH];
+};
+
 struct CrazyLog
 {
 	ImGuiTextBuffer Buf;
@@ -66,6 +72,8 @@ struct CrazyLog
 	ImVector<int> vFiltredLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
 	ImVector<ImVec4> vDefaultColors;
+	ImVector<FilePath> vRecentFilePaths;
+	ImVector<FilePath> vRecentStreamPaths;
 	
 	HighlightLineMatches TempLineMatches;
 	
@@ -78,6 +86,8 @@ struct CrazyLog
 	int FiltredLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
+	int FilePathsTail;
+	int StreamPathsTail;
 	int SelectedExtraThreadCount;
 	int MaxExtraThreadCount;
 	TargetMode SelectedTargetMode;
@@ -130,6 +140,7 @@ struct CrazyLog
 	
 	void LoadSettings(PlatformContext* pPlatformCtx);
 	void SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx);
+	void RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPath, char* pFilePath);
 	void SaveTypeInSettings(PlatformContext* pPlatformCtx, const char* pKey, int Type, const void* pValue);
 	
 	void AddLog(const char* pFileContent, int FileSize);
