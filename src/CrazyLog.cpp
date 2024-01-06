@@ -1008,22 +1008,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::PopStyleColor();
 	ImGui::PopItemFlag();
 	
-	ImGui::SeparatorText("OUTPUT (?)");
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
-	{
-		ImGui::SetTooltip("KEYBINDS when hovering the output view: \n\n"
-		                  "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
-		                  "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
-		                  "[Ctrl+V]             Will paste the clipboard into the output view. \n"
-		                  "[Ctrl+MouseWheel]    Will scale the font. \n"
-		                  "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
-		                  "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
-		                  "[Alt]                Will enter in word selection mode when hovering a word. \n"
-		                  "[Shift]              Will enter in line selection mode when hovering a line. \n"
-		                  "[MouseWheel]         While in word/line selection mode it will expand/shrink the selection. \n"
-						  "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
-		                  "[MouseRightClick]    Will open the context menu with some options. \n");
-	}
+	ImGui::SeparatorText("OUTPUT");
 	
 	if (!bIsShiftPressed && !bIsAltPressed && SelectionSize > 1.f) {
 		SelectionSize = 0.f;
@@ -1626,7 +1611,6 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			if (ImGui::BeginMenu("Save As..", vFiltredLinesCached.Size > 0))
 			{
-				// Get application path?	
 				char aFileName[MAX_PATH] = { 0 };
 				if (ImGui::InputText("Name", aFileName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 				{
@@ -1662,6 +1646,8 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				            "[Shift]              Will enter in line selection mode when hovering a line. \n"
 				            "[MouseWheel]         While in word/line selection mode it will expand/shrink the selection. \n"
 				            "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
+				            "[MouseLeftClick]     While in word selection mode it will copy the selection to the filter adding with OR operator. \n"
+				            "[MouseRightClick]    While in word selection mode it will copy the selection to the filter adding with AND operator. \n"
 				            "[MouseRightClick]    Will open the context menu with some options. \n");
 				
 				ImGui::EndMenu();
@@ -2134,6 +2120,36 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 				{
 					ImGui::SetClipboardText(pScratchStart);
 					SetLastCommand("WORD SELECTION COPIED TO CLIPBOARD");
+				}
+				else if (ImGui::IsKeyReleased(ImGuiKey_MouseLeft))
+				{
+					if(Filter.vFilters.size() > 0)
+						strcat_s(Filter.aInputBuf, " || ");
+					
+					strcat_s(Filter.aInputBuf, (char*)pScratchStart);
+					Filter.Build(&vDefaultColors);
+					
+					FilterSelectedIdx = 0;
+			
+					bAlreadyCached = false;
+					FiltredLinesCount = 0;
+					
+					SetLastCommand("WORD SELECTION ADDED TO FILTER");
+				}
+				else if (ImGui::IsKeyReleased(ImGuiKey_MouseRight))
+				{
+					if(Filter.vFilters.size() > 0)
+						strcat_s(Filter.aInputBuf, " && ");
+					
+					strcat_s(Filter.aInputBuf, (char*)pScratchStart);
+					Filter.Build(&vDefaultColors);
+					
+					FilterSelectedIdx = 0;
+			
+					bAlreadyCached = false;
+					FiltredLinesCount = 0;
+					
+					SetLastCommand("WORD SELECTION ADDED TO FILTER");
 				}
 				
 				ImGui::SetTooltip(pScratchStart);
