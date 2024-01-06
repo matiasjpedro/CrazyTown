@@ -1769,12 +1769,29 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			}
 		}
 		
-		if(aFilePathToLoad[0] != 0)
-			ImGui::Text("Streaming file: %s", aFilePathToLoad);
-	
-		ImGui::SetNextItemWidth(-110);
-		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.1f, 3.0f);
+		if (aFilePathToLoad[0] != 0)
+		{
+			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+			if (bStreamMode && bFileLoaded)
+			{
+				float FileFetchCooldownPercentage = FileContentFetchCooldown / FileContentFetchSlider;
+				ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20,100,38,255 * FileFetchCooldownPercentage));
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(66,66,66,255));
+			}
 		
+			ImGui::Button("##FrequencyFeedback", ImVec2(20,0));
+			ImGui::PopStyleColor();
+			ImGui::PopItemFlag();
+			
+			ImGui::SameLine();
+			ImGui::Text("Streaming file: %s", aFilePathToLoad);
+		}
+		
+		ImGui::SetNextItemWidth(-110);
+		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.25f, 3.0f);
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
