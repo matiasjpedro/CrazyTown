@@ -24,7 +24,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.12f;
+static float g_Version = 1.14f;
 
 static char g_NullTerminator = '\0';
 
@@ -1314,8 +1314,22 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		
 	}
 	
-	FiltredLinesCount = vLineOffsets.Size;
 	bAlreadyCached = true;
+	
+	if (bStreamMode)
+	{
+		const char* pLineStart = Buf.begin() + vLineOffsets[vLineOffsets.Size - 1];
+		const char* pLineEnd = Buf.end();
+		
+		// If we are streaming mode and the last line is empty, don't count it as filtered, 
+		// because is going to be written eventually and if we filtered the empty line
+		// then we will end up skipping those lines.
+		FiltredLinesCount = pLineStart == pLineEnd ? vLineOffsets.Size - 1 : vLineOffsets.Size;
+	}
+	else
+	{
+		FiltredLinesCount = vLineOffsets.Size;
+	}
 }
 
 void CrazyLog::SetLastCommand(const char* pLastCommand)
