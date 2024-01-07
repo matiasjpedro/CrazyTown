@@ -1053,7 +1053,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			SetLastCommand("FILE REFRESHED");
 		}
 		
-		if (ImGui::BeginPopupContextWindow())
+		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
 			if (ImGui::Selectable("Copy")) 
 			{
