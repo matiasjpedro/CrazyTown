@@ -47,7 +47,9 @@
 			<ConfigAndPlatform>
 				<Name>dev:x64</Name>
 				<Defines></Defines>
-				<ForceIncludes></ForceIncludes>
+				<ForceIncludes>
+					<ForceInclude>D:\Dev\CrazyTown\vendor\cJSON.h</ForceInclude>
+				</ForceIncludes>
 			</ConfigAndPlatform>
 			<Config>
 				<Name>Debug</Name>
