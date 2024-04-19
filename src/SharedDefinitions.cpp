@@ -1,16 +1,16 @@
 #include "SharedDefinitions.h"
 
-void* StratchMemory::Back()
+void* ScratchMemory::Back()
 {
 	return (uint8_t*)pMemory + Size;
 }
 
-void StratchMemory::Reset()
+void ScratchMemory::Reset()
 {
 	Size = 0;
 }
 	
-void* StratchMemory::PushBack(size_t SrcSize, void* pSrc) 
+void* ScratchMemory::PushBack(size_t SrcSize, void* pSrc) 
 {
 	if (Size + SrcSize > Capacity)
 		return nullptr;

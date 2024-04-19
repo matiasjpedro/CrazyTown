@@ -296,7 +296,6 @@ void CrazyLog::LoadFilters(PlatformContext* pPlatformCtx)
 	}
 }
 
-// TODO(matiasp): Save just one filter?
 void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx) 
 {
 	FileContent OutFile = {0};
@@ -1167,9 +1166,7 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 	{
 		if (bIsMultithreadEnabled)
 		{
-			// TODO(matiasp): This should be in the win32 code
-			LARGE_INTEGER CounterBeforeUpdate;
-			QueryPerformanceCounter(&CounterBeforeUpdate);
+			LARGE_INTEGER TimestampBeforeFilter = pPlatformCtx->pGetWallClockFunc();
 			
 			// Parallel Execution
 			{
@@ -1243,29 +1240,16 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 			}
 			
 			
+			float FilterTime = pPlatformCtx->pGetSecondsElapsedFunc(TimestampBeforeFilter, pPlatformCtx->pGetWallClockFunc());
 			
-			// TODO(matiasp): This should be in the win32 code
-			{
-				LARGE_INTEGER LastUpdateCounter;
-				QueryPerformanceCounter(&LastUpdateCounter);
-			
-				LARGE_INTEGER PerfCountFrequencyResult;
-				QueryPerformanceFrequency(&PerfCountFrequencyResult);
-				
-				float FilterTime = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
-			
-				char aDeltaTimeBuffer[64];
-				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f", FilterTime);
-				SetLastCommand(aDeltaTimeBuffer);
-			}
+			char aDeltaTimeBuffer[64];
+			snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f", FilterTime);
+			SetLastCommand(aDeltaTimeBuffer);
 			
 		}
 		else
 		{
-			
-			// TODO(matiasp): This should be in the win32 code
-			LARGE_INTEGER CounterBeforeUpdate;
-			QueryPerformanceCounter(&CounterBeforeUpdate);
+			LARGE_INTEGER TimestampBeforeFilter = pPlatformCtx->pGetWallClockFunc();
 			
 			const char* pBuf = Buf.begin();
 			const char* pBufEnd = Buf.end();
@@ -1281,20 +1265,11 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 		
 			}
 			
-			// TODO(matiasp): This should be in the win32 code
-			{
-				LARGE_INTEGER LastUpdateCounter;
-				QueryPerformanceCounter(&LastUpdateCounter);
+			float FilterTime = pPlatformCtx->pGetSecondsElapsedFunc(TimestampBeforeFilter, pPlatformCtx->pGetWallClockFunc());
 			
-				LARGE_INTEGER PerfCountFrequencyResult;
-				QueryPerformanceFrequency(&PerfCountFrequencyResult);
-				
-				float FilterTime = (float)(LastUpdateCounter.QuadPart - CounterBeforeUpdate.QuadPart) / (float)PerfCountFrequencyResult.QuadPart;
-			
-				char aDeltaTimeBuffer[64];
-				snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", FilterTime);
-				SetLastCommand(aDeltaTimeBuffer);
-			}
+			char aDeltaTimeBuffer[64];
+			snprintf(aDeltaTimeBuffer, sizeof(aDeltaTimeBuffer), "FilterTime %.5f ", FilterTime);
+			SetLastCommand(aDeltaTimeBuffer);
 		}
 		
 	}
@@ -1920,10 +1895,9 @@ bool CrazyLog::DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx)
 				{
 					Filter.vSettings[LastSelectedColorIdx].Color = vDefaultColors[i];
 				
-					if (FilterSelectedIdx != 0) {
+					if (FilterSelectedIdx != 0) 
+					{
 						LoadedFilters[FilterSelectedIdx].Filter.vSettings[LastSelectedColorIdx].Color = Filter.vSettings[LastSelectedColorIdx].Color;
-			
-						// TODO(matiasp): Patch the json color instead of saving all the filters again
 						SaveLoadedFilters(pPlatformCtx);
 					}
 				

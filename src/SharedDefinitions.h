@@ -1,6 +1,17 @@
 #pragma once
 #include <cstdint>
 
+#define ASSERT(Expression) if(!(Expression)) {*(int *)0 = 0;}
+
+#define Kilobytes(X) ((X)*1024LL)
+#define Megabytes(X) (Kilobytes(X)*1024LL)
+#define Gigabytes(X) (Megabytes(X)*1024LL)
+#define Terabytes(X) (Gigabytes(X)*1024LL)
+
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+#define Pi32 3.14159265359f
+
 enum ArgType : unsigned
 {
 	AT_FlagTest,
@@ -46,7 +57,7 @@ struct FileData
 	char aFilePath[MAX_PATH];
 };
 
-struct StratchMemory 
+struct ScratchMemory 
 {
 	uint64_t Capacity;
 	uint64_t Size;
@@ -70,6 +81,8 @@ typedef void*          (*GetFileHandleFunc)(char* pPath, unsigned CreationDispos
 typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
 typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, FileData* pLastFetchFileData, FileData* pOutLastFileFolder);
 typedef void 		   (*OpenURLFunc)(const char* pURL);
+typedef LARGE_INTEGER  (*GetWallClockFunc)();
+typedef float		   (*GetSecondsElapsedFunc)(LARGE_INTEGER Start, LARGE_INTEGER End);
 
 
 struct PlatformReloadContext 
@@ -85,7 +98,7 @@ struct PlatformContext
 	uint64_t PermanentMemoryCapacity;
 	void* pPermanentMemory;
 	
-	StratchMemory ScratchMem;
+	ScratchMemory ScratchMem;
 	
 	ReadFileFunc pReadFileFunc;
 	WriteFileFunc pWriteFileFunc;
@@ -95,6 +108,8 @@ struct PlatformContext
 	FreeFileContentFunc pFreeFileContentFunc;
 	FetchLastFileFolderFunc pFetchLastFileFolderFunc;
 	OpenURLFunc pOpenURLFunc;
+	GetWallClockFunc pGetWallClockFunc;
+	GetSecondsElapsedFunc pGetSecondsElapsedFunc;
 	
 	bool bWantsToRebuildFontTexture;
 };

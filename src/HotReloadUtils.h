@@ -2,23 +2,25 @@
 #include <stdio.h>
 #include "SharedDefinitions.h"
 
+typedef void PreInitFunc(size_t* OutPermanentMemorySize, size_t* OutScratchMemorySize);
+typedef void InitFunc(PlatformContext*, PlatformReloadContext*);
 typedef void PreUpdateFunc(PlatformContext*);
 typedef void UpdateFunc(float, PlatformContext*);
-typedef void InitFunc(PlatformContext*, PlatformReloadContext*);
-typedef void ShutdownFunc(PlatformReloadContext*);
 typedef void OnHotReloadFunc(bool, PlatformReloadContext*);
 typedef void OnDropFunc(PlatformContext*, char*);
+typedef void ShutdownFunc(PlatformReloadContext*);
 
 struct HotReloadableDll 
 {
 	HMODULE DLL;
 	FILETIME LastWriteTime;
+	PreInitFunc* pPreInitFunc;
+	InitFunc* pInitFunc;
 	PreUpdateFunc* pPreUpdateFunc;
 	UpdateFunc* pUpdateFunc;
-	InitFunc* pInitFunc;
-	ShutdownFunc* pShutdownFunc;
 	OnHotReloadFunc* pOnHotReloadFunc;
 	OnDropFunc* pOnDropFunc;
+	ShutdownFunc* pShutdownFunc;
 
 	bool bIsValid;
 };
@@ -61,23 +63,25 @@ inline HotReloadableDll HotReloadDll(char* SourceDLLName, char* TempDLLName)
 	Result.DLL = LoadLibraryA(TempDLLName);
 	if (Result.DLL)
 	{
-		Result.pUpdateFunc = (UpdateFunc *)GetProcAddress(Result.DLL, "AppUpdate");
-		Result.pPreUpdateFunc = (PreUpdateFunc *)GetProcAddress(Result.DLL, "AppPreUpdate");
+		Result.pPreInitFunc = (PreInitFunc *)GetProcAddress(Result.DLL, "AppPreInit");
 		Result.pInitFunc = (InitFunc *)GetProcAddress(Result.DLL, "AppInit");
-		Result.pShutdownFunc = (ShutdownFunc *)GetProcAddress(Result.DLL, "AppShutdown");
+		Result.pPreUpdateFunc = (PreUpdateFunc *)GetProcAddress(Result.DLL, "AppPreUpdate");
+		Result.pUpdateFunc = (UpdateFunc *)GetProcAddress(Result.DLL, "AppUpdate");
 		Result.pOnHotReloadFunc = (OnHotReloadFunc *)GetProcAddress(Result.DLL, "AppOnHotReload");
 		Result.pOnDropFunc = (OnDropFunc *)GetProcAddress(Result.DLL, "AppOnDrop");
-		Result.bIsValid = Result.pUpdateFunc 
-			&& Result.pOnHotReloadFunc 
-			&& Result.pInitFunc 
+		Result.pShutdownFunc = (ShutdownFunc *)GetProcAddress(Result.DLL, "AppShutdown");
+		
+		Result.bIsValid = Result.pPreInitFunc  
+			&& Result.pInitFunc
+			&& Result.pPreUpdateFunc 
+			&& Result.pUpdateFunc
+			&& Result.pOnHotReloadFunc
 			&& Result.pOnDropFunc
-			&& Result.pShutdownFunc
-			&& Result.pPreUpdateFunc;
+			&& Result.pShutdownFunc;
 	}
 
 	if (!Result.bIsValid) 
 	{
-		
 		Result.pPreUpdateFunc = nullptr;
 		Result.pUpdateFunc = nullptr;
 		Result.pInitFunc = nullptr;

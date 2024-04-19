@@ -1,5 +1,3 @@
-#include "SomeMacros.h"
-
 #include "../vendor/imgui.cpp"
 #include "../vendor/imgui_demo.cpp"
 #include "../vendor/imgui_draw.cpp"
@@ -16,6 +14,12 @@ struct AppMemory
 {
 	CrazyLog Log;
 };
+
+void AppPreInit(size_t* OutPermanentMemorySize, size_t* OutScratchMemorySize) 
+{ 
+	*OutPermanentMemorySize = sizeof(AppMemory);
+	*OutScratchMemorySize = Megabytes(10);
+}
 
 void AppPreUpdate(PlatformContext* pPlatformCtx)
 {
@@ -60,25 +64,17 @@ void AppInit(PlatformContext* pPlatformCtx, PlatformReloadContext* pPlatformRelo
 	pMem->Log.LoadSettings(pPlatformCtx);
 	
 	pMem->Log.BuildFonts();
-	
 }
 
-void AppShutdown(PlatformReloadContext* pPlatformReloadCtx)
-{
-	
-}
+void AppShutdown(PlatformReloadContext* pPlatformReloadCtx) {}
 
 void AppOnHotReload(bool Started, PlatformReloadContext* pPlatformReloadCtx)
 {
-	if (Started) 
-	{
-		
-	} 
-	else 
+	if (!Started) 
 	{
 		ImGui::SetCurrentContext(pPlatformReloadCtx->pImGuiCtx);
 		ImGui::SetAllocatorFunctions(pPlatformReloadCtx->pImGuiAllocFunc, pPlatformReloadCtx->pImGuiFreeFunc);
-	}
+	} 
 }
 
 void AppOnDrop(PlatformContext* pPlatformCtx, char* FileName) 

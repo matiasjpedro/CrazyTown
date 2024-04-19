@@ -6,6 +6,7 @@
 		<SyncFiles>true</SyncFiles>
 		<Recursive>true</Recursive>
 		<ShowEmptyFolders>true</ShowEmptyFolders>
+		<IncludeFilesWithoutExt>false</IncludeFilesWithoutExt>
 		<IsVirtual>false</IsVirtual>
 		<IsFolder>false</IsFolder>
 		<BuildCommand>build.bat $(Configuration)</BuildCommand>
@@ -49,6 +50,8 @@
 				<Defines></Defines>
 				<ForceIncludes>
 					<ForceInclude>D:\Dev\CrazyTown\vendor\cJSON.h</ForceInclude>
+					<ForceInclude>D:\Dev\CrazyTown\vendor\imgui.h</ForceInclude>
+					<ForceInclude>C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\shared\windef.h</ForceInclude>
 				</ForceIncludes>
 			</ConfigAndPlatform>
 			<Config>

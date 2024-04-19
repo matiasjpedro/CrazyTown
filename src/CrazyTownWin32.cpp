@@ -1,14 +1,13 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <oleidl.h>
+#include <comdef.h>
 
 //==================================================
 
 #include "HotReloadUtils.h"
 #include "StringUtils.h"
 #include "SharedDefinitions.h"
-#include "SomeMacros.h"
-#include <comdef.h>
 
 //==================================================
 // ImGUI Section
@@ -34,19 +33,16 @@ IDXGISwapChain*          g_pSwapChain = nullptr;
 UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
 ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
-
-#define DRAG_AND_DROP 1
-
-#if DRAG_AND_DROP
-class DropTarget : public IDropTarget {
+class DropTarget : public IDropTarget 
+{
 	
 public:
 	DropTarget(){};
 	
-	DropTarget(HWND hwnd) : m_refCount(1), m_hWnd(hwnd) {
-	}
+	DropTarget(HWND hwnd) : m_refCount(1), m_hWnd(hwnd) {}
 
-	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) {
+	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) 
+	{
 		// QueryInterface allows the caller to request interfaces supported by this object.
 		if (riid == IID_IDropTarget) {
 			*ppvObject = this;
@@ -59,11 +55,13 @@ public:
 		return E_NOINTERFACE;
 	}
 	
-	STDMETHODIMP_(ULONG) AddRef() {
+	STDMETHODIMP_(ULONG) AddRef() 
+	{
 		return InterlockedIncrement(&m_refCount);
 	}
 
-	STDMETHODIMP_(ULONG) Release() {
+	STDMETHODIMP_(ULONG) Release() 
+	{
 		ULONG refCount = InterlockedDecrement(&m_refCount);
 		if (refCount == 0) {
 			delete this;
@@ -72,7 +70,8 @@ public:
 	}
 
 	// IDropTarget methods
-	STDMETHODIMP DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) {
+	STDMETHODIMP DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) 
+	{
 		// Check if the data object contains a file drop format (CF_HDROP)
 		FORMATETC fmt = {CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
 		if (pDataObj->QueryGetData(&fmt) == S_OK) {
@@ -88,7 +87,8 @@ public:
 		return S_OK;
 	}
 
-	STDMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) {
+	STDMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) 
+	{
 		// Called when the mouse is moved over the window during a drag operation.
 
 		// Set the drop effect to "Copy" while dragging over the window.
@@ -96,22 +96,26 @@ public:
 		return S_OK;
 	}
 
-	STDMETHODIMP DragLeave() {
+	STDMETHODIMP DragLeave() 
+	{
 		// Called when a drag operation leaves the window area.
 		return S_OK;
 	}
 
-	STDMETHODIMP Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) {
+	STDMETHODIMP Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) 
+	{
 		// Called when a drag operation is released (the file is dropped) over the window.
 
 		// Get the dropped file path from the data object.
 		FORMATETC fmt = {CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
 		STGMEDIUM stg;
-		if (pDataObj->GetData(&fmt, &stg) == S_OK) {
+		if (pDataObj->GetData(&fmt, &stg) == S_OK) 
+		{
 			HDROP hDrop = static_cast<HDROP>(stg.hGlobal);
 			UINT fileCount = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
 
-			if (fileCount > 0) {
+			if (fileCount > 0) 
+			{
 				TCHAR filePath[MAX_PATH];
 				DragQueryFile(hDrop, 0, filePath, MAX_PATH);
 				gHotReloadableCode.pOnDropFunc(&gPlatformContext, filePath);
@@ -130,14 +134,15 @@ public:
 	LONG m_refCount;
 	HWND m_hWnd;
 };
-#endif
 
-void ImGUIMemFree(void* ptr, void* user_data) {
+void ImGUIMemFree(void* ptr, void* user_data) 
+{
 	IM_UNUSED(user_data); 
 	free(ptr);
 }
 
-void* ImGUIMemAlloc(size_t sz, void* user_data) {
+void* ImGUIMemAlloc(size_t sz, void* user_data) 
+{
 	IM_UNUSED(user_data); 
 	return malloc(sz);
 }
@@ -366,6 +371,8 @@ void Win32OpenURL(const char* pURL)
 {
 	ShellExecuteA(NULL, "open", pURL, NULL, NULL, SW_SHOWNORMAL);
 }
+
+
 
 //==================================================
 // Time Section
@@ -598,15 +605,6 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformReloadContext.pImGuiAllocFunc = ImGUIMemAlloc;
 	gPlatformReloadContext.pImGuiFreeFunc = ImGUIMemFree;
 	
-	gPlatformContext.PermanentMemoryCapacity = Megabytes(100);
-	gPlatformContext.ScratchMem.Capacity= Megabytes(100);
-	
-	uint64_t MemorySize = gPlatformContext.PermanentMemoryCapacity + gPlatformContext.ScratchMem.Capacity;
-	void* p_AllocatedMemory = VirtualAlloc(0, (size_t)MemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-
-	gPlatformContext.pPermanentMemory = p_AllocatedMemory;
-	gPlatformContext.ScratchMem.pMemory = (uint8_t*)p_AllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
-	
 	gPlatformContext.pReadFileFunc = Win32ReadFile;
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
 	gPlatformContext.pStreamFileFunc = Win32StreamFile;
@@ -615,8 +613,22 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pFreeFileContentFunc = Win32FreeFile;
 	gPlatformContext.pFetchLastFileFolderFunc = Win32FetchLastFileFolder;
 	gPlatformContext.pOpenURLFunc = Win32OpenURL;
+	gPlatformContext.pGetWallClockFunc = Win32GetWallClock;
+	gPlatformContext.pGetSecondsElapsedFunc = Win32GetSecondsElapsed;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
+	
+	gPlatformContext.PermanentMemoryCapacity = 0;
+	gPlatformContext.ScratchMem.Capacity= 0;
+	
+	gHotReloadableCode.pPreInitFunc(&gPlatformContext.PermanentMemoryCapacity, &gPlatformContext.ScratchMem.Capacity);
+	
+	uint64_t MemorySize = gPlatformContext.PermanentMemoryCapacity + gPlatformContext.ScratchMem.Capacity;
+	void* p_AllocatedMemory = VirtualAlloc(0, (size_t)MemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+	gPlatformContext.pPermanentMemory = p_AllocatedMemory;
+	gPlatformContext.ScratchMem.pMemory = (uint8_t*)p_AllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
+	
 	gHotReloadableCode.pInitFunc(&gPlatformContext, &gPlatformReloadContext);
 	
 	// NOTE(MatiasP): Set the windows scheduler granularity to 1ms,
@@ -634,7 +646,6 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	DropTarget DragDrop;
 	
-#if DRAG_AND_DROP
 	HRESULT hr = OleInitialize(nullptr);
 	if (!FAILED(hr)) 
 	{
@@ -646,8 +657,6 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 			DragDrop.m_hWnd = 0;
 		}
 	}
-#endif
-	
 	
 
 	//==================================================
@@ -770,13 +779,10 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	gHotReloadableCode.pShutdownFunc(&gPlatformReloadContext);
 	
-	
-#if DRAG_AND_DROP
 	if (DragDrop.m_hWnd != 0) {
 		RevokeDragDrop(hwnd);
 		OleUninitialize();
 	}
-#endif
 	
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
