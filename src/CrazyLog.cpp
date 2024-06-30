@@ -848,164 +848,60 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
 	unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 	
-	if (!ImGui::Begin(title, pOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags))
+	ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags;
+	
+	if (!bIsFocusMode)
+		WindowFlags |= ImGuiWindowFlags_MenuBar;
+	
+	if (!ImGui::Begin(title, pOpen, WindowFlags))
 	{
 		ImGui::End();
 		return;
 	}
 	
-	DrawMainBar(DeltaTime, pPlatformCtx);
+	if(!bIsFocusMode)
+		DrawMainBar(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Target
 	
-	DrawTarget(DeltaTime, pPlatformCtx);
+	if(!bIsFocusMode)
+		DrawTarget(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Filters 
 	
-	ImGui::SeparatorText("Filters");
+	bool bSomeFilterChanged = false;
 	
-	bool bFilterChanged = Filter.Draw(&vDefaultColors, "Filter", -110.0f);
-	ImGui::SameLine();
-	HelpMarker(	"Filter usage: Just use it as C conditions \n"
-	           "Example: ((word1 || word2) && !word3)\n\n"
-	           "You can also copy/paste filters to/from the clipboard.\n");
+	if (!bIsFocusMode)
+		bSomeFilterChanged = DrawFilters(DeltaTime, pPlatformCtx);
 	
-	LastFrameFiltersCount = Filter.vFilters.Size;
-	if (ImGui::BeginPopup("FilterOptions"))
-	{
-		
-		int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
-		if (ImGui::Selectable("Copy", false, SelectableFlags)) 
-			CopyFilter(pPlatformCtx, &Filter);
-		
-		if (ImGui::Selectable("Paste")) 
-			PasteFilter(pPlatformCtx);
-		
-		ImGui::EndPopup();
-	}
-	
-	ImGui::SameLine();
-	if (ImGui::Button("+##Filter", ImVec2(20,0))) {
-		ImGui::OpenPopup("FilterOptions");
-	}
-		
-	if (bWantsToSavePreset) 
-	{
-		ImGui::SetNextItemWidth(-195);
-		bool bAcceptPresetName = ImGui::InputText("Provide preset name", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
-		
-		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
-		
-		bool bCanConfirm = FilterNameLen && Filter.IsActive();
-		
-		ImGui::SameLine();
-		if (bAcceptPresetName && bCanConfirm) 
-		{
-			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
-			bWantsToSavePreset = false;
-		}
-		
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel")) 
-			bWantsToSavePreset = false;
-	}
-	
-	if (bWantsToOverridePreset)
-	{
-		struct Funcs 
-		{ 
-			static bool ItemGetter(void* pData, int n, const char** out_ppStr) 
-			{ 
-				ImVector<NamedFilter>& vrLoadedFilters = *((ImVector<NamedFilter>*)pData);
-				NamedFilter& NamedFilter = vrLoadedFilters[n];
-				*out_ppStr = NamedFilter.aName; 
-				return true; 
-			} 
-		};
-		
-		ImGui::SetNextItemWidth(-235);
-		bool bSelectedFilterChanged = ImGui::Combo("Select preset to override", &FilterToOverrideIdx, &Funcs::ItemGetter,
-		                                      (void*)&LoadedFilters, LoadedFilters.Size);
-		ImGui::SameLine();
-		
-		if (bSelectedFilterChanged && FilterToOverrideIdx != 0) {
-			SaveFilter(pPlatformCtx, FilterToOverrideIdx, &Filter);
-			bWantsToOverridePreset = false;
-			FilterToOverrideIdx = 0;
-		}
-		
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel")) {
-			bWantsToOverridePreset = false;
-			FilterToOverrideIdx = 0;
-		}
-	}
-	
-	bool bSelectedFilterChanged = false;
-	if (!bWantsToSavePreset && !bWantsToOverridePreset) 
-	{
-		bSelectedFilterChanged = DrawPresets(DeltaTime, pPlatformCtx);
-	}
-
-	bool bCherryPickHasChanged = false;
-	
-	if (bFilterChanged) 
-	{
-		FilterSelectedIdx = 0;
-			
-		bAlreadyCached = false;
-		FiltredLinesCount = 0;
-			
-		SetLastCommand("FILTER CHANGED");
-	}
-	
-	if (Filter.IsActive()) 
-	{
-		bCherryPickHasChanged = DrawCherrypick(DeltaTime, pPlatformCtx);
-		if (bSelectedFilterChanged) 
-		{
-			EnableMask = 0xFFFFFFFF;
-			
-			bAlreadyCached = false;
-			FiltredLinesCount = 0;
-			
-			SetLastCommand("SELECTED PRESET CHANGED");
-		}
-		
-		if (bCherryPickHasChanged)
-		{
-			bAlreadyCached = false;
-			FiltredLinesCount = 0;
-			
-			SetLastCommand("CHERRY PICK CHANGED");
-		}
-	}
-
 	//=============================================================
 	// Output
 	
 	ImVec2 sz = ImVec2(-FLT_MIN, 0.0f);
-	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	//ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	if (bIsPeeking)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100,0,0,255)); 
-		ImGui::Button("VIEW: PEEKING", sz);
+		if(ImGui::Button("VIEW: PEEKING", sz))
+			bIsFocusMode = !bIsFocusMode;
 	} 
 	else if (AnyFilterActive())
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20,100,38,255));
-		ImGui::Button("VIEW: FILTERED", sz);
+		if(ImGui::Button("VIEW: FILTERED", sz))
+			bIsFocusMode = !bIsFocusMode;
 	} 
 	else 
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(66,66,66,255));
-		ImGui::Button("VIEW: FULL", sz);
+		if(ImGui::Button("VIEW: FULL", sz))
+			bIsFocusMode = !bIsFocusMode;
 	}
 	
 	ImGui::PopStyleColor();
-	ImGui::PopItemFlag();
+	//ImGui::PopItemFlag();
 	
 	ImGui::SeparatorText("OUTPUT");
 	
@@ -1083,10 +979,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				PeekScrollValue = -1.f;
 			}
 			
-			if (ImGui::IsKeyReleased(ImGuiKey_MouseX1) 
-				|| bFilterChanged 
-				|| bSelectedFilterChanged 
-				|| bCherryPickHasChanged) 
+			if (ImGui::IsKeyReleased(ImGuiKey_MouseX1) || bSomeFilterChanged) 
 			{
 				OneTimeScrollValue = FiltredScrollValue;
 				bIsPeeking = false;
@@ -1809,9 +1702,129 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	LastChangeReason = TMCR_NONE;
 }
 
-void CrazyLog::DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx)
+bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 {
+	bool bFilterChanged = false;
+	bool bSelectedFilterChanged = false; 
+	bool bCherryPickHasChanged = false;
 	
+	ImGui::SeparatorText("Filters");
+	
+	bFilterChanged = Filter.Draw(&vDefaultColors, "Filter", -110.0f);
+	ImGui::SameLine();
+	HelpMarker(	"Filter usage: Just use it as C conditions \n"
+			   "Example: ((word1 || word2) && !word3)\n\n"
+			   "You can also copy/paste filters to/from the clipboard.\n");
+	
+	LastFrameFiltersCount = Filter.vFilters.Size;
+	if (ImGui::BeginPopup("FilterOptions"))
+	{
+		
+		int SelectableFlags = Filter.IsActive() ? 0 : ImGuiSelectableFlags_Disabled;
+		if (ImGui::Selectable("Copy", false, SelectableFlags)) 
+			CopyFilter(pPlatformCtx, &Filter);
+		
+		if (ImGui::Selectable("Paste")) 
+			PasteFilter(pPlatformCtx);
+		
+		ImGui::EndPopup();
+	}
+	
+	ImGui::SameLine();
+	if (ImGui::Button("+##Filter", ImVec2(20,0))) {
+		ImGui::OpenPopup("FilterOptions");
+	}
+		
+	if (bWantsToSavePreset) 
+	{
+		ImGui::SetNextItemWidth(-195);
+		bool bAcceptPresetName = ImGui::InputText("Provide preset name", aFilterNameToSave, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue);
+		
+		size_t FilterNameLen = StringUtils::Length(aFilterNameToSave);
+		
+		bool bCanConfirm = FilterNameLen && Filter.IsActive();
+		
+		ImGui::SameLine();
+		if (bAcceptPresetName && bCanConfirm) 
+		{
+			SaveFilter(pPlatformCtx, aFilterNameToSave, &Filter);
+			bWantsToSavePreset = false;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) 
+			bWantsToSavePreset = false;
+	}
+	
+	if (bWantsToOverridePreset)
+	{
+		struct Funcs 
+		{ 
+			static bool ItemGetter(void* pData, int n, const char** out_ppStr) 
+			{ 
+				ImVector<NamedFilter>& vrLoadedFilters = *((ImVector<NamedFilter>*)pData);
+				NamedFilter& NamedFilter = vrLoadedFilters[n];
+				*out_ppStr = NamedFilter.aName; 
+				return true; 
+			} 
+		};
+		
+		ImGui::SetNextItemWidth(-235);
+		bSelectedFilterChanged = ImGui::Combo("Select preset to override", &FilterToOverrideIdx, &Funcs::ItemGetter, 
+											  (void*)&LoadedFilters, LoadedFilters.Size);
+		ImGui::SameLine();
+		
+		if (bSelectedFilterChanged && FilterToOverrideIdx != 0) {
+			SaveFilter(pPlatformCtx, FilterToOverrideIdx, &Filter);
+			bWantsToOverridePreset = false;
+			FilterToOverrideIdx = 0;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) {
+			bWantsToOverridePreset = false;
+			FilterToOverrideIdx = 0;
+		}
+	}
+	
+	if (!bWantsToSavePreset && !bWantsToOverridePreset) 
+	{
+		bSelectedFilterChanged = DrawPresets(DeltaTime, pPlatformCtx);
+	}
+
+	if (bFilterChanged) 
+	{
+		FilterSelectedIdx = 0;
+			
+		bAlreadyCached = false;
+		FiltredLinesCount = 0;
+			
+		SetLastCommand("FILTER CHANGED");
+	}
+	
+	if (Filter.IsActive()) 
+	{
+		bCherryPickHasChanged = DrawCherrypick(DeltaTime, pPlatformCtx);
+		if (bSelectedFilterChanged) 
+		{
+			EnableMask = 0xFFFFFFFF;
+			
+			bAlreadyCached = false;
+			FiltredLinesCount = 0;
+			
+			SetLastCommand("SELECTED PRESET CHANGED");
+		}
+		
+		if (bCherryPickHasChanged)
+		{
+			bAlreadyCached = false;
+			FiltredLinesCount = 0;
+			
+			SetLastCommand("CHERRY PICK CHANGED");
+		}
+	}
+	
+	return bFilterChanged | bSelectedFilterChanged | bCherryPickHasChanged;
 }
 
 bool CrazyLog::DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx)

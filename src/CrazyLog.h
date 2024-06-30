@@ -115,6 +115,7 @@ struct CrazyLog
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	bool bIsEditingColors;
+	bool bIsFocusMode;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
@@ -156,7 +157,7 @@ struct CrazyLog
 	void DrawFiltredView(PlatformContext* pPlatformCtx);
 	void DrawFullView(PlatformContext* pPlatformCtx);
 	void DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx);
-	void DrawFilter(float DeltaTime, PlatformContext* pPlatformCtx);
+	bool DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
 	void DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx);
