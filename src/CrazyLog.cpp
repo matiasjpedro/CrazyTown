@@ -1598,7 +1598,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::SetNextItemWidth(-110);
-		if (ImGui::InputText("FolderQuery", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) || bLoadTriggerExternally)
+		if (ImGui::InputTextWithHint("FolderQuery", "Insert the folder query, ex: D:\\logs\\*.txt", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
+			|| bLoadTriggerExternally)
 		{
 			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
 			
@@ -1622,9 +1623,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 	
 		ImGui::SameLine();
-		HelpMarker("Loads the last written file that matches the query. \n"
-		           "and it will start streaming it into the output. \n"
-		           "Example: D:\\logs\\*.txt \n");
+		HelpMarker("Loads the last written file that matches the query \n"
+		           "and start streaming it into the output. \n");
 		
 		if(bStreamMode)
 		{
@@ -1684,7 +1684,9 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::SetNextItemWidth(-110);
-		if (ImGui::InputText("FilePath", aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) || bLoadTriggerExternally)
+		const char * pHint = "Insert the path to the file to load, you can also drag an drop, ex: D:\\logs\\file_name.txt";
+		if (ImGui::InputTextWithHint("FilePath", pHint, aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
+			|| bLoadTriggerExternally)
 		{
 			LoadFile(pPlatformCtx);
 			if (aFilePathToLoad[0] != 0)
@@ -1692,9 +1694,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::SameLine();
-		HelpMarker("Full path of the file to load. \n"
-				   "Example: D:\\logs\\file_name.ext \n\n"
-		           "You can also drag and drop files.");
+		HelpMarker("Full path of the file to load. \n");
 	}
 	else if (SelectedTargetMode == TM_StreamFromWebSocket)
 	{
@@ -1722,9 +1722,8 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	bFilterChanged = Filter.Draw(&vDefaultColors, "Filter", -110.0f);
 	ImGui::SameLine();
-	HelpMarker(	"Filter usage: Just use it as C conditions \n"
-			   "Example: ((word1 || word2) && !word3)\n\n"
-			   "You can also copy/paste filters to/from the clipboard.\n");
+	HelpMarker("Conditions on how to filter the text, "
+			   "you can also copy/paste filters to/from the clipboard using the plus button.");
 	
 	LastFrameFiltersCount = Filter.vFilters.Size;
 	if (ImGui::BeginPopup("FilterOptions"))

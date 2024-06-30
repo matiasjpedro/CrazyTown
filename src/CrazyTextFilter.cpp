@@ -158,7 +158,8 @@ bool CrazyTextFilter::Draw(ImVector<ImVec4>* pvDefaultColors, const char* pLabel
 {
 	if (Width != 0.0f)
 		ImGui::SetNextItemWidth(Width);
-	bool value_changed = ImGui::InputText(pLabel, aInputBuf, IM_ARRAYSIZE(aInputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+	const char* pHint = "Insert condition, just write it as a C condition, ex: (word1 || word2) && !word3";
+	bool value_changed = ImGui::InputTextWithHint(pLabel, pHint, aInputBuf, IM_ARRAYSIZE(aInputBuf), ImGuiInputTextFlags_EnterReturnsTrue);
 	if (value_changed)
 		Build(pvDefaultColors);
 	return value_changed;
