@@ -1591,6 +1591,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
+			bStreamFileLocked = false;
 			bFolderQuery = false;
 			
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
@@ -1601,13 +1602,14 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
 			
+			bStreamFileLocked = false;
 			bFolderQuery = true;
 			SearchLatestFile(pPlatformCtx);
 			
 			if (aFolderQueryName[0] != 0) 
 				RememberFilePath(pPlatformCtx, true, aFolderQueryName);
 		}
-		else if (bFolderQuery)
+		else if (bFolderQuery && !bStreamFileLocked)
 		{
 			if (FolderFetchCooldown > 0.f ) 
 			{
@@ -1639,6 +1641,11 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		if (aFilePathToLoad[0] != 0)
 		{
+			ImGui::Checkbox("Locked", &bStreamFileLocked);
+        	ImGui::SetItemTooltip("if true it will not search for a newer file, but it will keep streaming "
+								  "the new content added to the file locked.");
+			
+			ImGui::SameLine();
 			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 			if (bStreamMode && bFileLoaded)
 			{
@@ -1667,6 +1674,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
+			bStreamFileLocked = false;
 			bFolderQuery = false;
 			
 			// Don't clear the FilePath since we are setting it from the drag and drop logic
@@ -1693,7 +1701,9 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (bModeJustChanged)
 		{
 			bStreamMode = false;
+			bStreamFileLocked = false;
 			bFolderQuery = false;
+			
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 			memset(aFolderQueryName, 0, sizeof(aFolderQueryName));
 		}

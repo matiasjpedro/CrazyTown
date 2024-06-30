@@ -110,6 +110,7 @@ struct CrazyLog
 	bool bFileLoaded;
 	bool bFolderQuery;
 	bool bStreamMode;
+	bool bStreamFileLocked;
 	bool bWantsToSavePreset;
 	bool bWantsToOverridePreset;
 	bool bWantsToScaleFont;
