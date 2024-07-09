@@ -15,6 +15,7 @@
 enum ArgType : unsigned
 {
 	AT_FlagTest,
+	AT_AlwaysOnTop,
 	AT_WinPosX,
 	AT_WinPosY,
 	AT_WinSizeX,
@@ -25,6 +26,7 @@ enum ArgType : unsigned
 static const char* aCmdArgs[AT_COUNT]
 {
 	"flag_test",
+	"always_on_top",
 	"win_pos_x",
 	"win_pos_y",
 	"win_size_x",
@@ -34,6 +36,7 @@ static const char* aCmdArgs[AT_COUNT]
 struct CommandArguments
 {
 	bool bFlagTest;
+	bool bAlwaysOnTop;
 	int WinPosX;
 	int WinPosY;
 	int WinSizeX;

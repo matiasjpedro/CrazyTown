@@ -397,6 +397,10 @@ void ParseArgFlag(char* pFlagBegin, char* pFlagEnd)
 	{
 		gPlatformContext.CmdArgs.bFlagTest = true;
 	}
+	else if(strncmp(pFlagBegin, aCmdArgs[AT_AlwaysOnTop], FlagSize) == 0)
+	{
+		gPlatformContext.CmdArgs.bAlwaysOnTop = true;
+	}
 }
 void ParseArgOption(char* pOptionBegin, char* pOptionEnd, char* pOptionValueBegin, char* pOptionValueEnd)
 {
@@ -545,11 +549,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowExW(
-#if DEVELOPMENT 
-		WS_EX_TOPMOST,
-#else
-		0,
-#endif
+		gPlatformContext.CmdArgs.bAlwaysOnTop ? WS_EX_TOPMOST : 0,
 		wc.lpszClassName, 
 		L"CrazyTown", 
 		WS_OVERLAPPEDWINDOW, 
