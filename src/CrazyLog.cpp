@@ -880,7 +880,14 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	// Output
 	
 	ImVec2 sz = ImVec2(-FLT_MIN, 0.0f);
-	//ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	
+	/*
+		TODO(MatiasP):
+		I disabled focus mode since it was messing up with the functionality since
+		DrawTarget and DrawFilters handle logic that needs to run every frame. 
+		Therefor in order to re-enable it I need to handle that logic outside
+	*/
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	if (bIsPeeking)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100,0,0,255)); 
@@ -901,7 +908,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	}
 	
 	ImGui::PopStyleColor();
-	//ImGui::PopItemFlag();
+	ImGui::PopItemFlag();
 	
 	ImGui::SeparatorText("OUTPUT");
 	
