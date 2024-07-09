@@ -15,9 +15,10 @@
 		<CleanCommand></CleanCommand>
 		<BuildWorkingDirectory>misc/</BuildWorkingDirectory>
 		<CancelBuild></CancelBuild>
-		<RunCommand></RunCommand>
-		<RunCommandWorkingDirectory></RunCommandWorkingDirectory>
-		<DebugCommand>&amp;quot;-pimba -asd&amp;quot;</DebugCommand>
+		<RunCommand>..\build\CrazyTownWin32.exe</RunCommand>
+		<RunCommandWorkingDirectory>data</RunCommandWorkingDirectory>
+		<DebugCommand>..\build\CrazyTownWin32.exe</DebugCommand>
+		<DebugArguments>-win_pos_x -10 -win_size_x 1045 -win_size_y 1246</DebugArguments>
 		<ExePathCommand>..\build\CrazyTownWin32.exe</ExePathCommand>
 		<DebugSln></DebugSln>
 		<UseVisualStudioEnvBat>true</UseVisualStudioEnvBat>
