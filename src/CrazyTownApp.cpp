@@ -15,10 +15,10 @@ struct AppMemory
 	CrazyLog Log;
 };
 
-void AppPreInit(size_t* OutPermanentMemorySize, size_t* OutScratchMemorySize) 
+void AppPreInit(size_t* pOutPermanentMemorySize, size_t* pOutScratchMemorySize) 
 { 
-	*OutPermanentMemorySize = sizeof(AppMemory);
-	*OutScratchMemorySize = Megabytes(10);
+	*pOutPermanentMemorySize = sizeof(AppMemory);
+	*pOutScratchMemorySize = Megabytes(10);
 }
 
 void AppPreUpdate(PlatformContext* pPlatformCtx)

@@ -135,15 +135,15 @@ public:
 	HWND m_hWnd;
 };
 
-void ImGUIMemFree(void* ptr, void* user_data) 
+void ImGUIMemFree(void* p, void* pUserData) 
 {
-	IM_UNUSED(user_data); 
+	IM_UNUSED(pUserData); 
 	free(ptr);
 }
 
-void* ImGUIMemAlloc(size_t sz, void* user_data) 
+void* ImGUIMemAlloc(size_t sz, void* pUserData) 
 {
-	IM_UNUSED(user_data); 
+	IM_UNUSED(pUserData); 
 	return malloc(sz);
 }
 
@@ -509,19 +509,19 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		
 		// APPNAME should be defined on the build.bat to specify what is the name of the App's dll that it should load.
 		// In this way we could reuse this platform base for different applications.
-		const char* p_HotReloadDLLName = APPNAME ".dll";;
-		size_t SizeOfRelodableDllName = StringUtils::Length(p_HotReloadDLLName);
+		const char* pHotReloadDLLName = APPNAME ".dll";;
+		size_t SizeOfRelodableDllName = StringUtils::Length(pHotReloadDLLName);
 	
 		StringUtils::Concat(aHotReloadDLLFullPath, sizeof(aHotReloadDLLFullPath),
 		                    aEXEFullPath, SizeUpToPastLastSlash,
-		                    p_HotReloadDLLName, SizeOfRelodableDllName);
+		                    pHotReloadDLLName, SizeOfRelodableDllName);
 	                    
-		const char* p_HotReloadTempDLLName = APPNAME "Temp.dll";	
-		size_t SizeOfRelodableTempDllName = strlen(p_HotReloadTempDLLName);
+		const char* pHotReloadTempDLLName = APPNAME "Temp.dll";	
+		size_t SizeOfRelodableTempDllName = strlen(pHotReloadTempDLLName);
 	
 		StringUtils::Concat(aHotReloadTempDLLFullPath, sizeof(aHotReloadTempDLLFullPath),
 		                    aEXEFullPath, SizeUpToPastLastSlash,
-		                    p_HotReloadTempDLLName, SizeOfRelodableTempDllName);
+		                    pHotReloadTempDLLName, SizeOfRelodableTempDllName);
 		
 		const char* p_BuildingMarkerName = "building_marker";	
 		size_t SizeOfBuildingMarkerName = strlen(p_BuildingMarkerName);
@@ -607,6 +607,8 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformReloadContext.pImGuiAllocFunc = ImGUIMemAlloc;
 	gPlatformReloadContext.pImGuiFreeFunc = ImGUIMemFree;
 	
+	//==================================================
+	
 	gPlatformContext.pReadFileFunc = Win32ReadFile;
 	gPlatformContext.pWriteFileFunc = Win32WriteFile;
 	gPlatformContext.pStreamFileFunc = Win32StreamFile;
@@ -626,10 +628,10 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gHotReloadableCode.pPreInitFunc(&gPlatformContext.PermanentMemoryCapacity, &gPlatformContext.ScratchMem.Capacity);
 	
 	uint64_t MemorySize = gPlatformContext.PermanentMemoryCapacity + gPlatformContext.ScratchMem.Capacity;
-	void* p_AllocatedMemory = VirtualAlloc(0, (size_t)MemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	void* pAllocatedMemory = VirtualAlloc(0, (size_t)MemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-	gPlatformContext.pPermanentMemory = p_AllocatedMemory;
-	gPlatformContext.ScratchMem.pMemory = (uint8_t*)p_AllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
+	gPlatformContext.pPermanentMemory = pAllocatedMemory;
+	gPlatformContext.ScratchMem.pMemory = (uint8_t*)pAllocatedMemory + gPlatformContext.PermanentMemoryCapacity;
 	
 	gHotReloadableCode.pInitFunc(&gPlatformContext, &gPlatformReloadContext);
 	

@@ -38,18 +38,18 @@ inline FILETIME GetLastWriteTime(char* FileName)
 	return LastWriteTime;
 }
 
-inline void GetEXEFileName(char* p_EXEFileNameBuffer, DWORD NameBufferSize, char** p_PastLastSlash)
+inline void GetEXEFileName(char* pEXEFileNameBuffer, DWORD NameBufferSize, char** ppPastLastSlash)
 {
-	DWORD SizeOfFilename = GetModuleFileNameA(0, p_EXEFileNameBuffer, NameBufferSize);
+	DWORD SizeOfFilename = GetModuleFileNameA(0, pEXEFileNameBuffer, NameBufferSize);
 	
-	*p_PastLastSlash = p_EXEFileNameBuffer;
-	for (char *Scan = p_EXEFileNameBuffer; *Scan; Scan++)
+	*ppPastLastSlash = pEXEFileNameBuffer;
+	for (char *Scan = pEXEFileNameBuffer; *Scan; Scan++)
 	{
 		
 		if (*Scan == '\\')
 		{
-			*p_PastLastSlash = Scan + 1;
-			*p_PastLastSlash = Scan + 1;
+			*ppPastLastSlash = Scan + 1;
+			*ppPastLastSlash = Scan + 1;
 		}
 	}
 }
@@ -93,17 +93,17 @@ inline HotReloadableDll HotReloadDll(char* SourceDLLName, char* TempDLLName)
 	return Result;
 }
 
-inline void UnloadHotReloadDLL(HotReloadableDll* p_ReloadableDll)
+inline void UnloadHotReloadDLL(HotReloadableDll* pReloadableDll)
 {
-	if (p_ReloadableDll->DLL)
+	if (pReloadableDll->DLL)
 	{
-		FreeLibrary(p_ReloadableDll->DLL);
-		p_ReloadableDll->DLL = 0;
+		FreeLibrary(pReloadableDll->DLL);
+		pReloadableDll->DLL = 0;
 	}
 	
-	p_ReloadableDll->bIsValid = false;
-	p_ReloadableDll->pUpdateFunc = nullptr;
-	p_ReloadableDll->pInitFunc = nullptr;
-	p_ReloadableDll->pOnHotReloadFunc = nullptr;
+	pReloadableDll->bIsValid = false;
+	pReloadableDll->pUpdateFunc = nullptr;
+	pReloadableDll->pInitFunc = nullptr;
+	pReloadableDll->pOnHotReloadFunc = nullptr;
 }
 
