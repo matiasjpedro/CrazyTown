@@ -506,15 +506,17 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		GetEXEFileName(aEXEFullPath, sizeof(aEXEFullPath), &pPastLastSlash);
 	
 		size_t SizeUpToPastLastSlash = pPastLastSlash - aEXEFullPath;
-	
-		const char* p_HotReloadDLLName = "CrazyTownApp.dll";
+		
+		// APPNAME should be defined on the build.bat to specify what is the name of the App's dll that it should load.
+		// In this way we could reuse this platform base for different applications.
+		const char* p_HotReloadDLLName = APPNAME ".dll";;
 		size_t SizeOfRelodableDllName = StringUtils::Length(p_HotReloadDLLName);
 	
 		StringUtils::Concat(aHotReloadDLLFullPath, sizeof(aHotReloadDLLFullPath),
 		                    aEXEFullPath, SizeUpToPastLastSlash,
 		                    p_HotReloadDLLName, SizeOfRelodableDllName);
 	                    
-		const char* p_HotReloadTempDLLName = "CrazyTownAppTemp.dll";	
+		const char* p_HotReloadTempDLLName = APPNAME "Temp.dll";	
 		size_t SizeOfRelodableTempDllName = strlen(p_HotReloadTempDLLName);
 	
 		StringUtils::Concat(aHotReloadTempDLLFullPath, sizeof(aHotReloadTempDLLFullPath),
