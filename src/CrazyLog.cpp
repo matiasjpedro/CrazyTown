@@ -848,10 +848,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
 	unsigned ExtraFlags = bIsShiftPressed || bIsCtrlressed || bIsAltPressed ? ImGuiWindowFlags_NoScrollWithMouse : 0;
 	
-	ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ExtraFlags;
-	
-	if (!bIsFocusMode)
-		WindowFlags |= ImGuiWindowFlags_MenuBar;
+	ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar | ExtraFlags ;
 	
 	if (!ImGui::Begin(title, pOpen, WindowFlags))
 	{
@@ -859,52 +856,38 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		return;
 	}
 	
-	if(!bIsFocusMode)
-		DrawMainBar(DeltaTime, pPlatformCtx);
+	DrawMainBar(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Target
 	
-	if(!bIsFocusMode)
-		DrawTarget(DeltaTime, pPlatformCtx);
+	DrawTarget(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Filters 
 	
-	bool bSomeFilterChanged = false;
-	
-	if (!bIsFocusMode)
-		bSomeFilterChanged = DrawFilters(DeltaTime, pPlatformCtx);
+	bool bSomeFilterChanged = DrawFilters(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
 	// Output
 	
 	ImVec2 sz = ImVec2(-FLT_MIN, 0.0f);
 	
-	/*
-		TODO(MatiasP):
-		I disabled focus mode since it was messing up with the functionality since
-		DrawTarget and DrawFilters handle logic that needs to run every frame. 
-		Therefor in order to re-enable it I need to handle that logic outside
-	*/
 	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	if (bIsPeeking)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100,0,0,255)); 
-		if(ImGui::Button("VIEW: PEEKING", sz))
-			bIsFocusMode = !bIsFocusMode;
+		ImGui::Button("VIEW: PEEKING", sz);
 	} 
 	else if (AnyFilterActive())
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20,100,38,255));
-		if(ImGui::Button("VIEW: FILTERED", sz))
-			bIsFocusMode = !bIsFocusMode;
+		ImGui::Button("VIEW: FILTERED", sz);
 	} 
 	else 
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(66,66,66,255));
-		if(ImGui::Button("VIEW: FULL", sz))
-			bIsFocusMode = !bIsFocusMode;
+		ImGui::Button("VIEW: FULL", sz);
 	}
 	
 	ImGui::PopStyleColor();
