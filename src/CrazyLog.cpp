@@ -16,7 +16,7 @@
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
 #define MAX_EXTRA_THREADS 31
-#define MAX_REMEMBER_PATHS 10
+#define MAX_REMEMBER_PATHS 5
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -1553,6 +1553,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			ImGui::OpenPopup("RecentStreamPaths");
 		}
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
+            ImGui::SetTooltip("Open list with recent entries.");
 		
 		ImGui::SameLine();
 		
@@ -1587,7 +1589,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		ImVec2 FilePathPos = ImGui::GetWindowPos() + ImVec2(30, 95);
 		ImGui::SetNextWindowPos(FilePathPos);
-		if (ImGui::BeginPopup("RecentStreamPaths") && FilePathsTail != -1)
+		if (ImGui::BeginPopup("RecentStreamPaths") && StreamPathsTail != -1)
 		{
 			bool bFirstDisplay = true;
 			for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
@@ -1656,6 +1658,9 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			ImGui::OpenPopup("RecentFilePaths");
 		}
+		
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
+            ImGui::SetTooltip("Open list with recent entries.");
 		
 		ImGui::SameLine();
 		
