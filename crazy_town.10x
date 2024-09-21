@@ -15,13 +15,13 @@
 		<CleanCommand></CleanCommand>
 		<BuildWorkingDirectory>misc/</BuildWorkingDirectory>
 		<CancelBuild></CancelBuild>
-		<RunCommand>..\build\CrazyTownWin32.exe</RunCommand>
-		<RunCommandWorkingDirectory>data</RunCommandWorkingDirectory>
+		<Exe>..\build\CrazyTownWin32.exe</Exe>
+		<Args>-win_pos_x -10 -win_size_x 1045 -win_size_y 1246</Args>
+		<WorkingDirectory>data</WorkingDirectory>
 		<DebugCommand>..\build\CrazyTownWin32.exe</DebugCommand>
-		<DebugArguments>-win_pos_x -10 -win_size_x 1045 -win_size_y 1246</DebugArguments>
-		<ExePathCommand>..\build\CrazyTownWin32.exe</ExePathCommand>
 		<DebugSln></DebugSln>
 		<UseVisualStudioEnvBat>true</UseVisualStudioEnvBat>
+		<CaptureExeOutput>false</CaptureExeOutput>
 		<Configurations>
 			<Configuration>dev</Configuration>
 			<Configuration>release</Configuration>

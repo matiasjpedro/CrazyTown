@@ -8,6 +8,7 @@
 #include "HotReloadUtils.h"
 #include "StringUtils.h"
 #include "SharedDefinitions.h"
+#include "ThemeUtils.h"
 
 //==================================================
 // ImGUI Section
@@ -138,7 +139,7 @@ public:
 void ImGUIMemFree(void* p, void* pUserData) 
 {
 	IM_UNUSED(pUserData); 
-	free(ptr);
+	free(p);
 }
 
 void* ImGUIMemAlloc(size_t sz, void* pUserData) 
@@ -547,8 +548,6 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		L"CrazyTown", 
 		nullptr };
 	
-	
-	
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowExW(
 		gPlatformContext.CmdArgs.bAlwaysOnTop ? WS_EX_TOPMOST : 0,
@@ -563,6 +562,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 		wc.hInstance, 
 		nullptr);
 	
+	ThemeUtils::SetTitleBarDark(hwnd);
 
 	// Initialize Direct3D
 	if (!CreateDeviceD3D(hwnd))
