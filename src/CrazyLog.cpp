@@ -940,6 +940,9 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
+			ImGui::Checkbox("Auto-scroll", &bAutoScroll);
+			ImGui::Separator();
+			
 			if (ImGui::Selectable("Copy")) 
 			{
 				bWantsToCopy = true;
@@ -1513,7 +1516,6 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			ImGui::Separator();
 			
-			ImGui::Checkbox("Auto-scroll", &bAutoScroll);
 			bool bIsUsingAVXChanged = ImGui::Checkbox("Use AVX Instructions ", &bIsAVXEnabled);
 			if (bIsUsingAVXChanged)
 				SaveTypeInSettings(pPlatformCtx, "is_avx_enabled", cJSON_True, &bIsAVXEnabled);
