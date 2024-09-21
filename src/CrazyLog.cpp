@@ -41,8 +41,6 @@ void CrazyLog::Init()
 	SetLastCommand("LAST COMMAND");
 	ImGui::StyleColorsClassic();
     ImGuiStyle& style = ImGui::GetStyle();
-	style.FrameRounding = 6.f;
-	style.GrabRounding = 6.f;
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
 	MaxExtraThreadCount = max(0, std::thread::hardware_concurrency() - 1);
 	
@@ -1534,6 +1532,18 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	if(ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr)))
 		LastChangeReason = TMCR_NewModeSelected;
 	
+	ImGui::SameLine();
+	if (ImGui::Button(">>")) {
+		char aExePath[MAX_PATH] = { 0 };
+		pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH);
+		size_t PathLen = strlen(aExePath);
+		strcpy(&aExePath[PathLen], "CrazyTownWin32.exe");
+		pPlatformCtx->pOpenURLFunc(aExePath);
+	}
+	
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
+		ImGui::SetTooltip("Start new CrazyTown window.");
+	
 	bool bModeJustChanged = LastChangeReason != TMCR_NONE;
 	
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
@@ -1741,7 +1751,7 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	ImGui::SeparatorText("Filters");
 	
-	bFilterChanged = Filter.Draw(&vDefaultColors, "Filter", -110.0f);
+	bFilterChanged = Filter.Draw(&vDefaultColors, "Filter ", -110.0f);
 	ImGui::SameLine();
 	HelpMarker("Conditions on how to filter the text, "
 			   "you can also copy/paste filters to/from the clipboard using the plus button.");
