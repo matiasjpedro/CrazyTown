@@ -40,7 +40,10 @@ void CrazyLog::Init()
 	EnableMask = 0xFFFFFFFF;
 	SetLastCommand("LAST COMMAND");
 	ImGui::StyleColorsClassic();
-    ImGuiStyle& style = ImGui::GetStyle();
+	
+    ImGuiStyle* style = &ImGui::GetStyle();
+	style->Colors[ImGuiCol_MenuBarBg] = style->Colors[ImGuiCol_FrameBg];
+	
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
 	MaxExtraThreadCount = max(0, std::thread::hardware_concurrency() - 1);
 	
