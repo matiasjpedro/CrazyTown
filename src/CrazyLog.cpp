@@ -12,11 +12,11 @@
 #define ISSUES_URL "https://github.com/matiasjpedro/CrazyTown/issues"
 #define FILTERS_FILE_NAME "FILTERS.json"
 #define SETTINGS_NAME "SETTINGS.json"
-#define FILE_FETCH_INTERVAL 1.f
+#define FILE_FETCH_INTERVAL 0.5f
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
 #define MAX_EXTRA_THREADS 31
-#define MAX_REMEMBER_PATHS 5
+#define MAX_REMEMBER_PATHS 10
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -1418,52 +1418,6 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 	{
 		if (ImGui::BeginMenu("Menu"))
 		{
-			
-			if (ImGui::BeginMenu("Open Recent..", FilePathsTail != -1))
-			{
-				bool bFirstDisplay = true;
-				for (int i = FilePathsTail; i != FilePathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentFilePaths))
-				{
-					if (vRecentFilePaths[i].aFilePath[0] == '\0')
-						break;
-					
-					bFirstDisplay = false;
-					
-					if (ImGui::MenuItem(vRecentFilePaths[i].aFilePath))
-					{
-						memcpy(aFilePathToLoad, vRecentFilePaths[i].aFilePath, sizeof(FilePath::aFilePath));
-						
-						SelectedTargetMode = TM_StaticText;
-						LastChangeReason = TMCR_RecentSelected;
-					}
-				}
-				
-				ImGui::EndMenu();
-			}
-			
-			if (ImGui::BeginMenu("Stream Recent..", StreamPathsTail != -1))
-			{
-				bool bFirstDisplay = true;
-				for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
-				{
-					if (vRecentStreamPaths[i].aFilePath[0] == '\0')
-						break;
-					
-					bFirstDisplay = false;
-					
-					if (ImGui::MenuItem(vRecentStreamPaths[i].aFilePath))
-					{
-						memcpy(aFolderQueryName, vRecentStreamPaths[i].aFilePath, sizeof(FilePath::aFilePath));
-						
-						SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
-						LastChangeReason = TMCR_RecentSelected;
-					}
-				}
-				
-				ImGui::EndMenu();
-			}
-			
-			
 			if (ImGui::MenuItem("Save", nullptr, nullptr, aFilePathToLoad[0] != 0 && vFiltredLinesCached.Size > 0))
 			{
 				SaveFilteredView(pPlatformCtx, aFilePathToLoad);
@@ -1568,6 +1522,12 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 
 void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 {
+	static TargetModeChangeReason PendingModeChange = TMCR_NONE;
+	if (PendingModeChange != TMCR_NONE) {
+		LastChangeReason = PendingModeChange;
+		PendingModeChange = TMCR_NONE;
+	}
+	
 	ImGui::SeparatorText("Target");
 	
 	ImGui::SetNextItemWidth(-110);
@@ -1588,6 +1548,13 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
+		
+		if (ImGui::Button("|")) 
+		{
+			ImGui::OpenPopup("RecentStreamPaths");
+		}
+		
+		ImGui::SameLine();
 		
 		ImGui::SetNextItemWidth(-110);
 		if (ImGui::InputTextWithHint("FolderQuery", "Insert the folder query, ex: D:\\logs\\*.txt", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
@@ -1617,6 +1584,32 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::SameLine();
 		HelpMarker("Loads the last written file that matches the query \n"
 		           "and start streaming it into the output. \n");
+		
+		ImVec2 FilePathPos = ImGui::GetWindowPos() + ImVec2(30, 95);
+		ImGui::SetNextWindowPos(FilePathPos);
+		if (ImGui::BeginPopup("RecentStreamPaths") && FilePathsTail != -1)
+		{
+			bool bFirstDisplay = true;
+			for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
+			{
+				if (vRecentStreamPaths[i].aFilePath[0] == '\0')
+					break;
+					
+				bFirstDisplay = false;
+					
+				if (ImGui::MenuItem(vRecentStreamPaths[i].aFilePath))
+				{
+					memcpy(aFolderQueryName, vRecentStreamPaths[i].aFilePath, sizeof(FilePath::aFilePath));
+						
+					SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
+					PendingModeChange = TMCR_RecentSelected;
+					
+					ImGui::CloseCurrentPopup();
+				}
+			}
+			
+			ImGui::EndPopup();
+		}
 		
 		if(bStreamMode)
 		{
@@ -1656,12 +1649,16 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			ImGui::SameLine();
 			ImGui::Text("Streaming file: %s", aFilePathToLoad);
 		}
-		
-		ImGui::SetNextItemWidth(-110);
-		ImGui::SliderFloat("StreamFrequency", &FileContentFetchSlider, 0.25f, 3.0f);
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
+		if (ImGui::Button("|")) 
+		{
+			ImGui::OpenPopup("RecentFilePaths");
+		}
+		
+		ImGui::SameLine();
+		
 		bool bLoadTriggerExternally = LastChangeReason == TMCR_DragAndDrop || LastChangeReason == TMCR_RecentSelected;
 		if (bModeJustChanged)
 		{
@@ -1686,7 +1683,34 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		
 		ImGui::SameLine();
+		
 		HelpMarker("Full path of the file to load. \n");
+		
+		ImVec2 FilePathPos = ImGui::GetWindowPos() + ImVec2(30, 95);
+		ImGui::SetNextWindowPos(FilePathPos);
+		if (ImGui::BeginPopup("RecentFilePaths") && FilePathsTail != -1)
+		{
+			bool bFirstDisplay = true;
+			for (int i = FilePathsTail; i != FilePathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentFilePaths))
+			{
+				if (vRecentFilePaths[i].aFilePath[0] == '\0')
+					break;
+					
+				bFirstDisplay = false;
+					
+				if (ImGui::MenuItem(vRecentFilePaths[i].aFilePath))
+				{
+					memcpy(aFilePathToLoad, vRecentFilePaths[i].aFilePath, sizeof(FilePath::aFilePath));
+						
+					SelectedTargetMode = TM_StaticText;
+					PendingModeChange = TMCR_RecentSelected;
+					
+					ImGui::CloseCurrentPopup();
+				}
+			}
+			
+			ImGui::EndPopup();
+		}
 	}
 	else if (SelectedTargetMode == TM_StreamFromWebSocket)
 	{
