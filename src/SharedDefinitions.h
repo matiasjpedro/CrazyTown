@@ -79,7 +79,7 @@ typedef void    (*FreeFunc)(void* pLocation, void* pUserData);
 typedef FileContent    (*ReadFileFunc)(char* pPath);
 typedef bool           (*WriteFileFunc)(FileContent* pFileContent, char* pPath);
 typedef bool           (*StreamFileFunc)(FileContent* pFileContent, void* pHandle, bool bShouldCloseHandle);
-typedef void           (*GetExePathFunc)(char* pExePathBuffer, size_t BufferSize);
+typedef void           (*GetExePathFunc)(char* pExePathBuffer, size_t BufferSize, size_t& OutPathSize, bool bIncludeFilename);
 typedef void*          (*GetFileHandleFunc)(char* pPath, unsigned CreationDisposition);
 typedef void		   (*FreeFileContentFunc)(FileContent* pFileContent);
 typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, FileData* pLastFetchFileData, FileData* pOutLastFileFolder);

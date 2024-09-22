@@ -1431,10 +1431,10 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				if (ImGui::InputText("Name", aFileName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
 				{
 					char aExePath[MAX_PATH] = { 0 };
-					pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH);
+					size_t ExePathLen = 0;
+					pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH, ExePathLen, false);
 					pPlatformCtx->pOpenURLFunc(aExePath);
 					
-					size_t ExePathLen = StringUtils::Length(aExePath);
 					strcpy_s(aExePath + ExePathLen, sizeof(aExePath) - ExePathLen,  aFileName);
 					
 					SaveFilteredView(pPlatformCtx, aExePath);
@@ -1538,9 +1538,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SameLine();
 	if (ImGui::Button(">>")) {
 		char aExePath[MAX_PATH] = { 0 };
-		pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH);
-		size_t PathLen = strlen(aExePath);
-		strcpy(&aExePath[PathLen], "CrazyTownWin32.exe");
+		size_t PathLen = 0;
+		pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH, PathLen, true);
 		pPlatformCtx->pOpenURLFunc(aExePath);
 	}
 	

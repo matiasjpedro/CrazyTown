@@ -164,14 +164,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //#define OPEN_ALWAYS         4
 //#define TRUNCATE_EXISTING   5
 
-void Win32GetExePath(char* pExePathBuffer, size_t BufferSize)
+void Win32GetExePath(char* pExePathBuffer, size_t BufferSize, size_t& OutPathSize, bool bIncludeFilename)
 {
 	DWORD SizeOfFilename = GetModuleFileNameA(0, pExePathBuffer, (DWORD)BufferSize);
+	
+	if (bIncludeFilename) {
+		OutPathSize = SizeOfFilename;
+		return;
+	}
 	
 	for (unsigned i = SizeOfFilename - 1; i > 0; i--)
 	{
 		if (pExePathBuffer[i] == '\\') 
 		{
+			OutPathSize = i + 1;
 			pExePathBuffer[i + 1] = '\0';
 			break;
 		}
