@@ -42,16 +42,7 @@ inline void GetEXEFileName(char* pEXEFileNameBuffer, DWORD NameBufferSize, char*
 {
 	DWORD SizeOfFilename = GetModuleFileNameA(0, pEXEFileNameBuffer, NameBufferSize);
 	
-	*ppPastLastSlash = pEXEFileNameBuffer;
-	for (char *Scan = pEXEFileNameBuffer; *Scan; Scan++)
-	{
-		
-		if (*Scan == '\\')
-		{
-			*ppPastLastSlash = Scan + 1;
-			*ppPastLastSlash = Scan + 1;
-		}
-	}
+	*ppPastLastSlash = StringUtils::GetPathPastLastSlash(pEXEFileNameBuffer);
 }
 
 inline HotReloadableDll HotReloadDll(char* SourceDLLName, char* TempDLLName)

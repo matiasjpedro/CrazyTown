@@ -1,5 +1,22 @@
+#pragma once
+
 namespace StringUtils
 {
+	char* GetPathPastLastSlash(char* pEXEFileNameBuffer) {
+		
+		char *pPastLastSlash = pEXEFileNameBuffer;
+		
+		for (char *Scan = pEXEFileNameBuffer; *Scan; Scan++)
+		{
+			if (*Scan == '\\')
+			{
+				pPastLastSlash = Scan + 1;
+			}
+		}
+		
+		return pPastLastSlash;
+	}
+	
 	int Concat(char* pDestBuffer, size_t DestBufferSize,
 	                const char* pStringA, size_t BytesA, 
 	                const char* pStringB, size_t BytesB)

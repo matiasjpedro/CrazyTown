@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "StringUtils.h"
 
 #define ASSERT(Expression) if(!(Expression)) {*(int *)0 = 0;}
 

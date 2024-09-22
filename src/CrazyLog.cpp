@@ -1661,7 +1661,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			ImGui::PopItemFlag();
 			
 			ImGui::SameLine();
-			ImGui::Text("Streaming file: %s", aFilePathToLoad);
+			ImGui::Text("Streaming file: [%s]", StringUtils::GetPathPastLastSlash(aFilePathToLoad));
 		}
 	}
 	else if (SelectedTargetMode == TM_StaticText)
