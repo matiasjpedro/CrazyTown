@@ -2,6 +2,7 @@
 #include <d3d11.h>
 #include <oleidl.h>
 #include <comdef.h>
+#include <Urlmon.h>
 
 //==================================================
 
@@ -379,7 +380,13 @@ void Win32OpenURL(const char* pURL)
 	ShellExecuteA(NULL, "open", pURL, NULL, NULL, SW_SHOWNORMAL);
 }
 
-
+bool Win32URLDownloadFile(char* pUrl, char* pFileName, FileContent* pOutFileContent) {
+	HRESULT res = URLDownloadToFile(nullptr, pUrl, pFileName, 0, nullptr);
+	
+	*pOutFileContent = Win32ReadFile(pFileName);
+	
+	return res == S_OK;
+}
 
 //==================================================
 // Time Section
@@ -625,6 +632,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pOpenURLFunc = Win32OpenURL;
 	gPlatformContext.pGetWallClockFunc = Win32GetWallClock;
 	gPlatformContext.pGetSecondsElapsedFunc = Win32GetSecondsElapsed;
+	gPlatformContext.pURLDownloadFileFunc = Win32URLDownloadFile;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
 	

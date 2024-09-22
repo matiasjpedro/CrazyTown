@@ -38,7 +38,7 @@ pushd ..\build
 cd. > building_marker
 
 cl  %CommonCompilerFlags% ..\src\CrazyTownApp.cpp /LD /link %CommonLinkerFlags% /EXPORT:AppPreUpdate /EXPORT:AppUpdate /EXPORT:AppPreInit /EXPORT:AppInit /EXPORT:AppShutdown /EXPORT:AppOnHotReload /EXPORT:AppOnDrop  
-cl  %CommonCompilerFlags% /DAPPNAME=\"CrazyTownApp\" ..\src\CrazyTownWin32.cpp /link %CommonLinkerFlags% user32.lib d3d11.lib d3dcompiler.lib winmm.lib Shell32.lib ../data/app_icon.res
+cl  %CommonCompilerFlags% /DAPPNAME=\"CrazyTownApp\" ..\src\CrazyTownWin32.cpp /link %CommonLinkerFlags% Urlmon.lib user32.lib d3d11.lib d3dcompiler.lib winmm.lib Shell32.lib ../data/app_icon.res
 
 del building_marker
 

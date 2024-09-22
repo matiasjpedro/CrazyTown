@@ -87,6 +87,7 @@ typedef bool 		   (*FetchLastFileFolderFunc)(char* pFolderPath, FileData* pLastF
 typedef void 		   (*OpenURLFunc)(const char* pURL);
 typedef LARGE_INTEGER  (*GetWallClockFunc)();
 typedef float		   (*GetSecondsElapsedFunc)(LARGE_INTEGER Start, LARGE_INTEGER End);
+typedef bool		   (*URLDownloadFile)(char* pUrl, char* pFileName, FileContent* pOutFileContent);
 
 
 struct PlatformReloadContext 
@@ -114,6 +115,7 @@ struct PlatformContext
 	OpenURLFunc pOpenURLFunc;
 	GetWallClockFunc pGetWallClockFunc;
 	GetSecondsElapsedFunc pGetSecondsElapsedFunc;
+	URLDownloadFile pURLDownloadFileFunc;
 	
 	bool bWantsToRebuildFontTexture;
 };

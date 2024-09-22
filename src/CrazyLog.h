@@ -77,6 +77,8 @@ struct CrazyLog
 	
 	HighlightLineMatches TempLineMatches;
 	
+	char aNewVersion[MAX_PATH];
+	char aCurrentVersion[MAX_PATH];
 	char aFilePathToLoad[MAX_PATH];
 	char aFolderQueryName[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
@@ -122,7 +124,8 @@ struct CrazyLog
 	bool bShowLineNum;
 	
 	void BuildFonts();
-	void Init();
+	void GetVersions(PlatformContext* pPlatformCtx);
+	void Init(PlatformContext* pPlatformCtx);
 	void Clear();
 	
 	void LoadClipboard();

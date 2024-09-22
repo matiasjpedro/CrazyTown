@@ -8,10 +8,12 @@
 
 #define RING_BUFFER_BACKWARDS(idx, vBuffer) (idx - 1 != -1 ? idx - 1 : vBuffer.Size - 1)
 #define BINARIES_URL "https://github.com/matiasjpedro/CrazyTown/releases"
+#define VERSION_URL "https://raw.githubusercontent.com/matiasjpedro/CrazyTown/main/VERSION.txt"
 #define GIT_URL "https://github.com/matiasjpedro/CrazyTown"
 #define ISSUES_URL "https://github.com/matiasjpedro/CrazyTown/issues"
 #define FILTERS_FILE_NAME "FILTERS.json"
 #define SETTINGS_NAME "SETTINGS.json"
+#define VERSION_FILE_NAME "VERSION.txt"
 #define FILE_FETCH_INTERVAL 0.5f
 #define FOLDER_FETCH_INTERVAL 2.f
 #define CONSOLAS_FONT_SIZE 14 
@@ -24,11 +26,32 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.14f;
-
 static char g_NullTerminator = '\0';
 
-void CrazyLog::Init()
+void CrazyLog::GetVersions(PlatformContext* pPlatformCtx) 
+{
+	FileContent CurrentVersionFile = { 0 };
+	CurrentVersionFile = pPlatformCtx->pReadFileFunc(VERSION_FILE_NAME);
+	
+	if(CurrentVersionFile.Size > 0)
+		memcpy(aCurrentVersion, CurrentVersionFile.pFile, CurrentVersionFile.Size);
+	
+	FileContent NewVersionFile = { 0 };
+	pPlatformCtx->pURLDownloadFileFunc(VERSION_URL, "VERSION_TEMP.TXT", &NewVersionFile);
+	
+	if (NewVersionFile.Size > 0)
+		memcpy(aNewVersion, NewVersionFile.pFile, NewVersionFile.Size);
+	
+	pPlatformCtx->pFreeFileContentFunc(&CurrentVersionFile);
+	pPlatformCtx->pFreeFileContentFunc(&NewVersionFile);
+	
+	bool bIsVersionNewer = strcmp(aCurrentVersion, aNewVersion) != 0;
+	
+	if (!bIsVersionNewer)
+		memset(aNewVersion, 0, sizeof(aNewVersion));
+}
+
+void CrazyLog::Init(PlatformContext* pPlatformCtx)
 {
 	SelectedExtraThreadCount = 0;
 	FontScale = 1.f;
@@ -57,6 +80,8 @@ void CrazyLog::Init()
 	vRecentStreamPaths.resize(MAX_REMEMBER_PATHS, { 0 });
 	
 	bIsAVXEnabled = true;
+	
+	GetVersions(pPlatformCtx);
 }
 
 void CrazyLog::Clear()
@@ -857,6 +882,18 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		return;
 	}
 	
+	if (aNewVersion[0] != 0) {
+		float buttonWidth = 200.0f; // The width of your button
+		float availableWidth = ImGui::GetContentRegionAvail().x;
+
+		// Set the cursor position so the button is aligned to the right
+		ImGui::SetCursorPosX(availableWidth - buttonWidth);
+		
+		if (ImGui::Button("New Version availabile!", ImVec2(buttonWidth, 0))) {
+			pPlatformCtx->pOpenURLFunc(BINARIES_URL);
+		}
+	}
+	
 	DrawMainBar(DeltaTime, pPlatformCtx);
 	
 	//=============================================================
@@ -1181,8 +1218,8 @@ void CrazyLog::FilterLines(PlatformContext* pPlatformCtx)
 
 void CrazyLog::SetLastCommand(const char* pLastCommand)
 {
-	snprintf(aLastCommand, sizeof(aLastCommand), "ver %.2f - TotalLines %i ResultLines %i - LastCommand: %s",
-	         g_Version, vLineOffsets.Size, vFiltredLinesCached.Size, pLastCommand);
+	snprintf(aLastCommand, sizeof(aLastCommand), "ver %s - TotalLines %i ResultLines %i - LastCommand: %s",
+	         aCurrentVersion, vLineOffsets.Size, vFiltredLinesCached.Size, pLastCommand);
 }
 
 void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
@@ -1494,8 +1531,7 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 		//if (ImGui::MenuItem("MenuItem")) {} // You can also use MenuItem() inside a menu bar!
 		if (ImGui::BeginMenu("About"))
 		{
-			
-			ImGui::Text("@2023 Matias Pedro \nLicense: MIT \nVersion %.2f", g_Version);
+			ImGui::Text("@2023 Matias Pedro \nLicense: MIT \nVersion %s", aCurrentVersion);
 			
 			ImGui::Separator();
 			
