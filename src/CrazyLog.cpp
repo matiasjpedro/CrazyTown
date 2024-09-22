@@ -26,15 +26,12 @@
 
 #define SAVE_ENABLE_MASK 0
 
+static float g_Version = 1.14f;
 static char g_NullTerminator = '\0';
 
 void CrazyLog::GetVersions(PlatformContext* pPlatformCtx) 
 {
-	FileContent CurrentVersionFile = { 0 };
-	CurrentVersionFile = pPlatformCtx->pReadFileFunc(VERSION_FILE_NAME);
-	
-	if(CurrentVersionFile.Size > 0)
-		memcpy(aCurrentVersion, CurrentVersionFile.pFile, CurrentVersionFile.Size);
+	snprintf(aCurrentVersion, sizeof(aCurrentVersion), "%.2f", g_Version);
 	
 	FileContent NewVersionFile = { 0 };
 	pPlatformCtx->pURLDownloadFileFunc(VERSION_URL, "VERSION_TEMP.TXT", &NewVersionFile);
@@ -42,7 +39,6 @@ void CrazyLog::GetVersions(PlatformContext* pPlatformCtx)
 	if (NewVersionFile.Size > 0)
 		memcpy(aNewVersion, NewVersionFile.pFile, NewVersionFile.Size);
 	
-	pPlatformCtx->pFreeFileContentFunc(&CurrentVersionFile);
 	pPlatformCtx->pFreeFileContentFunc(&NewVersionFile);
 	
 	bool bIsVersionNewer = strcmp(aCurrentVersion, aNewVersion) != 0;
@@ -61,7 +57,6 @@ void CrazyLog::Init(PlatformContext* pPlatformCtx)
 	PeekScrollValue = -1.f;
 	FiltredScrollValue = -1.f;
 	EnableMask = 0xFFFFFFFF;
-	SetLastCommand("LAST COMMAND");
 	ImGui::StyleColorsClassic();
 	
     ImGuiStyle* style = &ImGui::GetStyle();
@@ -82,6 +77,7 @@ void CrazyLog::Init(PlatformContext* pPlatformCtx)
 	bIsAVXEnabled = true;
 	
 	GetVersions(pPlatformCtx);
+	SetLastCommand("LAST COMMAND");
 }
 
 void CrazyLog::Clear()
@@ -1528,17 +1524,12 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 			ImGui::EndMenu();
 		}
-		//if (ImGui::MenuItem("MenuItem")) {} // You can also use MenuItem() inside a menu bar!
+		
 		if (ImGui::BeginMenu("About"))
 		{
-			ImGui::Text("@2023 Matias Pedro \nLicense: MIT \nVersion %s", aCurrentVersion);
+			ImGui::Text("@2023 Matias Pedro \nLicense: MIT");
 			
 			ImGui::Separator();
-			
-			if (ImGui::MenuItem("Check updates"))
-			{
-				pPlatformCtx->pOpenURLFunc(BINARIES_URL);
-			}
 			
 			if (ImGui::MenuItem("Github"))
 			{
