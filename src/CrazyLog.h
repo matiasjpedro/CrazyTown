@@ -167,7 +167,7 @@ struct CrazyLog
 	
 	char* GetWordStart(const char* pLineStart, char* pWordCursor);
 	char* GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmount);
-	void SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd);
+	void SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd, float xOffset);
 		
 	//Filters;
 	bool AnyFilterActive () const;

@@ -935,7 +935,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 	
-	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ExtraFlags))
+	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
 	{
 		bool bWantsToCopy = false;
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
@@ -974,6 +974,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
+			ImGui::Checkbox("Show Line number", &bShowLineNum);
 			ImGui::Checkbox("Auto-scroll", &bAutoScroll);
 			ImGui::Separator();
 			
@@ -1230,12 +1231,19 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	clipper.Begin(vFiltredLinesCached.Size);
 	
 	TempLineMatches.vLineMatches.reserve(20);
-		
+	char aLineNumberBuff[17] = { 0 };
 	while (clipper.Step())
 	{
 		for (int ClipperIdx = clipper.DisplayStart; ClipperIdx < clipper.DisplayEnd; ClipperIdx++)
 		{
 			int line_no = vFiltredLinesCached[ClipperIdx];
+			
+			if (bShowLineNum) {
+				snprintf(aLineNumberBuff, sizeof(aLineNumberBuff), "[%i] -", line_no);
+				ImGui::Text(aLineNumberBuff);
+				ImGui::SameLine();
+			}
+			
 			const char* pLineStart = buf + vLineOffsets[line_no];
 			const char* pLineEnd = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
 			int64_t line_size = pLineEnd - pLineStart;
@@ -1327,7 +1335,13 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			// Select chars from Filtered Version
 			else if (bIsAltPressed && bIsItemHovered) 
 			{
-				SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd);
+				float LineNumberTextOffset = 0.f;
+				if (bShowLineNum) {
+					size_t aLineNumberLen = strlen(aLineNumberBuff) + 1;
+					LineNumberTextOffset = ImGui::CalcTextSize(&aLineNumberBuff[0], &aLineNumberBuff[aLineNumberLen]).x;
+				}
+				
+				SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd, LineNumberTextOffset);
 			}
 		}
 	}
@@ -1361,10 +1375,17 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 	clipper.Begin(vLineOffsets.Size);
 	
 	TempLineMatches.vLineMatches.reserve(20);
+	char aLineNumberBuff[17] = { 0 };
 	while (clipper.Step())
 	{
 		for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
 		{
+			if (bShowLineNum) {
+				snprintf(aLineNumberBuff, sizeof(aLineNumberBuff), "[%i] -", line_no);
+				ImGui::Text(aLineNumberBuff);
+				ImGui::SameLine();
+			}
+			
 			const char* line_start = buf + vLineOffsets[line_no];
 			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
 			
@@ -1435,7 +1456,13 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			}
 			else if (bIsAltPressed && bIsItemHovered) 
 			{
-				SelectCharsFromLine(pPlatformCtx, line_start, line_end);
+				float LineNumberTextOffset = 0.f;
+				if (bShowLineNum) {
+					size_t aLineNumberLen = strlen(aLineNumberBuff) + 1;
+					LineNumberTextOffset = ImGui::CalcTextSize(&aLineNumberBuff[0], &aLineNumberBuff[aLineNumberLen]).x;
+				}
+				
+				SelectCharsFromLine(pPlatformCtx, line_start, line_end, LineNumberTextOffset);
 			}
 					
 		}
@@ -2144,7 +2171,7 @@ char* CrazyLog::GetWordEnd(const char* pLineEnd, char* pWordCursor, int WordAmou
 	return pWordCursor;
 }
 
-void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd)
+void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pLineStart, const char* pLineEnd, float xOffset)
 {
 	SelectionSize += ImGui::GetIO().MouseWheel;
 	SelectionSize = max(SelectionSize, 1);
@@ -2170,7 +2197,7 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 	TabOffset *= 0.75f;
 	
 	float MousePosX = ImGui::GetMousePos().x;
-	float TextOffset = ImGui::GetCursorScreenPos().x;
+	float TextOffset = ImGui::GetCursorScreenPos().x + xOffset;
 	
 	for (int j = TabCounter; j < LineSize; ++j)
 	{
