@@ -70,6 +70,8 @@ struct CrazyLog
 	CrazyTextFilter Filter;
 	ImVector<int> vLineOffsets; 
 	ImVector<int> vFiltredLinesCached;
+	ImVector<int> vFindFiltredLinesCached;
+	ImVector<int> vFindFullViewLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
 	ImVector<ImVec4> vDefaultColors;
 	ImVector<FilePath> vRecentFilePaths;
@@ -83,15 +85,21 @@ struct CrazyLog
 	char aFolderQueryName[MAX_PATH];
 	char aFilterNameToSave[MAX_PATH];
 	char aLastCommand[MAX_PATH * 2];
+	char aFindText[MAX_PATH];
+	int FindTextLen;
 	int FilterToOverrideIdx;
 	int FilterSelectedIdx;
 	int FiltredLinesCount;
+	int FindFiltredProccesedLinesCount;
+	int FindFullViewProccesedLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
 	int FilePathsTail;
 	int StreamPathsTail;
 	int SelectedExtraThreadCount;
 	int MaxExtraThreadCount;
+	int CurrentFindFiltredIdx;
+	int CurrentFindFullViewIdx;
 	TargetMode SelectedTargetMode;
 	TargetModeChangeReason LastChangeReason;
 
@@ -102,6 +110,7 @@ struct CrazyLog
 	float FolderFetchCooldown;
 	float PeekScrollValue;
 	float FiltredScrollValue;
+	float FindScrollValue;
 
 	FileData LastLoadedFileData;
 	uint64_t EnableMask;
@@ -118,6 +127,7 @@ struct CrazyLog
 	bool bWantsToScaleFont;
 	bool bIsPeeking;
 	bool bIsEditingColors;
+	bool bIsFindOpen;
 	
 	// Output options
 	bool bAutoScroll;  // Keep scrolling if already at the bottom.
@@ -151,7 +161,10 @@ struct CrazyLog
 	void SetLog(const char* pFileContent, int FileSize);
 	
 	void ClearCache();
+	void ClearFindCache(bool bOnlyFilter);
+	
 	void FilterLines(PlatformContext* pPlatformCtx);
+	void FindLines(PlatformContext* pPlatformCtx);
 
 	void SetLastCommand(const char* pLastCommand);
 	
@@ -174,7 +187,8 @@ struct CrazyLog
 	
 	void CacheHighlightLineMatches(const char* pLineBegin, const char* pLineEnd,
 	                               HighlightLineMatches* pFiltredLineMatch);
-	void CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx,
-	                                HighlightLineMatches* pFiltredLineMatch);
+	void CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, 
+									const char* pWordBegin, const char* pWordEnd, 
+									int FilterIdx, HighlightLineMatches* pFiltredLineMatch);
 
 };

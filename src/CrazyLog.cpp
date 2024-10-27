@@ -26,7 +26,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.17f;
+static float g_Version = 1.18f;
 static char g_NullTerminator = '\0';
 
 void CrazyLog::GetVersions(PlatformContext* pPlatformCtx) 
@@ -55,6 +55,7 @@ void CrazyLog::Init(PlatformContext* pPlatformCtx)
 	FileContentFetchCooldown = -1.f;
 	FolderFetchCooldown = -1.f;
 	PeekScrollValue = -1.f;
+	FindScrollValue = -1.f;
 	FiltredScrollValue = -1.f;
 	EnableMask = 0xFFFFFFFF;
 	ImGui::StyleColorsClassic();
@@ -91,6 +92,7 @@ void CrazyLog::Clear()
 	vLineOffsets.push_back(0);
 
 	ClearCache();
+	ClearFindCache(false);
 	
 	SetLastCommand("LOG CLEARED");
 }
@@ -769,6 +771,8 @@ void CrazyLog::DeleteFilter(PlatformContext* pPlatformCtx)
 		bAlreadyCached = false;
 		FiltredLinesCount = 0;
 		
+		ClearFindCache(true);
+		
 		SetLastCommand("FILTER DELETED");
 	}
 }
@@ -840,7 +844,23 @@ void CrazyLog::SetLog(const char* pFileContent, int FileSize)
 	
 	// Reset the cache and reserve the max amount needed
 	ClearCache();
+	ClearFindCache(false);
 	vFiltredLinesCached.reserve_discard(vLineOffsets.Size);
+	vFindFullViewLinesCached.reserve_discard(vLineOffsets.Size);
+	vFindFiltredLinesCached.reserve_discard(vLineOffsets.Size);
+}
+
+void CrazyLog::ClearFindCache(bool bOnlyFilter) {
+	
+	vFindFiltredLinesCached.clear();
+	FindFiltredProccesedLinesCount = 0;
+	CurrentFindFiltredIdx = 0;
+	
+	if (bOnlyFilter) return;
+	
+	vFindFullViewLinesCached.clear();
+	FindFullViewProccesedLinesCount = 0;
+	CurrentFindFullViewIdx = 0;
 }
 
 void CrazyLog::ClearCache() {
@@ -929,11 +949,67 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("OUTPUT");
 	
+	static float TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
+	
+	if (bIsFindOpen) {
+		
+		bool bIsLookingAtFullView = bIsPeeking || !AnyFilterActive();
+		
+		ImGui::SetNextItemWidth(-110);
+		if (ImGui::InputText("Find", aFindText, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
+		{
+			FindTextLen = (int)strlen(aFindText);
+			FindScrollValue = -1.f;
+			
+			CurrentFindFullViewIdx = 0;
+			FindFullViewProccesedLinesCount = 0;
+			vFindFullViewLinesCached.resize(0);
+			
+			CurrentFindFiltredIdx = 0;
+			FindFiltredProccesedLinesCount = 0;
+			vFindFiltredLinesCached.resize(0);
+		}
+		
+		
+		int& TargetFindIdx = bIsLookingAtFullView ? CurrentFindFullViewIdx : CurrentFindFiltredIdx;
+		ImVector<int>& vTargetFindLinesCached = bIsLookingAtFullView ? vFindFullViewLinesCached : vFindFiltredLinesCached;
+		
+		ImGui::SameLine();
+		if (ImGui::Button("<") && vTargetFindLinesCached.Size > 0) 
+		{
+			TargetFindIdx = TargetFindIdx > 0 ? TargetFindIdx - 1 : vTargetFindLinesCached.Size - 1;
+				
+			int LineNo = vTargetFindLinesCached[TargetFindIdx];
+			
+			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+			float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
+			FindScrollValue = ItemPosY;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button(">") && vTargetFindLinesCached.Size > 0) 
+		{
+			TargetFindIdx = TargetFindIdx < vTargetFindLinesCached.Size - 1 ? TargetFindIdx + 1 : 0;
+				
+			int LineNo = vTargetFindLinesCached[TargetFindIdx];
+		
+			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+			float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
+			FindScrollValue = ItemPosY;
+		}
+		
+		ImGui::SameLine();
+		ImGui::Text("%i/%i", TargetFindIdx + 1, vTargetFindLinesCached.Size);
+		ImGui::Dummy({0,0});
+	}
+	
 	if (!bIsShiftPressed && !bIsAltPressed && SelectionSize > 1.f) {
 		SelectionSize = 0.f;
 	}
 	
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+	
+	TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
 	
 	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
 	{
@@ -954,6 +1030,20 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				bWantsToCopy = true;
 				SetLastCommand("VIEW COPIED TO CLIPBOARD");
 			}
+		}
+		
+		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F))
+		{
+			if (ImGui::IsWindowHovered())
+			{
+				bIsFindOpen = !bIsFindOpen;
+				SetLastCommand(bIsFindOpen ? "FIND OPENED" : "FIND CLOSED");
+			}
+		}
+		
+		if (bIsFindOpen && ImGui::IsKeyPressed(ImGuiKey_Escape)) 
+		{
+			bIsFindOpen = false;
 		}
 		
 		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
@@ -1021,8 +1111,22 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 		}
 		
-		if (!bAlreadyCached && AnyFilterActive()) 
+		if (FindScrollValue > -1.f) {
+			OneTimeScrollValue = FindScrollValue;
+			FindScrollValue = -1.f;
+		}
+		
+		if (!bAlreadyCached && AnyFilterActive()) {
 			FilterLines(pPlatformCtx);
+			
+			// FindFiltredLines
+		}
+		
+		// FindFullViewLines
+		if (bIsFindOpen) {
+			FindLines(pPlatformCtx);
+		}
+		
 		
 		if (!bIsPeeking && AnyFilterActive())
 		{
@@ -1046,8 +1150,12 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		if (bAutoScroll && !bIsPeeking && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 			ImGui::SetScrollHereY(1.0f);
 	}
+
+	
 	ImGui::PopFont();
 	ImGui::EndChild();
+	
+	
 	
 	ImGui::SeparatorText(aLastCommand);
 	
@@ -1073,6 +1181,42 @@ static void FilterMT(int LineNo, CrazyLog* pLog, ImVector<int>* pOut)
 	if (pLog->Filter.PassFilter(pLineStart, pLineEnd, pBufEnd, pLog->bIsAVXEnabled)) 
 	{
 		pOut->push_back(LineNo);
+	}
+}
+
+void CrazyLog::FindLines(PlatformContext* pPlatformCtx) 
+{
+	const char* pFindTextStart = aFindText;
+	const char* pFindTextEnd = &aFindText[FindTextLen];
+		
+	const char* pBuf = Buf.begin();
+	const char* pBufEnd = Buf.end();
+	
+	// TODO(Matiasp): Make this multithread + avx version of this.
+	if (FindFullViewProccesedLinesCount < vLineOffsets.Size) {
+		for (int LineNo = FindFullViewProccesedLinesCount; LineNo < vLineOffsets.Size; LineNo++)
+		{
+			const char* pLineStart = pBuf + vLineOffsets[LineNo];
+			const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
+			if(ImStristr(pLineStart, pLineEnd, pFindTextStart, pFindTextEnd))
+				vFindFullViewLinesCached.push_back(LineNo);
+		}
+		
+		FindFullViewProccesedLinesCount = vLineOffsets.Size;
+	}
+	
+	if (FindFiltredProccesedLinesCount < vFiltredLinesCached.Size) {
+		for (int i = FindFiltredProccesedLinesCount; i < vFiltredLinesCached.Size; i++)
+		{
+			int LineNo = vFiltredLinesCached[i];
+			
+			const char* pLineStart = pBuf + vLineOffsets[LineNo];
+			const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (pBuf + vLineOffsets[LineNo + 1] - 1) : pBufEnd;
+			if(ImStristr(pLineStart, pLineEnd, pFindTextStart, pFindTextEnd))
+				vFindFiltredLinesCached.push_back(LineNo);
+		}
+		
+		FindFiltredProccesedLinesCount = vFiltredLinesCached.Size;
 	}
 }
 
@@ -1257,7 +1401,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			
 			for (int j = 0; j < TempLineMatches.vLineMatches.Size; j++)
 			{
-				ImVec4 FilterColor = Filter.vSettings[TempLineMatches.vLineMatches[j].FilterIdxMatching].Color;
+				uint8_t FilterIdx = TempLineMatches.vLineMatches[j].FilterIdxMatching;
+				ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : aDefaultColors[0];
 				
 				const char* pHighlightWordBegin = pLineStart + TempLineMatches.vLineMatches[j].WordBeginOffset;
 				const char* pHighlightWordEnd = pLineStart + TempLineMatches.vLineMatches[j].WordEndOffset + 1;
@@ -1394,13 +1539,14 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			
 			CacheHighlightLineMatches(line_start, line_end, &TempLineMatches);
 					
-			if (bIsPeeking && TempLineMatches.vLineMatches.Size > 0)
+			if (TempLineMatches.vLineMatches.Size > 0)
 			{
 				const char* pLineCursor = line_start;
 				
 				for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
 				{
-					ImVec4 FilterColor = Filter.vSettings[TempLineMatches.vLineMatches[i].FilterIdxMatching].Color;
+					uint8_t FilterIdx = TempLineMatches.vLineMatches[i].FilterIdxMatching;
+					ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : aDefaultColors[0];
 					
 					const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
 					const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
@@ -1894,6 +2040,8 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 			
 		bAlreadyCached = false;
 		FiltredLinesCount = 0;
+		
+		ClearFindCache(true);
 			
 		SetLastCommand("FILTER CHANGED");
 	}
@@ -1908,6 +2056,8 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
 			
+			ClearFindCache(true);
+			
 			SetLastCommand("SELECTED PRESET CHANGED");
 		}
 		
@@ -1915,6 +2065,8 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			bAlreadyCached = false;
 			FiltredLinesCount = 0;
+			
+			ClearFindCache(true);
 			
 			SetLastCommand("CHERRY PICK CHANGED");
 		}
@@ -2234,6 +2386,8 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 					bAlreadyCached = false;
 					FiltredLinesCount = 0;
 					
+					ClearFindCache(true);
+					
 					SetLastCommand("WORD SELECTION ADDED TO FILTER");
 				}
 				else if (ImGui::IsKeyReleased(ImGuiKey_MouseRight))
@@ -2248,6 +2402,8 @@ void CrazyLog::SelectCharsFromLine(PlatformContext* pPlatformCtx, const char* pL
 			
 					bAlreadyCached = false;
 					FiltredLinesCount = 0;
+					
+					ClearFindCache(true);
 					
 					SetLastCommand("WORD SELECTION ADDED TO FILTER");
 				}
@@ -2289,20 +2445,24 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 		if (Filter.aInputBuf[f.BeginOffset] == '!')
 			continue;
 
-		CacheHighlightMatchingWord(pLineBegin, pLineEnd, i, pFiltredLineMatch);
+		const char* pWordBegin = &Filter.aInputBuf[f.BeginOffset];
+		const char* pWordEnd = &Filter.aInputBuf[f.EndOffset];
+		
+		CacheHighlightMatchingWord(pLineBegin, pLineEnd, pWordBegin, pWordEnd, i, pFiltredLineMatch);
+	}
+	
+	if (FindTextLen > 0) {
+		CacheHighlightMatchingWord(pLineBegin, pLineEnd, aFindText, aFindText + FindTextLen, -1, pFiltredLineMatch);
 	}
 	
 	if (pFiltredLineMatch->vLineMatches.Size > 0)
 		qsort(pFiltredLineMatch->vLineMatches.Data, pFiltredLineMatch->vLineMatches.Size, sizeof(HighlightLineMatchEntry), HighlightLineMatchEntry::SortFunc);
 }
 
-void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, int FilterIdx, 
-                                          HighlightLineMatches* pFiltredLineMatch)
+void CrazyLog::CacheHighlightMatchingWord(const char* pLineBegin, const char* pLineEnd, 
+										  const char* pWordBegin, const char* pWordEnd, 
+										  int FilterIdx, HighlightLineMatches* pFiltredLineMatch)
 {
-	const CrazyTextFilter::CrazyTextRange& f = Filter.vFilters[FilterIdx];
-	
-	const char* pWordBegin = &Filter.aInputBuf[f.BeginOffset];
-	const char* pWordEnd = &Filter.aInputBuf[f.EndOffset];
 	
 	if (!pWordEnd)
 		pWordEnd = pWordBegin + strlen(pWordBegin);
