@@ -950,12 +950,35 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::SeparatorText("OUTPUT");
 	
 	static float TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
+	static bool bWasOpen = bIsFindOpen;
+	static bool bShouldFocusWhenFindFinish = false;
 	
 	if (bIsFindOpen) {
 		
 		bool bIsLookingAtFullView = bIsPeeking || !AnyFilterActive();
 		
-		ImGui::SetNextItemWidth(-110);
+		int& TargetFindIdx = bIsLookingAtFullView ? CurrentFindFullViewIdx : CurrentFindFiltredIdx;
+		ImVector<int>& vTargetFindLinesCached = bIsLookingAtFullView ? vFindFullViewLinesCached : vFindFiltredLinesCached;
+		
+		// After the find is done (previous frame) focus on the first line 
+		if (bShouldFocusWhenFindFinish) 
+		{
+			if (vTargetFindLinesCached.Size > 0) 
+			{
+				int LineNo = vTargetFindLinesCached[TargetFindIdx];
+		
+				int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+				float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
+				FindScrollValue = ItemPosY;
+			}
+			
+			bShouldFocusWhenFindFinish = false;
+		}
+		
+		if (!bWasOpen) 
+			ImGui::SetKeyboardFocusHere();
+		
+		ImGui::SetNextItemWidth(-150);
 		if (ImGui::InputText("Find", aFindText, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
 		{
 			FindTextLen = (int)strlen(aFindText);
@@ -968,11 +991,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			CurrentFindFiltredIdx = 0;
 			FindFiltredProccesedLinesCount = 0;
 			vFindFiltredLinesCached.resize(0);
+			
+			if(FindTextLen > 0)
+				bShouldFocusWhenFindFinish = true;
 		}
-		
-		
-		int& TargetFindIdx = bIsLookingAtFullView ? CurrentFindFullViewIdx : CurrentFindFiltredIdx;
-		ImVector<int>& vTargetFindLinesCached = bIsLookingAtFullView ? vFindFullViewLinesCached : vFindFiltredLinesCached;
 		
 		ImGui::SameLine();
 		if (ImGui::Button("<") && vTargetFindLinesCached.Size > 0) 
@@ -998,10 +1020,13 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			FindScrollValue = ItemPosY;
 		}
 		
+		
 		ImGui::SameLine();
 		ImGui::Text("%i/%i", TargetFindIdx + 1, vTargetFindLinesCached.Size);
 		ImGui::Dummy({0,0});
 	}
+	
+	bWasOpen = bIsFindOpen;
 	
 	if (!bIsShiftPressed && !bIsAltPressed && SelectionSize > 1.f) {
 		SelectionSize = 0.f;
@@ -1034,11 +1059,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F))
 		{
-			if (ImGui::IsWindowHovered())
-			{
-				bIsFindOpen = !bIsFindOpen;
-				SetLastCommand(bIsFindOpen ? "FIND OPENED" : "FIND CLOSED");
-			}
+			bIsFindOpen = !bIsFindOpen;
+			SetLastCommand(bIsFindOpen ? "FIND OPENED" : "FIND CLOSED");
 		}
 		
 		if (bIsFindOpen && ImGui::IsKeyPressed(ImGuiKey_Escape)) 
@@ -1118,8 +1140,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (!bAlreadyCached && AnyFilterActive()) {
 			FilterLines(pPlatformCtx);
-			
-			// FindFiltredLines
 		}
 		
 		// FindFullViewLines
@@ -1136,7 +1156,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		{
 			DrawFullView(pPlatformCtx);
 		}
-		
 		
 		if (bWantsToCopy)
 			ImGui::LogFinish();
@@ -1363,6 +1382,14 @@ void CrazyLog::SetLastCommand(const char* pLastCommand)
 	         aCurrentVersion, vLineOffsets.Size, vFiltredLinesCached.Size, pLastCommand);
 }
 
+void CrazyLog::HighlightLine(const char* pLineStart, const char* pLineEnd) 
+{
+	ImVec2 TextPos = ImGui::GetCursorScreenPos();
+	ImVec2 TextSize = ImGui::CalcTextSize(pLineStart, pLineEnd);
+	ImGui::GetWindowDrawList()->AddRectFilled(TextPos, ImVec2(TextPos.x + TextSize.x, TextPos.y + TextSize.y), 
+											  IM_COL32(66, 66, 66, 255)); 
+}
+
 void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 {
 	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
@@ -1398,6 +1425,9 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			const char* pLineCursor = pLineStart;
 			
 			CacheHighlightLineMatches(pLineStart, pLineEnd, &TempLineMatches);
+			
+			if(vFindFiltredLinesCached.Size > 0 && line_no == vFindFiltredLinesCached[CurrentFindFiltredIdx])
+				HighlightLine(pLineStart, pLineEnd);
 			
 			for (int j = 0; j < TempLineMatches.vLineMatches.Size; j++)
 			{
@@ -1538,6 +1568,9 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed;
 			
 			CacheHighlightLineMatches(line_start, line_end, &TempLineMatches);
+			
+			if(vFindFullViewLinesCached.Size > 0 && line_no == vFindFullViewLinesCached[CurrentFindFullViewIdx])
+				HighlightLine(line_start, line_end);
 					
 			if (TempLineMatches.vLineMatches.Size > 0)
 			{
