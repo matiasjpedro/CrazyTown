@@ -1363,7 +1363,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			for (int j = 0; j < TempLineMatches.vLineMatches.Size; j++)
 			{
 				uint8_t FilterIdx = TempLineMatches.vLineMatches[j].FilterIdxMatching;
-				ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : aDefaultColors[0];
+				ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : FindTextColor;
 				
 				const char* pHighlightWordBegin = pLineStart + TempLineMatches.vLineMatches[j].WordBeginOffset;
 				const char* pHighlightWordEnd = pLineStart + TempLineMatches.vLineMatches[j].WordEndOffset + 1;
@@ -1510,7 +1510,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
 				{
 					uint8_t FilterIdx = TempLineMatches.vLineMatches[i].FilterIdxMatching;
-					ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : aDefaultColors[0];
+					ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : FindTextColor;
 					
 					const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
 					const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
@@ -1716,7 +1716,7 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 		if (!bWasOpen) 
 			ImGui::SetKeyboardFocusHere();
 		
-		ImGui::SetNextItemWidth(-150);
+		ImGui::SetNextItemWidth(200);
 		if (ImGui::InputText("Find", aFindTextBuffer, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
 		{
 			memcpy(aFindText, aFindTextBuffer, sizeof(aFindTextBuffer));
@@ -1762,7 +1762,9 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 		
 		
 		ImGui::SameLine();
-		ImGui::Text("%i/%i", TargetFindIdx + 1, vTargetFindLinesCached.Size);
+		
+		ImGui::SetNextItemWidth(-200);
+		ImGui::Text("%i/%i", vTargetFindLinesCached.Size == 0 ? 0 : TargetFindIdx + 1, vTargetFindLinesCached.Size);
 		ImGui::Dummy({0,0});
 	}
 	
