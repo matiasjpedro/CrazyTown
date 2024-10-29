@@ -949,6 +949,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("OUTPUT");
 	
+	static char aFindTextBuffer[ArrayCount(aFindText)] = { 0 };
 	static float TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
 	static bool bWasOpen = bIsFindOpen;
 	static bool bShouldFocusWhenFindFinish = false;
@@ -979,8 +980,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			ImGui::SetKeyboardFocusHere();
 		
 		ImGui::SetNextItemWidth(-150);
-		if (ImGui::InputText("Find", aFindText, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
+		if (ImGui::InputText("Find", aFindTextBuffer, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
 		{
+			memcpy(aFindText, aFindTextBuffer, sizeof(aFindTextBuffer));
+			
 			FindTextLen = (int)strlen(aFindText);
 			FindScrollValue = -1.f;
 			
@@ -1057,15 +1060,24 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 		}
 		
-		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F))
+		if (bIsFindOpen) 
 		{
-			bIsFindOpen = !bIsFindOpen;
-			SetLastCommand(bIsFindOpen ? "FIND OPENED" : "FIND CLOSED");
-		}
-		
-		if (bIsFindOpen && ImGui::IsKeyPressed(ImGuiKey_Escape)) 
-		{
-			bIsFindOpen = false;
+			if (ImGui::IsKeyPressed(ImGuiKey_Escape) || ImGui::IsKeyPressed(ImGuiKey_F)) 
+			{
+				bIsFindOpen = false;
+				
+				FindTextLen = 0;
+				memset(aFindText, 0, sizeof(aFindText));
+				
+				SetLastCommand("FIND CLOSED");
+			}
+			
+		} else {
+			
+			if (ImGui::IsKeyPressed(ImGuiKey_F)) {
+				bIsFindOpen = true;
+				SetLastCommand("FIND OPENED");
+			}
 		}
 		
 		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
