@@ -103,6 +103,7 @@ struct CrazyLog
 	TargetMode SelectedTargetMode;
 	TargetModeChangeReason LastChangeReason;
 
+	float OutputTextLineHeight;
 	float FontScale;
 	float SelectionSize;
 	float FileContentFetchCooldown;
@@ -173,6 +174,7 @@ struct CrazyLog
 	void DrawFiltredView(PlatformContext* pPlatformCtx);
 	void DrawFullView(PlatformContext* pPlatformCtx);
 	void DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx);
+	void DrawFind(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);

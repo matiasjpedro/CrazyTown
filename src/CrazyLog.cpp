@@ -949,87 +949,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::SeparatorText("OUTPUT");
 	
-	static char aFindTextBuffer[ArrayCount(aFindText)] = { 0 };
-	static float TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
-	static bool bWasOpen = bIsFindOpen;
-	static bool bShouldFocusWhenFindFinish = false;
-	
-	if (bIsFindOpen) {
-		
-		bool bIsLookingAtFullView = bIsPeeking || !AnyFilterActive();
-		
-		int& TargetFindIdx = bIsLookingAtFullView ? CurrentFindFullViewIdx : CurrentFindFiltredIdx;
-		ImVector<int>& vTargetFindLinesCached = bIsLookingAtFullView ? vFindFullViewLinesCached : vFindFiltredLinesCached;
-		
-		// After the find is done (previous frame) focus on the first line 
-		if (bShouldFocusWhenFindFinish) 
-		{
-			if (vTargetFindLinesCached.Size > 0) 
-			{
-				int LineNo = vTargetFindLinesCached[TargetFindIdx];
-		
-				int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
-				float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
-				FindScrollValue = ItemPosY;
-			}
-			
-			bShouldFocusWhenFindFinish = false;
-		}
-		
-		if (!bWasOpen) 
-			ImGui::SetKeyboardFocusHere();
-		
-		ImGui::SetNextItemWidth(-150);
-		if (ImGui::InputText("Find", aFindTextBuffer, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
-		{
-			memcpy(aFindText, aFindTextBuffer, sizeof(aFindTextBuffer));
-			
-			FindTextLen = (int)strlen(aFindText);
-			FindScrollValue = -1.f;
-			
-			CurrentFindFullViewIdx = 0;
-			FindFullViewProccesedLinesCount = 0;
-			vFindFullViewLinesCached.resize(0);
-			
-			CurrentFindFiltredIdx = 0;
-			FindFiltredProccesedLinesCount = 0;
-			vFindFiltredLinesCached.resize(0);
-			
-			if(FindTextLen > 0)
-				bShouldFocusWhenFindFinish = true;
-		}
-		
-		ImGui::SameLine();
-		if (ImGui::Button("<") && vTargetFindLinesCached.Size > 0) 
-		{
-			TargetFindIdx = TargetFindIdx > 0 ? TargetFindIdx - 1 : vTargetFindLinesCached.Size - 1;
-				
-			int LineNo = vTargetFindLinesCached[TargetFindIdx];
-			
-			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
-			float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
-			FindScrollValue = ItemPosY;
-		}
-		
-		ImGui::SameLine();
-		if (ImGui::Button(">") && vTargetFindLinesCached.Size > 0) 
-		{
-			TargetFindIdx = TargetFindIdx < vTargetFindLinesCached.Size - 1 ? TargetFindIdx + 1 : 0;
-				
-			int LineNo = vTargetFindLinesCached[TargetFindIdx];
-		
-			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
-			float ItemPosY = (float)(ItemOffsetY) * TextLineHeight;
-			FindScrollValue = ItemPosY;
-		}
-		
-		
-		ImGui::SameLine();
-		ImGui::Text("%i/%i", TargetFindIdx + 1, vTargetFindLinesCached.Size);
-		ImGui::Dummy({0,0});
-	}
-	
-	bWasOpen = bIsFindOpen;
+	DrawFind(DeltaTime, pPlatformCtx);
 	
 	if (!bIsShiftPressed && !bIsAltPressed && SelectionSize > 1.f) {
 		SelectionSize = 0.f;
@@ -1037,7 +957,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 	
-	TextLineHeight = ImGui::GetTextLineHeightWithSpacing();
+	OutputTextLineHeight = ImGui::GetTextLineHeightWithSpacing();
 	
 	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
 	{
@@ -1068,6 +988,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 				
 				FindTextLen = 0;
 				memset(aFindText, 0, sizeof(aFindText));
+				ClearFindCache(false);
 				
 				SetLastCommand("FIND CLOSED");
 			}
@@ -1154,11 +1075,9 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			FilterLines(pPlatformCtx);
 		}
 		
-		// FindFullViewLines
-		if (bIsFindOpen) {
+		if (bIsFindOpen && FindTextLen > 0) {
 			FindLines(pPlatformCtx);
 		}
-		
 		
 		if (!bIsPeeking && AnyFilterActive())
 		{
@@ -1764,6 +1683,90 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 		}
 		ImGui::EndMenuBar();
 	}
+}
+
+void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
+	
+	static char aFindTextBuffer[ArrayCount(aFindText)] = { 0 };
+	static bool bWasOpen = bIsFindOpen;
+	static bool bShouldFocusWhenFindFinish = false;
+	
+	if (bIsFindOpen) {
+		
+		bool bIsLookingAtFullView = bIsPeeking || !AnyFilterActive();
+		
+		int& TargetFindIdx = bIsLookingAtFullView ? CurrentFindFullViewIdx : CurrentFindFiltredIdx;
+		ImVector<int>& vTargetFindLinesCached = bIsLookingAtFullView ? vFindFullViewLinesCached : vFindFiltredLinesCached;
+		
+		// After the find is done (previous frame) focus on the first line 
+		if (bShouldFocusWhenFindFinish) 
+		{
+			if (vTargetFindLinesCached.Size > 0) 
+			{
+				int LineNo = vTargetFindLinesCached[TargetFindIdx];
+		
+				int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+				float ItemPosY = (float)(ItemOffsetY) * OutputTextLineHeight;
+				FindScrollValue = ItemPosY;
+			}
+			
+			bShouldFocusWhenFindFinish = false;
+		}
+		
+		if (!bWasOpen) 
+			ImGui::SetKeyboardFocusHere();
+		
+		ImGui::SetNextItemWidth(-150);
+		if (ImGui::InputText("Find", aFindTextBuffer, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue)) 
+		{
+			memcpy(aFindText, aFindTextBuffer, sizeof(aFindTextBuffer));
+			
+			FindTextLen = (int)strlen(aFindText);
+			FindScrollValue = -1.f;
+			
+			CurrentFindFullViewIdx = 0;
+			FindFullViewProccesedLinesCount = 0;
+			vFindFullViewLinesCached.resize(0);
+			
+			CurrentFindFiltredIdx = 0;
+			FindFiltredProccesedLinesCount = 0;
+			vFindFiltredLinesCached.resize(0);
+			
+			if(FindTextLen > 0)
+				bShouldFocusWhenFindFinish = true;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button("<") && vTargetFindLinesCached.Size > 0) 
+		{
+			TargetFindIdx = TargetFindIdx > 0 ? TargetFindIdx - 1 : vTargetFindLinesCached.Size - 1;
+				
+			int LineNo = vTargetFindLinesCached[TargetFindIdx];
+			
+			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+			float ItemPosY = (float)(ItemOffsetY) * OutputTextLineHeight;
+			FindScrollValue = ItemPosY;
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button(">") && vTargetFindLinesCached.Size > 0) 
+		{
+			TargetFindIdx = TargetFindIdx < vTargetFindLinesCached.Size - 1 ? TargetFindIdx + 1 : 0;
+				
+			int LineNo = vTargetFindLinesCached[TargetFindIdx];
+		
+			int ItemOffsetY = bIsLookingAtFullView ? LineNo : vFiltredLinesCached.index_from_ptr(vFiltredLinesCached.find(LineNo));
+			float ItemPosY = (float)(ItemOffsetY) * OutputTextLineHeight;
+			FindScrollValue = ItemPosY;
+		}
+		
+		
+		ImGui::SameLine();
+		ImGui::Text("%i/%i", TargetFindIdx + 1, vTargetFindLinesCached.Size);
+		ImGui::Dummy({0,0});
+	}
+	
+	bWasOpen = bIsFindOpen;
 }
 
 void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
