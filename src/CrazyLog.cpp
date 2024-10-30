@@ -26,7 +26,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.19f;
+static float g_Version = 1.20f;
 static char g_NullTerminator = '\0';
 
 void CrazyLog::GetVersions(PlatformContext* pPlatformCtx) 
@@ -963,7 +963,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		if (bIsFindOpen) 
 		{
-			if (ImGui::IsKeyPressed(ImGuiKey_Escape) || ImGui::IsKeyPressed(ImGuiKey_F)) 
+			if (ImGui::IsKeyPressed(ImGuiKey_Escape) || (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F))) 
 			{
 				bIsFindOpen = false;
 				
@@ -976,7 +976,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			
 		} else {
 			
-			if (ImGui::IsKeyPressed(ImGuiKey_F)) {
+			if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F)) {
 				bIsFindOpen = true;
 				SetLastCommand("FIND OPENED");
 			}
