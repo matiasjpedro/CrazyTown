@@ -2,6 +2,28 @@
 
 #pragma once
 
+enum RecentInputTextType {
+	RITT_StreamPath = 0,
+	RITT_FilePath,
+	RITT_Find,
+	RITT_Filter,
+	RITT_COUNT
+};
+
+const static char* RememberInputTextSetting[RITT_COUNT] {
+	"recent_stream_paths",
+	"recent_file_paths",
+	"recent_finds",
+	"recent_filters"
+};
+
+const static char* RememberInputTextTailSetting[RITT_COUNT] {
+	"stream_paths_tail",
+	"file_paths_tail",
+	"finds_tail",
+	"filters_tail"
+};
+
 enum TargetMode 
 {
 	TM_StaticText = 0,
@@ -59,9 +81,9 @@ struct HighlightLineMatches
 	ImVector<HighlightLineMatchEntry> vLineMatches;
 };
 
-struct FilePath
+struct RecentInputText
 {
-	char aFilePath[MAX_PATH];
+	char aText[MAX_PATH];
 };
 
 struct CrazyLog
@@ -74,8 +96,8 @@ struct CrazyLog
 	ImVector<int> vFindFullViewLinesCached;
 	ImVector<NamedFilter> LoadedFilters;
 	ImVector<ImVec4> vDefaultColors;
-	ImVector<FilePath> vRecentFilePaths;
-	ImVector<FilePath> vRecentStreamPaths;
+	ImVector<RecentInputText> avRecentInputText[RITT_COUNT];
+	int aRecentInputTextTail[RITT_COUNT];
 	
 	HighlightLineMatches TempLineMatches;
 	
@@ -94,8 +116,6 @@ struct CrazyLog
 	int FindFullViewProccesedLinesCount;
 	int LastFetchFileSize;
 	int LastFrameFiltersCount;
-	int FilePathsTail;
-	int StreamPathsTail;
 	int SelectedExtraThreadCount;
 	int MaxExtraThreadCount;
 	int CurrentFindFiltredIdx;
@@ -155,7 +175,7 @@ struct CrazyLog
 	
 	void LoadSettings(PlatformContext* pPlatformCtx);
 	void SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx);
-	void RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPath, char* pFilePath);
+	void RememberInputText(PlatformContext* pPlatformCtx, RecentInputTextType Type, char* pText);
 	void SaveTypeInSettings(PlatformContext* pPlatformCtx, const char* pKey, int Type, const void* pValue);
 	
 	void AddLog(const char* pFileContent, int FileSize);

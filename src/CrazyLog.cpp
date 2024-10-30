@@ -70,10 +70,11 @@ void CrazyLog::Init(PlatformContext* pPlatformCtx)
 	bIsMultithreadEnabled = true;
 	SelectedExtraThreadCount = clamp(3, MaxExtraThreadCount, 0);
 	
-	FilePathsTail = -1;
-	StreamPathsTail = -1;
-	vRecentFilePaths.resize(MAX_REMEMBER_PATHS, { 0 });
-	vRecentStreamPaths.resize(MAX_REMEMBER_PATHS, { 0 });
+	for (unsigned i = 0; i < RITT_COUNT; ++i)
+	{
+		avRecentInputText[i].resize(MAX_REMEMBER_PATHS, { 0 });
+		aRecentInputTextTail[i] = -1;
+	}
 	
 	bIsAVXEnabled = true;
 	
@@ -432,52 +433,32 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 			}
 		}
 		
-		cJSON * pRecentStreamPathsArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "recent_stream_paths");
-		int StreamsPathsSize = cJSON_GetArraySize(pRecentStreamPathsArray);
-		cJSON * pRecentStreamPath = nullptr;
-		if (pRecentStreamPathsArray) {
-			vRecentStreamPaths.resize(StreamsPathsSize);
+		for (unsigned i = 0; i < RITT_COUNT; ++i)
+		{
+			
+			ImVector<RecentInputText>& vRecentInputText = avRecentInputText[i];
+			int& RecentInputTextTail = aRecentInputTextTail[i];
+			
+			cJSON * pRecentInputTextArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, RememberInputTextSetting[i]);
+			int RecentInputTextCount = cJSON_GetArraySize(pRecentInputTextArray);
+			cJSON * pRecentInputText = nullptr;
+			if (pRecentInputTextArray) {
+				vRecentInputText.resize(RecentInputTextCount);
 		
-			int PathsCounter = 0;
-			cJSON_ArrayForEach(pRecentStreamPath, pRecentStreamPathsArray)
-			{
-				strcpy_s(vRecentStreamPaths[PathsCounter++].aFilePath, sizeof(FilePath::aFilePath),
-				         pRecentStreamPath->valuestring);
+				int Counter = 0;
+				cJSON_ArrayForEach(pRecentInputText, pRecentInputTextArray)
+				{
+					strcpy_s(vRecentInputText[Counter++].aText, sizeof(RecentInputText::aText),
+							 pRecentInputText->valuestring);
+				}
 			}
+			
+			cJSON * pRecentInputTextsTail = cJSON_GetObjectItemCaseSensitive(pJsonRoot, RememberInputTextTailSetting[i]);
+			if (pRecentInputTextsTail)
+				RecentInputTextTail = (int)pRecentInputTextsTail->valuedouble;
+			else if (RecentInputTextCount > 0)
+				RecentInputTextTail = RecentInputTextCount -1;
 		}
-		
-		
-		cJSON * pRecentFilePathsArray = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "recent_file_paths");
-		int FilePathsSize = cJSON_GetArraySize(pRecentFilePathsArray);
-		cJSON * pRecentFilePath = nullptr;
-		if (pRecentFilePathsArray) {
-			vRecentFilePaths.resize(FilePathsSize);
-		
-			int PathsCounter = 0;
-			cJSON_ArrayForEach(pRecentFilePath, pRecentFilePathsArray)
-			{
-				strcpy_s(vRecentFilePaths[PathsCounter++].aFilePath, sizeof(FilePath::aFilePath),
-				         pRecentFilePath->valuestring);
-			}
-		}
-		
-		cJSON * pStreamPathsTail = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "stream_paths_tail");
-		if (pStreamPathsTail)
-			StreamPathsTail = (int)pStreamPathsTail->valuedouble;
-		else if (StreamsPathsSize > 0)
-			StreamPathsTail = StreamsPathsSize -1;
-		
-		cJSON * pFilePathsTail = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "file_paths_tail");
-		if (pFilePathsTail)
-			FilePathsTail = (int)pFilePathsTail->valuedouble;
-		else if (FilePathsSize > 0)
-			FilePathsTail = FilePathsSize -1;
-		
-		if(StreamPathsTail != -1)
-			strcpy_s(aFolderQueryName, sizeof(aFolderQueryName), vRecentStreamPaths[StreamPathsTail].aFilePath);
-		
-		if(FilePathsTail != -1)
-			strcpy_s(aFilePathToLoad, sizeof(aFilePathToLoad), vRecentFilePaths[FilePathsTail].aFilePath);
 		
 		
 		free(pJsonRoot);
@@ -494,22 +475,22 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 	}
 }
 
-void CrazyLog::RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPath, char* pFilePath) {
+void CrazyLog::RememberInputText(PlatformContext* pPlatformCtx, RecentInputTextType Type, char* pText) {
 	
-	const char* pTailSettingName = bIsStreamPath ? "stream_paths_tail" : "file_paths_tail";
-	const char* pBufferSettingName = bIsStreamPath ? "recent_stream_paths" : "recent_file_paths";
+	const char* pTailSettingName = RememberInputTextTailSetting[Type];;
+	const char* pBufferSettingName = RememberInputTextSetting[Type];
 	
-	ImVector<FilePath>& vTargetFilePath = bIsStreamPath ? vRecentStreamPaths : vRecentFilePaths;
-	int& PathsTail = bIsStreamPath ? StreamPathsTail : FilePathsTail;
+	ImVector<RecentInputText>& vTargetRecentInputText = avRecentInputText[Type]; 
+	int& Tail = aRecentInputTextTail[Type];
 	
 	int AlreadyExistIdx = -1;
 	// Check if this path already exist in our buffer
-	for (unsigned i = 0; i < (unsigned)vTargetFilePath.Size; i++)
+	for (unsigned i = 0; i < (unsigned)vTargetRecentInputText.Size; i++)
 	{
-		if (vTargetFilePath[i].aFilePath[0] == '\0')
+		if (vTargetRecentInputText[i].aText[0] == '\0')
 			continue;
 		
-		if (strncmp(vTargetFilePath[i].aFilePath, pFilePath, sizeof(FilePath::aFilePath)) == 0)
+		if (strncmp(vTargetRecentInputText[i].aText, pText, sizeof(RecentInputText::aText)) == 0)
 		{
 			AlreadyExistIdx = i;
 			break;
@@ -517,26 +498,26 @@ void CrazyLog::RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPat
 	}
 	
 	// If it's already the latest one, then don't do nothing. 
-	if (AlreadyExistIdx != -1 && AlreadyExistIdx == PathsTail)
+	if (AlreadyExistIdx != -1 && AlreadyExistIdx == Tail)
 		return;
 
-	PathsTail = ++PathsTail % MAX_REMEMBER_PATHS;
+	Tail = ++Tail % MAX_REMEMBER_PATHS;
 	
 	// If it already exist then offset the buffer by 1 idx starting from the located idx
 	// by doing that we will be removing the older entry and bump the other entries 1 position.
 	if (AlreadyExistIdx != -1)
 	{
-		for (int i = AlreadyExistIdx; i != PathsTail; i = RING_BUFFER_BACKWARDS(i, vTargetFilePath))
+		for (int i = AlreadyExistIdx; i != Tail; i = RING_BUFFER_BACKWARDS(i, vTargetRecentInputText))
 		{
-			int PrevIdx = RING_BUFFER_BACKWARDS(i, vTargetFilePath);
-			strcpy_s(vTargetFilePath[i].aFilePath, sizeof(FilePath::aFilePath), vTargetFilePath[PrevIdx].aFilePath);
+			int PrevIdx = RING_BUFFER_BACKWARDS(i, vTargetRecentInputText);
+			strcpy_s(vTargetRecentInputText[i].aText, sizeof(RecentInputText::aText), vTargetRecentInputText[PrevIdx].aText);
 		}
 	}
 	
 	// Then push the path to the head of the buffer
-	strcpy_s(vTargetFilePath[PathsTail].aFilePath, sizeof(FilePath::aFilePath), pFilePath);
+	strcpy_s(vTargetRecentInputText[Tail].aText, sizeof(RecentInputText::aText), pText);
 	
-	cJSON * pJsonPathsTail = cJSON_CreateNumber(PathsTail);
+	cJSON * pJsonPathsTail = cJSON_CreateNumber(Tail);
 	
 	FileContent OutFile = {0};
 	
@@ -545,11 +526,11 @@ void CrazyLog::RememberFilePath(PlatformContext* pPlatformCtx, bool bIsStreamPat
 	
 	cJSON * pJsonRecentPathArray = cJSON_CreateArray();
 		
-	for (unsigned j = 0; j < (unsigned)vTargetFilePath.Size; ++j)
+	for (unsigned j = 0; j < (unsigned)vTargetRecentInputText.Size; ++j)
 	{
-		FilePath& Path = vTargetFilePath[j];
+		RecentInputText& Path = vTargetRecentInputText[j];
 			
-		cJSON * pFilePathValue = cJSON_CreateString(Path.aFilePath);
+		cJSON * pFilePathValue = cJSON_CreateString(Path.aText);
 		cJSON_AddItemToArray(pJsonRecentPathArray, pFilePathValue);
 	}
 	
@@ -1713,6 +1694,19 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 			bShouldFocusWhenFindFinish = false;
 		}
 		
+		
+		if (ImGui::Button("|##RecentFinds") && aRecentInputTextTail[RITT_Find] != -1) 
+		{
+			ImGui::OpenPopup("RecentFinds");
+		}
+		
+		
+		
+		ImGui::SameLine();
+		
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
+            ImGui::SetTooltip("Open list with recent finds.");
+		
 		if (!bWasOpen) 
 			ImGui::SetKeyboardFocusHere();
 		
@@ -1732,8 +1726,10 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 			FindFiltredProccesedLinesCount = 0;
 			vFindFiltredLinesCached.resize(0);
 			
-			if(FindTextLen > 0)
+			if (FindTextLen > 0) {
 				bShouldFocusWhenFindFinish = true;
+				RememberInputText(pPlatformCtx, RITT_Find, aFindText);
+			}
 		}
 		
 		ImGui::SameLine();
@@ -1766,6 +1762,46 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 		ImGui::SetNextItemWidth(-200);
 		ImGui::Text("%i/%i", vTargetFindLinesCached.Size == 0 ? 0 : TargetFindIdx + 1, vTargetFindLinesCached.Size);
 		ImGui::Dummy({0,0});
+		
+		ImVec2 InputTextPos = ImGui::GetWindowPos() + ImVec2(30, 235);
+		ImGui::SetNextWindowPos(InputTextPos);
+		if (ImGui::BeginPopup("RecentFinds"))
+		{
+			bool bFirstDisplay = true;
+			ImVector<RecentInputText>& vRecentInputText = avRecentInputText[RITT_Find];
+			int& RecentInputTextTail = aRecentInputTextTail[RITT_Find];
+			for (int i = RecentInputTextTail; i != RecentInputTextTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentInputText))
+			{
+				if (vRecentInputText[i].aText[0] == '\0')
+					break;
+					
+				bFirstDisplay = false;
+					
+				if (ImGui::MenuItem(vRecentInputText[i].aText))
+				{
+					memcpy(aFindTextBuffer, vRecentInputText[i].aText, sizeof(RecentInputText::aText));
+					memcpy(aFindText, vRecentInputText[i].aText, sizeof(RecentInputText::aText));
+					
+					FindTextLen = (int)strlen(aFindText);
+					FindScrollValue = -1.f;
+			
+					CurrentFindFullViewIdx = 0;
+					FindFullViewProccesedLinesCount = 0;
+					vFindFullViewLinesCached.resize(0);
+			
+					CurrentFindFiltredIdx = 0;
+					FindFiltredProccesedLinesCount = 0;
+					vFindFiltredLinesCached.resize(0);
+			
+					if(FindTextLen > 0)
+						bShouldFocusWhenFindFinish = true;
+						
+					ImGui::CloseCurrentPopup();
+				}
+			}
+			
+			ImGui::EndPopup();
+		}
 	}
 	
 	bWasOpen = bIsFindOpen;
@@ -1811,7 +1847,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			memset(aFilePathToLoad, 0, sizeof(aFilePathToLoad));
 		}
 		
-		if (ImGui::Button("|") && StreamPathsTail != -1) 
+		if (ImGui::Button("|") && aRecentInputTextTail[RITT_StreamPath] != -1) 
 		{
 			ImGui::OpenPopup("RecentStreamPaths");
 		}
@@ -1831,7 +1867,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			SearchLatestFile(pPlatformCtx);
 			
 			if (aFolderQueryName[0] != 0) 
-				RememberFilePath(pPlatformCtx, true, aFolderQueryName);
+				RememberInputText(pPlatformCtx, RITT_StreamPath, aFolderQueryName);
 		}
 		else if (bFolderQuery && !bStreamFileLocked)
 		{
@@ -1854,16 +1890,18 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (ImGui::BeginPopup("RecentStreamPaths"))
 		{
 			bool bFirstDisplay = true;
+			ImVector<RecentInputText>& vRecentStreamPaths = avRecentInputText[RITT_StreamPath];
+			int& StreamPathsTail = aRecentInputTextTail[RITT_StreamPath];
 			for (int i = StreamPathsTail; i != StreamPathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentStreamPaths))
 			{
-				if (vRecentStreamPaths[i].aFilePath[0] == '\0')
+				if (vRecentStreamPaths[i].aText[0] == '\0')
 					break;
 					
 				bFirstDisplay = false;
 					
-				if (ImGui::MenuItem(vRecentStreamPaths[i].aFilePath))
+				if (ImGui::MenuItem(vRecentStreamPaths[i].aText))
 				{
-					memcpy(aFolderQueryName, vRecentStreamPaths[i].aFilePath, sizeof(FilePath::aFilePath));
+					memcpy(aFolderQueryName, vRecentStreamPaths[i].aText, sizeof(RecentInputText::aText));
 						
 					SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
 					PendingModeChange = TMCR_RecentSelected;
@@ -1916,7 +1954,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	}
 	else if (SelectedTargetMode == TM_StaticText)
 	{
-		if (ImGui::Button("|") && FilePathsTail != -1) 
+		if (ImGui::Button("|") && aRecentInputTextTail[RITT_FilePath] != -1) 
 		{
 			ImGui::OpenPopup("RecentFilePaths");
 		}
@@ -1946,7 +1984,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			LoadFile(pPlatformCtx);
 			if (aFilePathToLoad[0] != 0)
-				RememberFilePath(pPlatformCtx, false, aFilePathToLoad);
+				RememberInputText(pPlatformCtx, RITT_FilePath, aFilePathToLoad);
 		}
 		
 		ImGui::SameLine();
@@ -1958,16 +1996,18 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		if (ImGui::BeginPopup("RecentFilePaths"))
 		{
 			bool bFirstDisplay = true;
+			ImVector<RecentInputText>& vRecentFilePaths = avRecentInputText[RITT_FilePath];
+			int& FilePathsTail = aRecentInputTextTail[RITT_FilePath];
 			for (int i = FilePathsTail; i != FilePathsTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentFilePaths))
 			{
-				if (vRecentFilePaths[i].aFilePath[0] == '\0')
+				if (vRecentFilePaths[i].aText[0] == '\0')
 					break;
 					
 				bFirstDisplay = false;
 					
-				if (ImGui::MenuItem(vRecentFilePaths[i].aFilePath))
+				if (ImGui::MenuItem(vRecentFilePaths[i].aText))
 				{
-					memcpy(aFilePathToLoad, vRecentFilePaths[i].aFilePath, sizeof(FilePath::aFilePath));
+					memcpy(aFilePathToLoad, vRecentFilePaths[i].aText, sizeof(RecentInputText::aText));
 						
 					SelectedTargetMode = TM_StaticText;
 					PendingModeChange = TMCR_RecentSelected;
