@@ -103,11 +103,11 @@ struct CrazyLog
 	
 	char aNewVersion[MAX_PATH];
 	char aCurrentVersion[MAX_PATH];
-	char aFilePathToLoad[MAX_PATH];
-	char aFolderQueryName[MAX_PATH];
+	char aFilePathToLoad[MAX_PATH * 2];
+	char aFolderQueryName[MAX_PATH * 2];
 	char aFilterNameToSave[MAX_PATH];
 	char aLastCommand[MAX_PATH * 2];
-	char aFindText[MAX_PATH];
+	char aFindText[MAX_PATH * 2];
 	int FindTextLen;
 	int FilterToOverrideIdx;
 	int FilterSelectedIdx;

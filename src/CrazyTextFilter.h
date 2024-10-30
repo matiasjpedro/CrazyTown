@@ -80,7 +80,7 @@ struct CrazyTextFilter
 		           ImVector<CrazyTextRange>* pvScopesOut) const;
 	};
 	
-	char aInputBuf[512];
+	char aInputBuf[MAX_PATH * 2];
 	
 	ImVector<CrazyTextRange> vFilters;
 	ImVector<CrazyTextRangeSettings> vSettings;

@@ -1705,7 +1705,7 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 		ImGui::SameLine();
 		
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
-            ImGui::SetTooltip("Open list with recent finds.");
+            ImGui::SetTooltip("Open list with recent entries");
 		
 		if (!bWasOpen) 
 			ImGui::SetKeyboardFocusHere();
@@ -1763,7 +1763,7 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 		ImGui::Text("%i/%i", vTargetFindLinesCached.Size == 0 ? 0 : TargetFindIdx + 1, vTargetFindLinesCached.Size);
 		ImGui::Dummy({0,0});
 		
-		ImVec2 InputTextPos = ImGui::GetWindowPos() + ImVec2(30, 235);
+		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
 		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentFinds"))
 		{
@@ -1885,8 +1885,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		HelpMarker("Loads the last written file that matches the query \n"
 		           "and start streaming it into the output. \n");
 		
-		ImVec2 FilePathPos = ImGui::GetWindowPos() + ImVec2(30, 95);
-		ImGui::SetNextWindowPos(FilePathPos);
+		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentStreamPaths"))
 		{
 			bool bFirstDisplay = true;
@@ -1991,8 +1991,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		HelpMarker("Full path of the file to load. \n");
 		
-		ImVec2 FilePathPos = ImGui::GetWindowPos() + ImVec2(30, 95);
-		ImGui::SetNextWindowPos(FilePathPos);
+		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentFilePaths"))
 		{
 			bool bFirstDisplay = true;
@@ -2043,7 +2043,23 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	ImGui::SeparatorText("Filters");
 	
+	if (ImGui::Button("|##RecentFilters") && aRecentInputTextTail[RITT_Filter] != -1) 
+	{
+		ImGui::OpenPopup("RecentFilters");
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
+		ImGui::SetTooltip("Open list with recent entries.");
+	
 	bFilterChanged = Filter.Draw(&vDefaultColors, "Filter ", -110.0f);
+	if (bFilterChanged && Filter.aInputBuf[0] != 0) {
+		RememberInputText(pPlatformCtx, RITT_Filter, Filter.aInputBuf);
+	}
+	
+	
+	
 	ImGui::SameLine();
 	HelpMarker("Conditions on how to filter the text, "
 			   "you can also copy/paste filters to/from the clipboard using the plus button.");
@@ -2065,6 +2081,34 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 	ImGui::SameLine();
 	if (ImGui::Button("+##Filter", ImVec2(20,0))) {
 		ImGui::OpenPopup("FilterOptions");
+	}
+	
+	ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+	ImGui::SetNextWindowPos(InputTextPos);
+	if (ImGui::BeginPopup("RecentFilters"))
+	{
+		bool bFirstDisplay = true;
+		ImVector<RecentInputText>& vRecentInputText = avRecentInputText[RITT_Filter];
+		int& RecentInputTextTail = aRecentInputTextTail[RITT_Filter];
+		for (int i = RecentInputTextTail; i != RecentInputTextTail || bFirstDisplay; i = RING_BUFFER_BACKWARDS(i, vRecentInputText))
+		{
+			if (vRecentInputText[i].aText[0] == '\0')
+				break;
+					
+			bFirstDisplay = false;
+					
+			if (ImGui::MenuItem(vRecentInputText[i].aText))
+			{
+				memcpy(Filter.aInputBuf, vRecentInputText[i].aText, sizeof(RecentInputText::aText));
+				Filter.Build(&vDefaultColors);
+					
+				bFilterChanged = true;
+			
+				ImGui::CloseCurrentPopup();
+			}
+		}
+			
+		ImGui::EndPopup();
 	}
 		
 	if (bWantsToSavePreset) 
