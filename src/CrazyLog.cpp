@@ -942,25 +942,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	
 	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
 	{
-		bool bWantsToCopy = false;
-		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_V))
-		{
-			if (ImGui::IsWindowHovered())
-			{
-				LoadClipboard();
-				SetLastCommand("CLIPBOARD LOADED");
-			}
-		}
-		
-		if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_C))
-		{
-			if (ImGui::IsWindowHovered())
-			{
-				bWantsToCopy = true;
-				SetLastCommand("VIEW COPIED TO CLIPBOARD");
-			}
-		}
-		
 		if (bIsFindOpen) 
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_Escape) || (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_F))) 
@@ -998,10 +979,16 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			SetLastCommand("FILE REFRESHED");
 		}
 		
+		bool bWantsToCopy = false;
+		bool bWantsToSnapScroll = false;
 		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
 			ImGui::Checkbox("Show Line number", &bShowLineNum);
-			ImGui::Checkbox("Auto-scroll", &bAutoScroll);
+			if (ImGui::Checkbox("Auto-scroll", &bAutoScroll))
+			{
+				bWantsToSnapScroll = bAutoScroll;
+			}
+
 			ImGui::Separator();
 			
 			if (ImGui::Selectable("Copy")) 
@@ -1078,7 +1065,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		
 		// Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
 		// Using a scrollbar or mouse-wheel will take away from the bottom edge.
-		if (bAutoScroll && !bIsPeeking && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+		bWantsToSnapScroll |= (bAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY());
+		if (!bIsPeeking && bWantsToSnapScroll)
 			ImGui::SetScrollHereY(1.0f);
 	}
 
