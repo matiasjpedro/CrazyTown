@@ -2252,7 +2252,7 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 
 		ImGui::Dummy({0,0});
 		
-		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+		ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos; 
 		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentFinds"))
 		{
@@ -2375,7 +2375,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		HelpMarker("Loads the last written file that matches the query \n"
 		           "and start streaming it into the output. \n");
 		
-		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+		ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos;
 		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentStreamPaths"))
 		{
@@ -2481,7 +2481,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		HelpMarker("Full path of the file to load. \n");
 		
-		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+
+		ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos;
 		ImGui::SetNextWindowPos(InputTextPos);
 		if (ImGui::BeginPopup("RecentFilePaths"))
 		{
@@ -2573,7 +2574,7 @@ bool CrazyLog::DrawFilters(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::OpenPopup("FilterOptions");
 	}
 	
-	ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
+	ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos;
 	ImGui::SetNextWindowPos(InputTextPos);
 	if (ImGui::BeginPopup("RecentFilters"))
 	{
