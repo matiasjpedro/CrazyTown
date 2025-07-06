@@ -28,6 +28,7 @@
 
 static float g_Version = 1.20f;
 static char g_NullTerminator = '\0';
+static char g_LineEndTerminator = '\n';
 
 void CrazyLog::GetVersions(PlatformContext* pPlatformCtx) 
 {
@@ -866,6 +867,8 @@ void CrazyLog::PreDraw(PlatformContext* pPlatformCtx)
 
 void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* title, bool* pOpen /*= NULL*/)
 {
+	ImGuiIO& Io = ImGui::GetIO();
+
 	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
 	bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
 	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
@@ -963,26 +966,60 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 		}
 		
-		if (bIsCtrlressed && ImGui::GetIO().MouseWheel != 0.f)
+		if (bIsCtrlressed && Io.MouseWheel != 0.f)
 		{
 			if (ImGui::IsWindowHovered())
 			{
-				FontScale += ImGui::GetIO().MouseWheel;
+				FontScale += Io.MouseWheel;
 				bWantsToScaleFont = true;
 				SetLastCommand("FONT SCALED");
 			}
 		}
 		
+		bool bWantsToCopy = false;
+		bool bWantsToPaste = false;
+
+		if (bIsCtrlressed && !Io.WantTextInput)
+		{
+			if(ImGui::IsKeyReleased(ImGuiKey_C))
+				bWantsToCopy = true;
+
+			if(ImGui::IsKeyReleased(ImGuiKey_V))
+				bWantsToPaste = true;
+
+			if (ImGui::IsKeyReleased(ImGuiKey_A))
+			{
+				CurrentSelectionMode = SM_Normal;
+				Selection.Start = { 0, 0 };
+				if (vLineOffsets.size()) {
+					size_t Column = Buf.end() - (Buf.begin() + vLineOffsets[vLineOffsets.size() - 1]);
+					Selection.End = { vLineOffsets.size() - 1, (int)Column };
+				} else {
+					Selection.End = { 0, 0 };
+				}
+			}
+		}
+
 		if (ImGui::IsKeyReleased(ImGuiKey_F5))
 		{
 			LoadFile(pPlatformCtx);
 			SetLastCommand("FILE REFRESHED");
 		}
 		
-		bool bWantsToCopy = false;
 		bool bWantsToSnapScroll = false;
 		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
+			if (ImGui::Selectable("Copy")) 
+				bWantsToCopy = true;
+
+			if (ImGui::Selectable("Paste")) 
+				bWantsToPaste = true;
+
+			if (ImGui::Selectable("Clear")) 
+				Clear();
+
+			ImGui::Separator();
+
 			ImGui::Checkbox("Show Line number", &bShowLineNum);
 			if (ImGui::Checkbox("Auto-scroll", &bAutoScroll))
 			{
@@ -990,25 +1027,89 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 
 			ImGui::Separator();
-			
-			if (ImGui::Selectable("Copy")) 
-			{
-				bWantsToCopy = true;
-			}
-			if (ImGui::Selectable("Paste")) 
-			{
-				LoadClipboard();
-			}
-			if (ImGui::Selectable("Clear")) 
-			{
-				Clear();
-			}
 		
 			ImGui::EndPopup();
 		}
+
+		if (bWantsToCopy) 
+		{
+			// If there is a selection, copy the selection
+			if (Selection.Start != Selection.End) 
+			{
+				if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
+				{
+					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? 
+						Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+
+					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? 
+						Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
+
+					ImGuiTextBuffer CopyBuffer;
+
+					for (int j = 0; j < vFiltredLinesCached.size(); j++) {
 		
-		if (bWantsToCopy)
-			ImGui::LogToClipboard();
+						int FilteredLineNo = vFiltredLinesCached[j];
+						if (FilteredLineNo < Selection.Start.Line)
+							continue;
+
+						const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
+						const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
+
+						const char* pStart = max(pSelectionStart, pFilteredLineStart);
+						const char* pEnd = min(pSelectionEnd, pFilteredLineEnd);
+
+						CopyBuffer.append(pStart, pEnd);
+						CopyBuffer.append(&g_LineEndTerminator);
+
+						if (pEnd == pSelectionEnd) {
+							break;
+						}
+					}
+
+					ImGui::SetClipboardText(CopyBuffer.begin());
+
+				}
+				else // Copy from full view
+				{
+					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
+
+					ImGuiTextBuffer CopyBuffer;
+					CopyBuffer.append(pSelectionStart, pSelectionEnd);
+
+					ImGui::SetClipboardText(CopyBuffer.begin());
+				}
+			}
+			// Otherwise just copy the entire things that is being displayed
+			else
+			{
+				if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
+				{
+					ImGuiTextBuffer CopyBuffer;
+					for (int j = 0; j < vFiltredLinesCached.size(); j++) {
+						int FilteredLineNo = vFiltredLinesCached[j];
+
+						const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
+						const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
+
+						CopyBuffer.append(pFilteredLineStart, pFilteredLineEnd);
+						CopyBuffer.append(&g_LineEndTerminator);
+					}
+
+					ImGui::SetClipboardText(CopyBuffer.begin());
+
+				}
+				else // Copy from full view
+				{
+					ImGui::SetClipboardText(Buf.begin());
+				}
+			}
+		}
+
+		if (bWantsToPaste)
+		{
+			LoadClipboard();
+		}
 		
 		float OneTimeScrollValue = -1.f;
 		
@@ -1055,9 +1156,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		{
 			DrawFullView(pPlatformCtx);
 		}
-		
-		if (bWantsToCopy)
-			ImGui::LogFinish();
+
+		HandleMouseInputs();
 		
 		if (OneTimeScrollValue > -1.f) {
 			ImGui::SetScrollY(OneTimeScrollValue);
@@ -1295,6 +1395,9 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
 	bool bIsCtrlressed = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
 	bool bIsAltPressed = ImGui::IsKeyDown(ImGuiKey_LeftAlt);
+
+	const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+	const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
 	
 	const char* buf = Buf.begin();
 	const char* buf_end = Buf.end();
@@ -1320,8 +1423,6 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			int64_t line_size = pLineEnd - pLineStart;
 			
 			bool bIsItemHovered = false;
-			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed || bIsCtrlressed;
-	
 			const char* pLineCursor = pLineStart;
 			
 			CacheHighlightLineMatches(pLineStart, pLineEnd, &TempLineMatches);
@@ -1336,24 +1437,41 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				
 				const char* pHighlightWordBegin = pLineStart + TempLineMatches.vLineMatches[j].WordBeginOffset;
 				const char* pHighlightWordEnd = pLineStart + TempLineMatches.vLineMatches[j].WordEndOffset + 1;
-				if (pLineCursor <= pHighlightWordBegin)
+
+				if (pLineCursor <= pHighlightWordBegin) 
 				{
-					ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
-					bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-					ImGui::SameLine(0.f,0.f);
-							
-					ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
-					ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-					bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-					ImGui::PopStyleColor();
+					// Draw until the highlight begin
+					if (pLineCursor != pHighlightWordBegin) // Valid Case, Previous filter could end at the new word begin
+					{
+						DrawColoredRangeAndSelection(pLineCursor, pHighlightWordBegin, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+						pLineCursor = pHighlightWordBegin;
+
+						ImGui::SameLine(0.f,0.f);
+					}
 					
-					ImGui::SameLine(0.f,0.f);
+					// Draw highlight 
+					DrawColoredRangeAndSelection(pHighlightWordBegin, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
 					pLineCursor = pHighlightWordEnd;
+
+					ImGui::SameLine(0.f,0.f);
+				} 
+				else if (pLineCursor < pHighlightWordEnd) // In case a previous filter have already highlighted the begin. 
+				{
+					// Draw highlight, 
+					DrawColoredRangeAndSelection(pLineCursor, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
+					pLineCursor = pHighlightWordEnd;
+
+					ImGui::SameLine(0.f,0.f);
+
 				}
+
 			}
-					
-			ImGui::TextUnformatted(pLineCursor, pLineEnd);
-			bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+
+			// Draw after the highlights
+			DrawColoredRangeAndSelection(pLineCursor, pLineEnd, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+
+			if (bIsItemHovered)
+				MouseOverLineIdx = line_no;
 	
 			// Peek Full Version
 			if (bIsCtrlressed && bIsItemHovered) 
@@ -1374,6 +1492,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				}
 			}
 			// Select lines from Filtered Version
+			/*
 			else if (bIsShiftPressed && bIsItemHovered) 
 			{
 				SelectionSize += ImGui::GetIO().MouseWheel;
@@ -1418,6 +1537,7 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 				
 				SelectCharsFromLine(pPlatformCtx, pLineStart, pLineEnd, LineNumberTextOffset);
 			}
+			*/
 		}
 	}
 	
@@ -1438,6 +1558,376 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 	clipper.End();
 }
 
+
+// https://en.wikipedia.org/wiki/UTF-8
+// We assume that the char is a standalone character (<128) or a leading byte of an UTF-8 code sequence (non-10xxxxxx code)
+static int UTF8CharLength(char c)
+{
+	if ((c & 0xFE) == 0xFC)
+		return 6;
+	if ((c & 0xFC) == 0xF8)
+		return 5;
+	if ((c & 0xF8) == 0xF0)
+		return 4;
+	else if ((c & 0xF0) == 0xE0)
+		return 3;
+	else if ((c & 0xE0) == 0xC0)
+		return 2;
+	return 1;
+}
+
+int CrazyLog::GetLineMaxColumn(int aLine)
+{
+	if (aLine >= vLineOffsets.size())
+		return 0;
+
+	const char* pLineStart = Buf.begin() + vLineOffsets[aLine];
+	const char* pLineEnd = (aLine + 1 < vLineOffsets.Size) ? (Buf.begin() + vLineOffsets[aLine + 1] - 1) : Buf.end();
+	size_t LineSize = pLineEnd - pLineStart;
+
+	int col = 0;
+	for (unsigned i = 0; i < LineSize; )
+	{
+		char c = pLineStart[i];
+		//if (c == '\t')
+		//	col = (col / mTabSize) * mTabSize + mTabSize;
+		//else
+			col++;
+		i += UTF8CharLength(c);
+	}
+	return col;
+}
+
+Coordinates CrazyLog::SanitizeCoordinates(const Coordinates & aValue)
+{
+	int Line = aValue.Line;
+	int Column = aValue.Column;
+	if (Line >= (int)vLineOffsets.size())
+	{
+		if (vLineOffsets.empty())
+		{
+			Line = 0;
+			Column = 0;
+		}
+		else
+		{
+			Line = (int)vLineOffsets.size() - 1;
+			Column = GetLineMaxColumn(Line);
+		}
+		return Coordinates(Line, Column);
+	}
+	else
+	{
+		Column = vLineOffsets.empty() ? 0 : min(Column, GetLineMaxColumn(Line));
+		return Coordinates(Line, Column);
+	}
+}
+
+Coordinates CrazyLog::ScreenPosToCoordinates(const ImVec2& aPosition) {
+	ImVec2 Origin = ImGui::GetCursorScreenPos();
+	ImVec2 Local(aPosition.x - Origin.x, aPosition.y - Origin.y);
+
+	int LineNo = MouseOverLineIdx;
+	int ColumnCoord = 0;
+	
+	if (LineNo >= 0 && LineNo < (int)vLineOffsets.size())
+	{
+		const char* pLineStart = Buf.begin() + vLineOffsets[LineNo];
+		const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (Buf.begin() + vLineOffsets[LineNo + 1] - 1) : Buf.end();
+		size_t LineSize = pLineEnd - pLineStart;
+
+		int ColumnIndex = 0;
+		float ColumnX = 0.0f;
+
+		while ((size_t)ColumnIndex < LineSize)
+		{
+			float ColumnWidth = 0.0f;
+
+			//if (line_start[columnIndex] == '\t')
+			//{
+			//	float spaceSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, " ").x;
+			//	float oldX = columnX;
+			//	float newColumnX = (1.0f + ImFloor((1.0f + columnX) / (float(mTabSize) * spaceSize))) * (float(mTabSize) * spaceSize);
+			//	columnWidth = newColumnX - oldX;
+			//	if (mTextStart + columnX + columnWidth * 0.5f > local.x)
+			//		break;
+			//	columnX = newColumnX;
+			//	columnCoord = (columnCoord / mTabSize) * mTabSize + mTabSize;
+			//	columnIndex++;
+			//}
+			//else
+			{
+				char TempBuff[7];
+				int CharLen = UTF8CharLength(pLineStart[ColumnIndex]);
+				int i = 0;
+				while (i < 6 && CharLen-- > 0)
+					TempBuff[i++] = pLineStart[ColumnIndex++];
+				TempBuff[i] = '\0';
+				ColumnWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, TempBuff).x;
+				if (TextStart + ColumnX + ColumnWidth * 0.5f > Local.x)
+					break;
+				ColumnX += ColumnWidth;
+				ColumnCoord++;
+			}
+		}
+	}
+
+	return SanitizeCoordinates(Coordinates(LineNo, ColumnCoord));
+}
+
+void CrazyLog::SetSelection(const Coordinates& aStart, const Coordinates& aEnd, SelectionMode aMode) 
+{
+	Coordinates OldSelStart = Selection.Start;
+	Coordinates OldSelEnd = Selection.End;
+
+	Selection.Start = SanitizeCoordinates(aStart);
+	Selection.End = SanitizeCoordinates(aEnd);
+	if (Selection.Start > Selection.End)
+		ImSwap(Selection.Start, Selection.End);
+
+	switch (aMode)
+	{
+		case SM_Normal:
+			break;
+		case SM_Word:
+		{
+			int LineNo = Selection.Start.Line;
+			const char* pLineStart = Buf.begin() + vLineOffsets[LineNo];
+			const char* pLineEnd = (LineNo + 1 < vLineOffsets.Size) ? (Buf.begin() + vLineOffsets[LineNo + 1] - 1) : Buf.end();
+
+			char* pWordStart = (char*)&pLineStart[Selection.Start.Column];
+			pWordStart = GetWordStart(pLineStart, pWordStart);
+
+			char* pWordEnd = (char*)&pLineStart[Selection.Start.Column];
+			pWordEnd = GetWordEnd(pLineEnd, pWordEnd, 1);
+
+			Selection.Start = Coordinates(LineNo, (int)(pWordStart - pLineStart));
+			Selection.End = Coordinates(LineNo, (int)(pWordEnd - pLineStart));
+			
+			break;
+		}
+		case SM_Line:
+		{
+			const int LineNo = Selection.End.Line;
+			Selection.Start = Coordinates(Selection.Start.Line, 0);
+			Selection.End = Coordinates(LineNo, GetLineMaxColumn(LineNo));
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+
+
+void CrazyLog::HandleMouseInputs() 
+{
+	ImGuiIO& Io = ImGui::GetIO();
+	bool bCtrl =  Io.KeyCtrl;
+
+	TextStart = 0;
+
+	// TODO: support line number
+	//char buf[16];
+	//snprintf(buf, 16, " %d ", vLineOffsets.size());
+	//mTextStart = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x /*+ mLeftMargin */;
+	// const float fontSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
+
+	if (ImGui::IsWindowHovered() )
+	{
+		if (vLineOffsets.size() > 0)
+		{
+			bool bClick = ImGui::IsMouseClicked(0);
+			bool bDoubleClick = ImGui::IsMouseDoubleClicked(0);
+			double Time = ImGui::GetTime();
+			bool bTripleClick = bClick && !bDoubleClick && (LastClick != -1.0f && (Time - LastClick) < Io.MouseDoubleClickTime);
+
+			/*
+				Left mouse button triple click
+				*/
+
+			if (bTripleClick)
+			{
+				if (!bCtrl)
+				{
+					Selection.CursorPosition = InteractiveStart = InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
+					CurrentSelectionMode = SM_Line;
+					SetSelection(InteractiveStart, InteractiveEnd, CurrentSelectionMode);
+				}
+
+				LastClick = -1.0f;
+			}
+
+			/*
+				Left mouse button double click
+				*/
+
+			else if (bDoubleClick)
+			{
+				if (!bCtrl)
+				{
+					Selection.CursorPosition = InteractiveStart = InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
+					if (CurrentSelectionMode == SM_Line)
+						CurrentSelectionMode = SM_Normal;
+					else
+						CurrentSelectionMode = SM_Word;
+					SetSelection(InteractiveStart, InteractiveEnd, CurrentSelectionMode);
+				}
+
+				LastClick = (float)ImGui::GetTime();
+			}
+
+			/*
+				Left mouse button click
+				*/
+			else if (bClick)
+			{
+				if (!bCtrl)
+				{
+					Selection.CursorPosition = InteractiveStart = InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
+					CurrentSelectionMode = SM_Normal;
+
+					SetSelection(InteractiveStart, InteractiveEnd, CurrentSelectionMode);
+				}
+
+				LastClick = (float)ImGui::GetTime();
+			}
+			// Mouse left button dragging (=> update selection)
+			else if (ImGui::IsMouseDragging(0) && ImGui::IsMouseDown(0))
+			{
+				Io.WantCaptureMouse = true;
+				Selection.CursorPosition = InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
+				SetSelection(InteractiveStart, InteractiveEnd, CurrentSelectionMode);
+			}
+		}
+		else 
+		{
+			Selection.Start = { 0, 0 };
+			Selection.End = { 0, 0 };
+		}
+	}
+}
+
+// Draws Range until and after selection if a selection is found inside;
+void CrazyLog::DrawColoredRangeAndSelection(const char* pRangeStart, const char* pRangeEnd, const ImVec4 RangeColor,
+								  			const char* pSelectionStart, const char* pSelectionEnd,
+								  			bool& bIsItemHovered)
+{
+
+	const char* pCursor = pRangeStart;
+
+	if (RangeColor.w != 0)
+		ImGui::PushStyleColor(ImGuiCol_Text, RangeColor);
+
+	if (pSelectionStart == pSelectionEnd) {
+
+		assert(pCursor != pRangeEnd);
+		ImGui::TextUnformatted(pCursor, pRangeEnd);
+		pCursor = pRangeEnd;
+
+		bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+	}
+	else
+	{
+		// Selection starts inside the range
+		if (pSelectionStart >= pRangeStart && pSelectionStart < pRangeEnd) 
+		{
+			//assert(pRangeStart != pSelectionStart);
+			if (pRangeStart != pSelectionStart) // VALID: The selection starts where the range starts 
+			{
+				ImGui::TextUnformatted(pRangeStart, pSelectionStart);
+				pCursor = pSelectionStart;
+
+				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+				ImGui::SameLine(0.f,0.f);
+			}
+
+			assert(pCursor != min(pSelectionEnd, pRangeEnd));
+			// Write Selection
+			ImVec2 TextPos = ImGui::GetCursorScreenPos();
+			ImVec2 TextSize = ImGui::CalcTextSize(pCursor, min(pSelectionEnd, pRangeEnd));
+			ImGui::GetWindowDrawList()->AddRectFilled(TextPos, ImVec2(TextPos.x + TextSize.x, TextPos.y + TextSize.y), 
+													IM_COL32(66, 66, 66, 255)); 
+			ImGui::PushStyleColor(ImGuiCol_Text, SelectionTextColor);
+			ImGui::TextUnformatted(pCursor, min(pSelectionEnd, pRangeEnd));
+			ImGui::PopStyleColor();
+
+			bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+
+			pCursor = min(pSelectionEnd, pRangeEnd);
+
+			//assert(pCursor != pRangeEnd);
+			if (pCursor != pRangeEnd) // VALID: The selection ends where the range ends
+			{ 
+				ImGui::SameLine(0.f,0.f);
+				ImGui::TextUnformatted(pCursor, pRangeEnd);
+				pCursor = pRangeEnd;
+
+				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+			}
+		}
+		// Selection ends inside the range
+		else if (pSelectionEnd > pRangeStart && pSelectionEnd <= pRangeEnd)
+		{
+			assert(pRangeStart != min(pSelectionEnd, pRangeEnd));
+			// Write Selection
+			ImVec2 TextPos = ImGui::GetCursorScreenPos();
+			ImVec2 TextSize = ImGui::CalcTextSize(pRangeStart, min(pSelectionEnd, pRangeEnd));
+			ImGui::GetWindowDrawList()->AddRectFilled(TextPos, ImVec2(TextPos.x + TextSize.x, TextPos.y + TextSize.y), 
+													IM_COL32(66, 66, 66, 255)); 
+
+			ImGui::PushStyleColor(ImGuiCol_Text, SelectionTextColor);
+			ImGui::TextUnformatted(pRangeStart, min(pSelectionEnd, pRangeEnd));
+			ImGui::PopStyleColor();
+
+			bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+
+			pCursor = min(pSelectionEnd, pRangeEnd);
+
+			//assert(pCursor != pRangeEnd);
+			if (pCursor != pRangeEnd) // VALID: The selection ends where the range ends
+			{
+				ImGui::SameLine(0.f,0.f);
+				ImGui::TextUnformatted(pCursor, pRangeEnd);
+				pCursor = pRangeEnd;
+
+				bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+			}
+			
+		}
+		// All the range is selected
+		else if (pSelectionStart < pRangeStart && pSelectionEnd > pRangeEnd) 
+		{
+			assert(pRangeStart != min(pSelectionEnd, pRangeEnd));
+			// Write Selection
+			ImVec2 TextPos = ImGui::GetCursorScreenPos();
+			ImVec2 TextSize = ImGui::CalcTextSize(pRangeStart, min(pSelectionEnd, pRangeEnd));
+			ImGui::GetWindowDrawList()->AddRectFilled(TextPos, ImVec2(TextPos.x + TextSize.x, TextPos.y + TextSize.y), 
+													IM_COL32(66, 66, 66, 255)); 
+
+			ImGui::PushStyleColor(ImGuiCol_Text, SelectionTextColor);
+			ImGui::TextUnformatted(pRangeStart, min(pSelectionEnd, pRangeEnd));
+			pCursor = min(pSelectionEnd, pRangeEnd);
+			ImGui::PopStyleColor();
+
+			bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+		}
+		// None of the range is selected
+		else
+		{
+			assert(pCursor != pRangeEnd);
+			ImGui::TextUnformatted(pCursor, pRangeEnd);
+			pCursor = pRangeEnd;
+
+			bIsItemHovered |= ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+
+		}
+	}
+
+	if (RangeColor.w != 0)
+		ImGui::PopStyleColor();
+}
+
 void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 {
 	bool bIsShiftPressed = ImGui::IsKeyDown(ImGuiKey_LeftShift);
@@ -1445,10 +1935,13 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 	
 	const char* buf = Buf.begin();
 	const char* buf_end = Buf.end();
+
+	const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+	const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
 	
 	ImGuiListClipper clipper;
 	clipper.Begin(vLineOffsets.Size);
-	
+
 	TempLineMatches.vLineMatches.reserve(20);
 	char aLineNumberBuff[17] = { 0 };
 	while (clipper.Step())
@@ -1465,50 +1958,60 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			const char* line_end = (line_no + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[line_no + 1] - 1) : buf_end;
 			
 			bool bIsItemHovered = false;
-			bool bShouldCheckHover = bIsAltPressed || bIsShiftPressed;
 			
 			CacheHighlightLineMatches(line_start, line_end, &TempLineMatches);
 			
 			if(vFindFullViewLinesCached.Size > 0 && line_no == vFindFullViewLinesCached[CurrentFindFullViewIdx])
 				HighlightLine(line_start, line_end);
-					
-			if (TempLineMatches.vLineMatches.Size > 0)
+
+			const char* pLineCursor = line_start;
+
+			for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
 			{
-				const char* pLineCursor = line_start;
-				
-				for (int i = 0; i < TempLineMatches.vLineMatches.Size; i++)
+				uint8_t FilterIdx = TempLineMatches.vLineMatches[i].FilterIdxMatching;
+				ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : FindTextColor;
+					
+				const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
+				const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
+
+				// Draw until the world begin
+				if (pLineCursor <= pHighlightWordBegin) 
 				{
-					uint8_t FilterIdx = TempLineMatches.vLineMatches[i].FilterIdxMatching;
-					ImVec4 FilterColor = FilterIdx != 255 ? Filter.vSettings[FilterIdx].Color : FindTextColor;
-					
-					const char* pHighlightWordBegin = line_start + TempLineMatches.vLineMatches[i].WordBeginOffset;
-					const char* pHighlightWordEnd = line_start + TempLineMatches.vLineMatches[i].WordEndOffset + 1;
-					if (pLineCursor <= pHighlightWordBegin)
+
+					// Draw until the highlight begin
+					if (pLineCursor != pHighlightWordBegin) // Valid Case, Previous filter could end at the new word begin
 					{
-						ImGui::TextUnformatted(pLineCursor, pHighlightWordBegin);
-						bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
+						DrawColoredRangeAndSelection(pLineCursor, pHighlightWordBegin, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+						pLineCursor = pHighlightWordBegin;
+
 						ImGui::SameLine(0.f,0.f);
-						
-						ImGui::PushStyleColor(ImGuiCol_Text, FilterColor);
-						ImGui::TextUnformatted(pHighlightWordBegin, pHighlightWordEnd);
-						bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-						ImGui::PopStyleColor();
-						
-						ImGui::SameLine(0.f,0.f);
-						pLineCursor = pHighlightWordEnd;
 					}
+					
+					// Draw highlight 
+					DrawColoredRangeAndSelection(pHighlightWordBegin, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
+					pLineCursor = pHighlightWordEnd;
+
+					ImGui::SameLine(0.f,0.f);
 				}
+				else if (pLineCursor < pHighlightWordEnd) // In case a previous filter have already highlighted the begin. 
+				{
+					// Draw highlight, 
+					DrawColoredRangeAndSelection(pLineCursor, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
+					pLineCursor = pHighlightWordEnd;
+
+					ImGui::SameLine(0.f,0.f);
+
+				}
+			}
 				
-				ImGui::TextUnformatted(pLineCursor, line_end);
-				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-			}
-			else
-			{
-				ImGui::TextUnformatted(line_start, line_end);
-				bIsItemHovered |= bShouldCheckHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone);
-			}
+			// Draw after the highlights
+			DrawColoredRangeAndSelection(pLineCursor, line_end, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+
+			if (bIsItemHovered)
+				MouseOverLineIdx = line_no;
 					
 			// Select lines full view
+			/*
 			if (bIsShiftPressed && bIsItemHovered) 
 			{
 				SelectionSize += ImGui::GetIO().MouseWheel;
@@ -1543,6 +2046,7 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 				
 				SelectCharsFromLine(pPlatformCtx, line_start, line_end, LineNumberTextOffset);
 			}
+			*/
 					
 		}
 	}
@@ -1594,15 +2098,10 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				            "[F5]                 Will refresh the loaded file. If new content is available it will append it. \n"
 				            "[Ctrl+C]             Will copy the content of the output to the clipboard. \n"
 				            "[Ctrl+V]             Will paste the clipboard into the output view. \n"
+							"[Ctrl+A]			 Will select all the text. \n"
 				            "[Ctrl+MouseWheel]    Will scale the font. \n"
 				            "[Ctrl+Click]         Will peek that filtered hovered line in the full view of the logs. \n"
 				            "[MouseButtonBack]    Will go back from peeking into the filtered view. \n"
-				            "[Alt]                Will enter in word selection mode when hovering a word. \n"
-				            "[Shift]              Will enter in line selection mode when hovering a line. \n"
-				            "[MouseWheel]         While in word/line selection mode it will expand/shrink the selection. \n"
-				            "[MouseMiddleClick]   While in word/line selection mode it will copy the selection to the clipboard. \n"
-				            "[MouseLeftClick]     While in word selection mode it will copy the selection to the filter adding with OR operator. \n"
-				            "[MouseRightClick]    While in word selection mode it will copy the selection to the filter adding with AND operator. \n"
 				            "[MouseRightClick]    Will open the context menu with some options. \n");
 				
 				ImGui::EndMenu();
@@ -1688,8 +2187,6 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 			ImGui::OpenPopup("RecentFinds");
 		}
 		
-		
-		
 		ImGui::SameLine();
 		
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
@@ -1743,12 +2240,16 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 			float ItemPosY = (float)(ItemOffsetY) * OutputTextLineHeight;
 			FindScrollValue = ItemPosY;
 		}
-		
-		
+
 		ImGui::SameLine();
 		
 		ImGui::SetNextItemWidth(-200);
 		ImGui::Text("%i/%i", vTargetFindLinesCached.Size == 0 ? 0 : TargetFindIdx + 1, vTargetFindLinesCached.Size);
+
+		ImGui::SameLine();
+		if (ImGui::Button("X"))
+			bIsFindOpen = false;
+
 		ImGui::Dummy({0,0});
 		
 		ImVec2 InputTextPos = ImGui::GetCursorPos() + ImVec2(20, 25);
@@ -1839,6 +2340,7 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		{
 			ImGui::OpenPopup("RecentStreamPaths");
 		}
+
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_NoSharedDelay))
             ImGui::SetTooltip("Open list with recent entries.");
 		
@@ -2576,7 +3078,7 @@ void CrazyLog::CacheHighlightLineMatches(const char* pLineBegin, const char* pLi
 	if (FindTextLen > 0) {
 		CacheHighlightMatchingWord(pLineBegin, pLineEnd, aFindText, aFindText + FindTextLen, -1, pFiltredLineMatch);
 	}
-	
+
 	if (pFiltredLineMatch->vLineMatches.Size > 0)
 		qsort(pFiltredLineMatch->vLineMatches.Data, pFiltredLineMatch->vLineMatches.Size, sizeof(HighlightLineMatchEntry), HighlightLineMatchEntry::SortFunc);
 }

@@ -14,6 +14,7 @@ static ImVec4 aDefaultColors[9] =
 };
 
 static ImVec4 FindTextColor = ImVec4(1.000f, 0.953f, 0.588f, 1.000f);
+static ImVec4 SelectionTextColor = ImVec4(1.000f, 0.992f, 0.000f, 1.000f);
 
 enum FilterOperator
 {

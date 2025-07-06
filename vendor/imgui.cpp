@@ -13369,7 +13369,10 @@ void ImGui::LogRenderedText(const ImVec2* ref_pos, const char* text, const char*
         if (line_start != line_end || !is_last_line)
         {
             const int line_length = (int)(line_end - line_start);
-            const int indentation = g.LogLineFirstItem ? tree_depth * 4 : 1;
+            const int indentation = g.LogLineFirstItem ? tree_depth * 4 : 0;
+//----MPEDIT-RemovedIndentationToAvoidAddingSpacesBetweenWords
+            //const int indentation = g.LogLineFirstItem ? tree_depth * 4 : 1;
+//----MPEDIT-
             LogText("%*s%.*s", indentation, "", line_length, line_start);
             g.LogLineFirstItem = false;
             if (*line_end == '\n')

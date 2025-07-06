@@ -71,8 +71,16 @@ struct HighlightLineMatchEntry
 	
 	static int SortFunc(const void * a, const void * b)
 	{
-		return ((const HighlightLineMatchEntry*)a)->WordBeginOffset 
-			> ((const HighlightLineMatchEntry*)b)->WordBeginOffset;
+		const HighlightLineMatchEntry* pEntryA = (const HighlightLineMatchEntry*)a;
+		const HighlightLineMatchEntry* pEntryB = (const HighlightLineMatchEntry*)b;
+
+		if (pEntryA->WordBeginOffset != pEntryB->WordBeginOffset)
+			return pEntryA->WordBeginOffset > pEntryB->WordBeginOffset;
+
+		uint16_t LenA = pEntryA->WordEndOffset - pEntryA->WordBeginOffset;
+		uint16_t LenB = pEntryB->WordEndOffset - pEntryB->WordBeginOffset;
+
+		return LenA < LenB;
 	}
 };
 
@@ -84,6 +92,74 @@ struct HighlightLineMatches
 struct RecentInputText
 {
 	char aText[MAX_PATH];
+};
+
+enum SelectionMode
+{
+	SM_Normal,
+	SM_Word,
+	SM_Line
+};
+
+struct Coordinates
+{
+	int Line, Column;
+	Coordinates() : Line(0), Column(0) {}
+	Coordinates(int aLine, int aColumn) : Line(aLine), Column(aColumn)
+	{
+		assert(aLine >= 0);
+		assert(aColumn >= 0);
+	}
+	static Coordinates Invalid() { static Coordinates invalid(-1, -1); return invalid; }
+
+	bool operator ==(const Coordinates& o) const
+	{
+		return
+			Line == o.Line &&
+			Column == o.Column;
+	}
+
+	bool operator !=(const Coordinates& o) const
+	{
+		return
+			Line != o.Line ||
+			Column != o.Column;
+	}
+
+	bool operator <(const Coordinates& o) const
+	{
+		if (Line != o.Line)
+			return Line < o.Line;
+		return Column < o.Column;
+	}
+
+	bool operator >(const Coordinates& o) const
+	{
+		if (Line != o.Line)
+			return Line > o.Line;
+		return Column > o.Column;
+	}
+
+	bool operator <=(const Coordinates& o) const
+	{
+		if (Line != o.Line)
+			return Line < o.Line;
+		return Column <= o.Column;
+	}
+
+	bool operator >=(const Coordinates& o) const
+	{
+		if (Line != o.Line)
+			return Line > o.Line;
+		return Column >= o.Column;
+	}
+};
+
+struct SelectionState
+{
+	Coordinates Start;
+	Coordinates End;
+	Coordinates CursorPosition;
 };
 
 struct CrazyLog
@@ -135,6 +211,13 @@ struct CrazyLog
 
 	FileData LastLoadedFileData;
 	uint64_t EnableMask;
+
+	SelectionMode CurrentSelectionMode;
+	SelectionState Selection;
+	Coordinates InteractiveStart, InteractiveEnd;
+	float LastClick;
+	float TextStart;
+	int MouseOverLineIdx;
 	
 	bool bIsMultithreadEnabled;
 	bool bIsAVXEnabled;
@@ -199,6 +282,17 @@ struct CrazyLog
 	bool DrawPresets(float DeltaTime, PlatformContext* pPlatformCtx);
 	bool DrawCherrypick(float DeltaTime, PlatformContext* pPlatformCtx);
 	void DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx);
+
+	void DrawColoredRangeAndSelection(const char* pRangeStart, const char* pRangeEnd, const ImVec4 RangeColor,
+									const char* pSelectionStart, const char* pSelectionEnd,
+									bool& bIsItemHovered);
+
+
+	int GetLineMaxColumn(int aLine);
+	Coordinates SanitizeCoordinates(const Coordinates & aValue);
+	Coordinates ScreenPosToCoordinates(const ImVec2& aPosition);
+	void SetSelection(const Coordinates& aStart, const Coordinates& aEnd, SelectionMode aMode = SM_Normal);
+	void HandleMouseInputs();
 	
 	
 	void HighlightLine(const char* pLineStart, const char* pLineEnd);
