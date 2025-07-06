@@ -91,7 +91,7 @@ struct HighlightLineMatches
 
 struct RecentInputText
 {
-	char aText[MAX_PATH];
+	char aText[MAX_PATH * 2];
 };
 
 enum SelectionMode
