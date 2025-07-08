@@ -976,6 +976,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			}
 		}
 		
+		bool bWantsToAddFilter = false;
 		bool bWantsToCopy = false;
 		bool bWantsToPaste = false;
 
@@ -1009,6 +1010,9 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		bool bWantsToSnapScroll = false;
 		if (!bIsAltPressed && ImGui::BeginPopupContextWindow())
 		{
+			if (Selection.Start != Selection.End && ImGui::Selectable("Add Filter")) 
+				bWantsToAddFilter = true;
+
 			if (ImGui::Selectable("Copy")) 
 				bWantsToCopy = true;
 
@@ -1031,73 +1035,91 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			ImGui::EndPopup();
 		}
 
-		if (bWantsToCopy) 
+		bool bWantsToExtractSelection = Selection.Start != Selection.End && (bWantsToCopy || bWantsToAddFilter);
+		if (bWantsToExtractSelection) 
 		{
-			// If there is a selection, copy the selection
-			if (Selection.Start != Selection.End) 
+			ImGuiTextBuffer CopyBuffer;
+			if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
 			{
-				ImGuiTextBuffer CopyBuffer;
-				if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
-				{
-					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? 
-						Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+				const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? 
+					Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
 
-					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? 
-						Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
+				const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? 
+					Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
 
-					for (int j = 0; j < vFiltredLinesCached.size(); j++) {
+				for (int j = 0; j < vFiltredLinesCached.size(); j++) {
 		
-						int FilteredLineNo = vFiltredLinesCached[j];
-						if (FilteredLineNo < Selection.Start.Line)
-							continue;
+					int FilteredLineNo = vFiltredLinesCached[j];
+					if (FilteredLineNo < Selection.Start.Line)
+						continue;
 
-						const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
-						const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
+					const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
+					const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
 
-						const char* pStart = max(pSelectionStart, pFilteredLineStart);
-						const char* pEnd = min(pSelectionEnd, pFilteredLineEnd);
+					const char* pStart = max(pSelectionStart, pFilteredLineStart);
+					const char* pEnd = min(pSelectionEnd, pFilteredLineEnd);
 
-						CopyBuffer.append(pStart, pEnd);
+					CopyBuffer.append(pStart, pEnd);
+					if (pEnd != pSelectionEnd)
 						CopyBuffer.append(&g_LineEndTerminator);
 
-						if (pEnd == pSelectionEnd) {
-							break;
-						}
+					if (pEnd == pSelectionEnd) {
+						break;
 					}
 				}
-				else // Copy from full view
-				{
-					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
-					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
+			}
+			else // Copy from full view
+			{
+				const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
+				const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
 
-					CopyBuffer.append(pSelectionStart, pSelectionEnd);
+				CopyBuffer.append(pSelectionStart, pSelectionEnd);
+			}
+
+			if (bWantsToAddFilter)
+			{
+				bool bCanFit = strlen(Filter.aInputBuf) + CopyBuffer.size() + 4 < sizeof(Filter.aInputBuf) ;
+				if (bCanFit) {
+					if(Filter.vFilters.size() > 0)
+						strcat_s(Filter.aInputBuf, " || ");
+
+					strcat_s(Filter.aInputBuf, CopyBuffer.begin());
+					
+					Filter.Build(&vDefaultColors);
+					FilterSelectedIdx = 0;
+					FiltredLinesCount = 0;
+					bAlreadyCached = false;
+
+					ClearFindCache(true);
+				}
+			}
+			else if (bWantsToCopy)
+			{
+				ImGui::SetClipboardText(CopyBuffer.begin());
+			}
+		}
+		else if (bWantsToCopy)
+		{
+			if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
+			{
+				ImGuiTextBuffer CopyBuffer;
+				for (int j = 0; j < vFiltredLinesCached.size(); j++) {
+					int FilteredLineNo = vFiltredLinesCached[j];
+
+					const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
+					const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
+
+					CopyBuffer.append(pFilteredLineStart, pFilteredLineEnd);
+					if (FilteredLineNo != vFiltredLinesCached.size() - 1)
+						CopyBuffer.append(&g_LineEndTerminator);
 				}
 
 				ImGui::SetClipboardText(CopyBuffer.begin());
+
 			}
-			// Otherwise just copy the entire things that is being displayed
-			else
+			else // Copy from full view
 			{
-				if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
-				{
-					ImGuiTextBuffer CopyBuffer;
-					for (int j = 0; j < vFiltredLinesCached.size(); j++) {
-						int FilteredLineNo = vFiltredLinesCached[j];
-
-						const char* pFilteredLineStart = Buf.begin() + vLineOffsets[FilteredLineNo];
-						const char* pFilteredLineEnd = FilteredLineNo + 1 < vLineOffsets.Size ? (Buf.begin() + vLineOffsets[FilteredLineNo + 1] - 1) : Buf.end();
-
-						CopyBuffer.append(pFilteredLineStart, pFilteredLineEnd);
-						CopyBuffer.append(&g_LineEndTerminator);
-					}
-
-					ImGui::SetClipboardText(CopyBuffer.begin());
-
-				}
-				else // Copy from full view
-				{
-					ImGui::SetClipboardText(Buf.begin());
-				}
+				ImGui::SetClipboardText(Buf.begin());
 			}
 		}
 
