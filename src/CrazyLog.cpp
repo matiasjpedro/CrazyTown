@@ -1015,8 +1015,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			if (ImGui::Selectable("Paste")) 
 				bWantsToPaste = true;
 
-			if (ImGui::Selectable("Clear")) 
-				Clear();
+			//if (ImGui::Selectable("Clear")) 
+			//	Clear();
 
 			ImGui::Separator();
 
