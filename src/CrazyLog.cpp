@@ -1036,6 +1036,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 			// If there is a selection, copy the selection
 			if (Selection.Start != Selection.End) 
 			{
+				ImGuiTextBuffer CopyBuffer;
 				if (!bIsPeeking && AnyFilterActive()) // Copy Filtred view 
 				{
 					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? 
@@ -1043,8 +1044,6 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 
 					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? 
 						Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
-
-					ImGuiTextBuffer CopyBuffer;
 
 					for (int j = 0; j < vFiltredLinesCached.size(); j++) {
 		
@@ -1065,20 +1064,16 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 							break;
 						}
 					}
-
-					ImGui::SetClipboardText(CopyBuffer.begin());
-
 				}
 				else // Copy from full view
 				{
 					const char* pSelectionStart = vLineOffsets.size() > Selection.Start.Line ? Buf.begin() + vLineOffsets[Selection.Start.Line] + Selection.Start.Column : nullptr;
 					const char* pSelectionEnd = vLineOffsets.size() > Selection.End.Line ? Buf.begin() + vLineOffsets[Selection.End.Line] + Selection.End.Column : nullptr;
 
-					ImGuiTextBuffer CopyBuffer;
 					CopyBuffer.append(pSelectionStart, pSelectionEnd);
-
-					ImGui::SetClipboardText(CopyBuffer.begin());
 				}
+
+				ImGui::SetClipboardText(CopyBuffer.begin());
 			}
 			// Otherwise just copy the entire things that is being displayed
 			else
@@ -1468,7 +1463,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 			}
 
 			// Draw after the highlights
-			DrawColoredRangeAndSelection(pLineCursor, pLineEnd, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+			if (pLineCursor != pLineEnd) // Valid Case, we could have reached the end of the buffer.
+				DrawColoredRangeAndSelection(pLineCursor, pLineEnd, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
 
 			if (bIsItemHovered)
 				MouseOverLineIdx = line_no;
@@ -2005,7 +2001,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 			}
 				
 			// Draw after the highlights
-			DrawColoredRangeAndSelection(pLineCursor, line_end, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
+			if (pLineCursor != line_end) // Valid Case, we could have reached the end of the buffer.
+				DrawColoredRangeAndSelection(pLineCursor, line_end, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
 
 			if (bIsItemHovered)
 				MouseOverLineIdx = line_no;
