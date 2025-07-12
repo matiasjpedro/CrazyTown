@@ -2034,45 +2034,6 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 
 			if (bIsItemHovered)
 				MouseOverLineIdx = line_no;
-					
-			// Select lines full view
-			/*
-			if (bIsShiftPressed && bIsItemHovered) 
-			{
-				SelectionSize += ImGui::GetIO().MouseWheel;
-				SelectionSize = max(SelectionSize, 1);
-						
-				int BottomLine = line_no;
-				int TopLine = min(line_no + (int)SelectionSize - 1, vLineOffsets.Size - 1);
-				const char* TopLineEnd = (TopLine + 1 < vLineOffsets.Size) ? (buf + vLineOffsets[TopLine + 1] - 1) : buf_end;
-				size_t Size = TopLineEnd - (buf + vLineOffsets[BottomLine]);
-						
-				char* pScratchStart = (char*)pPlatformCtx->ScratchMem.Back();
-				if (pPlatformCtx->ScratchMem.PushBack(Size, (void*)(buf + vLineOffsets[BottomLine])) &&
-					pPlatformCtx->ScratchMem.PushBack(1, &g_NullTerminator))
-				{
-					//ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(20, 0), 0, ImVec2(0, 0.5));
-					ImGui::SetTooltip(pScratchStart);
-				}
-						
-				if (ImGui::IsKeyReleased(ImGuiKey_MouseMiddle))
-				{
-					ImGui::SetClipboardText(pScratchStart);
-					SetLastCommand("LINE SELECTION COPIED TO CLIPBOARD");
-				}
-			}
-			else if (bIsAltPressed && bIsItemHovered) 
-			{
-				float LineNumberTextOffset = 0.f;
-				if (bShowLineNum) {
-					size_t aLineNumberLen = strlen(aLineNumberBuff) + 1;
-					LineNumberTextOffset = ImGui::CalcTextSize(&aLineNumberBuff[0], &aLineNumberBuff[aLineNumberLen]).x;
-				}
-				
-				SelectCharsFromLine(pPlatformCtx, line_start, line_end, LineNumberTextOffset);
-			}
-			*/
-					
 		}
 	}
 	
