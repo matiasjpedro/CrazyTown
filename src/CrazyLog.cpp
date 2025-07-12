@@ -2325,12 +2325,14 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 	
 	ImGui::SeparatorText("Target");
 	
-	ImGui::SetNextItemWidth(-110);
+	ImGui::SetNextItemWidth(-120);
 	if(ImGui::Combo("TargetMode", &(int)SelectedTargetMode, apTargetModeStr, IM_ARRAYSIZE(apTargetModeStr)))
 		LastChangeReason = TMCR_NewModeSelected;
 	
 	ImGui::SameLine();
-	if (ImGui::Button(">>")) {
+	ImGui::Dummy({-1,0});
+	ImGui::SameLine();
+	if (ImGui::Button(">>>")) {
 		char aExePath[MAX_PATH] = { 0 };
 		size_t PathLen = 0;
 		pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH, PathLen, true);
@@ -2365,8 +2367,8 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		
 		ImGui::SameLine();
 		
-		ImGui::SetNextItemWidth(-110);
-		if (ImGui::InputTextWithHint("FolderQuery", "Insert the folder query, ex: D:\\logs\\*.txt", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
+		ImGui::SetNextItemWidth(-120);
+		if (ImGui::InputTextWithHint("FolderQuery", "Pick a folder using the \"...\" button or insert the query manually for finer control, ex: D:\\logs\\*.txt ", aFolderQueryName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
 			|| bLoadTriggerExternally)
 		{
 			memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
@@ -2390,9 +2392,26 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 			}
 		}
 	
+		//ImGui::SameLine();
+		//HelpMarker("Loads the last written file that matches the query \n"
+		//           "and start streaming it into the output. \n");
+
 		ImGui::SameLine();
-		HelpMarker("Loads the last written file that matches the query \n"
-		           "and start streaming it into the output. \n");
+		if (ImGui::Button("...")) 
+		{
+			if (pPlatformCtx->pPickFolderFunc(aFolderQueryName, sizeof(aFolderQueryName)))
+			{
+				memset(&LastLoadedFileData, 0, sizeof(LastLoadedFileData));
+			
+				bStreamFileLocked = false;
+				bFolderQuery = true;
+
+				strcat_s(aFolderQueryName, "\\*.*");
+
+				SearchLatestFile(pPlatformCtx);
+				RememberInputText(pPlatformCtx, RITT_StreamPath, aFolderQueryName);
+			}
+		}
 		
 		ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos;
 		ImGui::SetNextWindowPos(InputTextPos);
@@ -2486,20 +2505,28 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 				
 		}
 		
-		ImGui::SetNextItemWidth(-110);
-		const char * pHint = "Insert the path to the file to load, you can also drag an drop, ex: D:\\logs\\file_name.txt";
+		ImGui::SetNextItemWidth(-120);
+		const char * pHint = "Pick a file using the \"...\" button, or drag and drop the file.";  
 		if (ImGui::InputTextWithHint("FilePath", pHint, aFilePathToLoad, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue) 
 			|| bLoadTriggerExternally)
 		{
-			LoadFile(pPlatformCtx);
-			if (aFilePathToLoad[0] != 0)
+			if (aFilePathToLoad[0] != 0) {
+				LoadFile(pPlatformCtx);
 				RememberInputText(pPlatformCtx, RITT_FilePath, aFilePathToLoad);
+			}
 		}
 		
 		ImGui::SameLine();
-		
-		HelpMarker("Full path of the file to load. \n");
-		
+		ImGui::Dummy({13,0});
+		ImGui::SameLine();
+		if (ImGui::Button("...")) 
+		{
+			if (pPlatformCtx->pPickFileFunc(aFilePathToLoad, sizeof(aFilePathToLoad)))
+			{
+				LoadFile(pPlatformCtx);
+				RememberInputText(pPlatformCtx, RITT_FilePath, aFilePathToLoad);
+			}
+		}
 
 		ImVec2 InputTextPos = ImGui::GetCurrentWindowRead()->DC.CursorPos;
 		ImGui::SetNextWindowPos(InputTextPos);

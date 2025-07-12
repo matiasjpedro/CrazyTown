@@ -3,6 +3,7 @@
 #include <oleidl.h>
 #include <comdef.h>
 #include <Urlmon.h>
+#include <shobjidl_core.h>
 
 //==================================================
 
@@ -375,6 +376,96 @@ bool Win32FetchLastFileFolder(char* pFolderQuery, FileData* pLastFileTimeData, F
 	return bFoundNewFile;
 }
 
+
+
+bool Win32FileDialogOpen(DWORD Options, char* aOutPath, size_t PathCapacity)
+{
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+
+	// CoCreate the File open dialog object.
+	IFileDialog* pFileDialog = nullptr;
+	hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileDialog));
+	bool bSucceeded = SUCCEEDED(hr);
+	if (bSucceeded)
+	{
+		// Options flags of the dialog
+		DWORD DialogFlags;
+
+		// Before setting, always get th eoptions first in order not to override existing options.
+		hr = pFileDialog->GetOptions(&DialogFlags);
+		bSucceeded &= SUCCEEDED(hr);
+		if (bSucceeded)
+		{
+			// In this case, get shell items only for file system items. whatever that means
+			hr = pFileDialog->SetOptions(DialogFlags | Options);
+			bSucceeded &= SUCCEEDED(hr);
+			if (bSucceeded)
+			{
+				// If I care about the file types this is how I can set those up
+				/*
+				const COMDLG_FILTERSPEC aFileTypes[] =
+				{
+					{L"Text Document (*.txt)",       L"*.txt"},
+					{L"All Documents (*.*)",         L"*.*"}
+				};
+
+				hr = pFileDialog->SetFileTypes(ARRAYSIZE(aFileTypes), aFileTypes);
+				if (SUCCEEDED(hr))
+				{
+					hr = pfd->SetFileTypeIndex(0);
+					if (SUCCEEDED(hr))
+					{
+						// Set the default extension to be ".doc" file.
+						hr = pfd->SetDefaultExtension(L"txt");
+						if (SUCCEEDED(hr))
+						{
+						}
+					}
+				}
+				*/
+						
+				// Show the dialog
+				hr = pFileDialog->Show(nullptr);
+				bSucceeded &= SUCCEEDED(hr);
+				if (bSucceeded)
+				{
+					// Obtain the result, once the user clicks the 'Open' Button.
+					IShellItem* pShellItemResult = nullptr;
+					hr = pFileDialog->GetResult(&pShellItemResult);
+
+					bSucceeded &= SUCCEEDED(hr);
+					if (bSucceeded)
+					{
+						PWSTR pFileSysPath = nullptr;
+						hr = pShellItemResult->GetDisplayName(SIGDN_FILESYSPATH, &pFileSysPath);
+
+						bSucceeded &= SUCCEEDED(hr);
+						if (bSucceeded)
+							wcstombs(aOutPath, pFileSysPath, PathCapacity);
+
+						pShellItemResult->Release();
+					}
+
+				}
+			}
+		}
+
+		pFileDialog->Release();
+	}
+
+	return bSucceeded;
+}
+
+bool Win32FileDialogPickFile(char* aOutFilePath, size_t PathCapacity) 
+{
+	return Win32FileDialogOpen(FOS_FORCEFILESYSTEM, aOutFilePath, PathCapacity);
+}
+
+bool Win32FileDialogPickFolder(char* aOutFolderPath, size_t PathCapacity) 
+{
+	return Win32FileDialogOpen(FOS_PICKFOLDERS, aOutFolderPath, PathCapacity);
+}
+
 void Win32OpenURL(const char* pURL)
 {
 	ShellExecuteA(NULL, "open", pURL, NULL, NULL, SW_SHOWNORMAL);
@@ -633,6 +724,8 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pGetWallClockFunc = Win32GetWallClock;
 	gPlatformContext.pGetSecondsElapsedFunc = Win32GetSecondsElapsed;
 	gPlatformContext.pURLDownloadFileFunc = Win32URLDownloadFile;
+	gPlatformContext.pPickFileFunc = Win32FileDialogPickFile;
+	gPlatformContext.pPickFolderFunc = Win32FileDialogPickFolder;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
 	
