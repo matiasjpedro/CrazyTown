@@ -1090,6 +1090,8 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 					FiltredLinesCount = 0;
 					bAlreadyCached = false;
 
+					RememberInputText(pPlatformCtx, RITT_Filter, Filter.aInputBuf);
+
 					ClearFindCache(true);
 				}
 			}
