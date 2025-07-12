@@ -1463,14 +1463,16 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 						DrawColoredRangeAndSelection(pLineCursor, pHighlightWordBegin, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
 						pLineCursor = pHighlightWordBegin;
 
-						ImGui::SameLine(0.f,0.f);
+						if (pLineCursor != pLineEnd)
+							ImGui::SameLine(0.f,0.f);
 					}
 					
 					// Draw highlight 
 					DrawColoredRangeAndSelection(pHighlightWordBegin, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
 					pLineCursor = pHighlightWordEnd;
 
-					ImGui::SameLine(0.f,0.f);
+					if (pLineCursor != pLineEnd)
+						ImGui::SameLine(0.f,0.f);
 				} 
 				else if (pLineCursor < pHighlightWordEnd) // In case a previous filter have already highlighted the begin. 
 				{
@@ -1478,7 +1480,8 @@ void CrazyLog::DrawFiltredView(PlatformContext* pPlatformCtx)
 					DrawColoredRangeAndSelection(pLineCursor, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
 					pLineCursor = pHighlightWordEnd;
 
-					ImGui::SameLine(0.f,0.f);
+					if (pLineCursor != pLineEnd)
+						ImGui::SameLine(0.f,0.f);
 
 				}
 
@@ -2002,14 +2005,16 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 						DrawColoredRangeAndSelection(pLineCursor, pHighlightWordBegin, ImVec4(), pSelectionStart, pSelectionEnd, bIsItemHovered);
 						pLineCursor = pHighlightWordBegin;
 
-						ImGui::SameLine(0.f,0.f);
+						if (pLineCursor != line_end)
+							ImGui::SameLine(0.f,0.f);
 					}
 					
 					// Draw highlight 
 					DrawColoredRangeAndSelection(pHighlightWordBegin, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
 					pLineCursor = pHighlightWordEnd;
 
-					ImGui::SameLine(0.f,0.f);
+					if (pLineCursor != line_end)
+						ImGui::SameLine(0.f,0.f);
 				}
 				else if (pLineCursor < pHighlightWordEnd) // In case a previous filter have already highlighted the begin. 
 				{
@@ -2017,7 +2022,8 @@ void CrazyLog::DrawFullView(PlatformContext* pPlatformCtx)
 					DrawColoredRangeAndSelection(pLineCursor, pHighlightWordEnd, FilterColor, pSelectionStart, pSelectionEnd, bIsItemHovered);
 					pLineCursor = pHighlightWordEnd;
 
-					ImGui::SameLine(0.f,0.f);
+					if (pLineCursor != line_end)
+						ImGui::SameLine(0.f,0.f);
 
 				}
 			}
