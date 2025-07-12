@@ -2086,25 +2086,28 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 				SaveFilteredView(pPlatformCtx, aFilePathToLoad);
 				LoadFile(pPlatformCtx);
 			}
-			
-			if (ImGui::BeginMenu("Save As..", vFiltredLinesCached.Size > 0))
+
+			if (ImGui::MenuItem("Save As..", nullptr, nullptr, aFilePathToLoad[0] != 0 && vFiltredLinesCached.Size > 0))
 			{
-				char aFileName[MAX_PATH] = { 0 };
-				if (ImGui::InputText("Name", aFileName, MAX_PATH, ImGuiInputTextFlags_EnterReturnsTrue))
+				char aSavePath[MAX_PATH] = { 0 };
+				if (pPlatformCtx->pGetSaveFilePathFunc(aSavePath, sizeof(aSavePath)))
 				{
-					char aExePath[MAX_PATH] = { 0 };
-					size_t ExePathLen = 0;
-					pPlatformCtx->pGetExePathFunc(aExePath, MAX_PATH, ExePathLen, false);
-					pPlatformCtx->pOpenURLFunc(aExePath);
-					
-					strcpy_s(aExePath + ExePathLen, sizeof(aExePath) - ExePathLen,  aFileName);
-					
-					SaveFilteredView(pPlatformCtx, aExePath);
+					SaveFilteredView(pPlatformCtx, aSavePath);
+
+					// strip the file name form the path, to open the path.
+					size_t PathLen = strlen(aSavePath);
+					for (size_t i = PathLen - 1; i > 0; i--)
+					{
+						if (aSavePath[i] == '\\') 
+						{
+							aSavePath[i + 1] = '\0';
+							break;
+						}
+			
+					}
+
+					pPlatformCtx->pOpenURLFunc(aSavePath);
 				}
-				
-				ImGui::SameLine();
-				
-				ImGui::EndMenu();
 			}
 			
 			ImGui::EndMenu();

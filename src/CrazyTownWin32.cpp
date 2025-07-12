@@ -466,6 +466,58 @@ bool Win32FileDialogPickFolder(char* aOutFolderPath, size_t PathCapacity)
 	return Win32FileDialogOpen(FOS_PICKFOLDERS, aOutFolderPath, PathCapacity);
 }
 
+bool Win32FileDialogGetSaveFilePath(char* aOutFilePath, size_t PathCapacity)
+{
+	// CoCreate the File Open Dialog object.
+    IFileSaveDialog *pFileSaveDialog = NULL;
+    HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileSaveDialog));
+	bool bSucceeded = SUCCEEDED(hr);
+	if (bSucceeded)
+	{
+		// Options flags of the dialog
+		DWORD DialogFlags;
+
+		// Before setting, always get th eoptions first in order not to override existing options.
+		hr = pFileSaveDialog->GetOptions(&DialogFlags);
+		bSucceeded &= SUCCEEDED(hr);
+		if (bSucceeded)
+		{
+			// In this case, get shell items only for file system items. whatever that means
+			hr = pFileSaveDialog->SetOptions(DialogFlags | FOS_FORCEFILESYSTEM);
+			bSucceeded &= SUCCEEDED(hr);
+			if (bSucceeded)
+			{
+				// Show the dialog
+				hr = pFileSaveDialog->Show(nullptr);
+				bSucceeded &= SUCCEEDED(hr);
+				if (bSucceeded)
+				{
+					// Obtain the result, once the user clicks the 'Open' Button.
+					IShellItem* pShellItemResult = nullptr;
+					hr = pFileSaveDialog->GetResult(&pShellItemResult);
+
+					bSucceeded &= SUCCEEDED(hr);
+					if (bSucceeded)
+					{
+						PWSTR pFileSysPath = nullptr;
+						hr = pShellItemResult->GetDisplayName(SIGDN_FILESYSPATH, &pFileSysPath);
+
+						bSucceeded &= SUCCEEDED(hr);
+						if (bSucceeded)
+							wcstombs(aOutFilePath, pFileSysPath, PathCapacity);
+
+						pShellItemResult->Release();
+					}
+				}
+			}
+		}
+
+		pFileSaveDialog->Release();
+	}
+
+	return bSucceeded;
+}
+
 void Win32OpenURL(const char* pURL)
 {
 	ShellExecuteA(NULL, "open", pURL, NULL, NULL, SW_SHOWNORMAL);
@@ -726,6 +778,7 @@ int WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int S
 	gPlatformContext.pURLDownloadFileFunc = Win32URLDownloadFile;
 	gPlatformContext.pPickFileFunc = Win32FileDialogPickFile;
 	gPlatformContext.pPickFolderFunc = Win32FileDialogPickFolder;
+	gPlatformContext.pGetSaveFilePathFunc = Win32FileDialogGetSaveFilePath;
 	
 	gHotReloadableCode = HotReloadDll(aHotReloadDLLFullPath, aHotReloadTempDLLFullPath);
 	
