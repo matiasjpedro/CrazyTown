@@ -401,28 +401,22 @@ bool Win32FileDialogOpen(DWORD Options, char* aOutPath, size_t PathCapacity)
 			bSucceeded &= SUCCEEDED(hr);
 			if (bSucceeded)
 			{
-				// If I care about the file types this is how I can set those up
-				/*
-				const COMDLG_FILTERSPEC aFileTypes[] =
+				// NOTE(Matiasp): Maybe this is too specific for this project.
 				{
-					{L"Text Document (*.txt)",       L"*.txt"},
-					{L"All Documents (*.*)",         L"*.*"}
-				};
-
-				hr = pFileDialog->SetFileTypes(ARRAYSIZE(aFileTypes), aFileTypes);
-				if (SUCCEEDED(hr))
-				{
-					hr = pfd->SetFileTypeIndex(0);
-					if (SUCCEEDED(hr))
+					if (Options == FOS_FORCEFILESYSTEM)
 					{
-						// Set the default extension to be ".doc" file.
-						hr = pfd->SetDefaultExtension(L"txt");
-						if (SUCCEEDED(hr))
+						const COMDLG_FILTERSPEC aFileTypes[] =
 						{
-						}
+							{L"All Documents (*.*)",         L"*.*"},
+							{L"Text Document (*.txt)",       L"*.txt"},
+							{L"Log Document (*.log)",       L"*.log"}
+						};
+
+						hr = pFileDialog->SetFileTypes(ARRAYSIZE(aFileTypes), aFileTypes);
+						if (SUCCEEDED(hr))
+							pFileDialog->SetFileTypeIndex(0);
 					}
 				}
-				*/
 						
 				// Show the dialog
 				hr = pFileDialog->Show(nullptr);
@@ -487,6 +481,21 @@ bool Win32FileDialogGetSaveFilePath(char* aOutFilePath, size_t PathCapacity)
 			bSucceeded &= SUCCEEDED(hr);
 			if (bSucceeded)
 			{
+				// NOTE(Matiasp): Maybe this is too specific for this project.
+				{
+					const COMDLG_FILTERSPEC aFileTypes[] =
+					{
+						{L"Text Document (*.txt)",       L"*.txt"},
+					};
+
+					hr = pFileSaveDialog->SetFileTypes(ARRAYSIZE(aFileTypes), aFileTypes);
+					if (SUCCEEDED(hr))
+					{
+						pFileSaveDialog->SetFileTypeIndex(0);
+						pFileSaveDialog->SetDefaultExtension(L"txt");
+					}
+				}
+				
 				// Show the dialog
 				hr = pFileSaveDialog->Show(nullptr);
 				bSucceeded &= SUCCEEDED(hr);
