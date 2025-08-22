@@ -1652,7 +1652,14 @@ Coordinates CrazyLog::ScreenPosToCoordinates(const ImVec2& aPosition) {
 
 	int LineNo = MouseOverLineIdx;
 	int ColumnCoord = 0;
-	
+	float ColumnX = 0.0f;
+
+	if (bShowLineNum) {
+		char aBuff[16] = { 0 };
+		snprintf(aBuff, ArrayCount(aBuff), "[ %d ] ", LineNo);
+		ColumnX = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, aBuff, nullptr, nullptr).x;
+	}
+
 	if (LineNo >= 0 && LineNo < (int)vLineOffsets.size())
 	{
 		const char* pLineStart = Buf.begin() + vLineOffsets[LineNo];
@@ -1660,7 +1667,7 @@ Coordinates CrazyLog::ScreenPosToCoordinates(const ImVec2& aPosition) {
 		size_t LineSize = pLineEnd - pLineStart;
 
 		int ColumnIndex = 0;
-		float ColumnX = 0.0f;
+		
 
 		while ((size_t)ColumnIndex < LineSize)
 		{
@@ -1687,7 +1694,7 @@ Coordinates CrazyLog::ScreenPosToCoordinates(const ImVec2& aPosition) {
 					TempBuff[i++] = pLineStart[ColumnIndex++];
 				TempBuff[i] = '\0';
 				ColumnWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, TempBuff).x;
-				if (TextStart + ColumnX + ColumnWidth * 0.5f > Local.x)
+				if (ColumnX + ColumnWidth * 0.5f > Local.x)
 					break;
 				ColumnX += ColumnWidth;
 				ColumnCoord++;
@@ -1747,14 +1754,6 @@ void CrazyLog::HandleMouseInputs()
 {
 	ImGuiIO& Io = ImGui::GetIO();
 	bool bCtrl =  Io.KeyCtrl;
-
-	TextStart = 0;
-
-	// TODO: support line number
-	//char buf[16];
-	//snprintf(buf, 16, " %d ", vLineOffsets.size());
-	//mTextStart = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x /*+ mLeftMargin */;
-	// const float fontSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
 
 	if (ImGui::IsWindowHovered() )
 	{

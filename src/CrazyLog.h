@@ -216,7 +216,6 @@ struct CrazyLog
 	SelectionState Selection;
 	Coordinates InteractiveStart, InteractiveEnd;
 	float LastClick;
-	float TextStart;
 	int MouseOverLineIdx;
 	
 	bool bIsMultithreadEnabled;
