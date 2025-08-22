@@ -942,6 +942,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 	
 	OutputTextLineHeight = ImGui::GetTextLineHeightWithSpacing();
+
+	bool bWantsToCopy = false;
+	if (bIsCtrlressed && ImGui::IsKeyReleased(ImGuiKey_C) && !Io.WantTextInput)
+		bWantsToCopy = true;
 	
 	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
 	{
@@ -977,14 +981,10 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 		}
 		
 		bool bWantsToAddFilter = false;
-		bool bWantsToCopy = false;
 		bool bWantsToPaste = false;
 
 		if (bIsCtrlressed && !Io.WantTextInput)
 		{
-			if(ImGui::IsKeyReleased(ImGuiKey_C))
-				bWantsToCopy = true;
-
 			if(ImGui::IsKeyReleased(ImGuiKey_V))
 				bWantsToPaste = true;
 
