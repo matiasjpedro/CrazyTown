@@ -198,6 +198,7 @@ struct CrazyLog
 	int CurrentFindFullViewIdx;
 	TargetMode SelectedTargetMode;
 	TargetModeChangeReason LastChangeReason;
+	TargetModeChangeReason PendingModeChange;
 
 	float OutputTextLineHeight;
 	float FontScale;
@@ -218,6 +219,7 @@ struct CrazyLog
 	float LastClick;
 	int MouseOverLineIdx;
 	
+	bool bShouldRememberLastSession;
 	bool bIsMultithreadEnabled;
 	bool bIsAVXEnabled;
 	bool bAlreadyCached;
@@ -255,6 +257,7 @@ struct CrazyLog
 	void SaveFilter(PlatformContext* pPlatformCtx, char* pFilterName, CrazyTextFilter* pFilter);
 	void SaveFilter(PlatformContext* pPlatformCtx, int FilterIdx, CrazyTextFilter* pFilter);
 	
+	void RestoreLastSession(TargetMode LastTargetMode, PlatformContext* pPlatformCtx);
 	void LoadSettings(PlatformContext* pPlatformCtx);
 	void SaveDefaultColorsInSettings(PlatformContext* pPlatformCtx);
 	void RememberInputText(PlatformContext* pPlatformCtx, RecentInputTextType Type, char* pText);

@@ -66,6 +66,8 @@ void CrazyLog::Init(PlatformContext* pPlatformCtx)
 	
 	FileContentFetchSlider = FILE_FETCH_INTERVAL;
 	MaxExtraThreadCount = max(0, std::thread::hardware_concurrency() - 1);
+
+	bShouldRememberLastSession = true;
 	
 	// Lets enable it by default
 	bIsMultithreadEnabled = true;
@@ -383,12 +385,62 @@ void CrazyLog::SaveLoadedFilters(PlatformContext* pPlatformCtx)
 	
 }
 
+
+void CrazyLog::RestoreLastSession(TargetMode LastTargetMode, PlatformContext* pPlatformCtx) {
+
+	if (LastTargetMode == TM_StaticText) {
+		ImVector<RecentInputText>& vRecentFilePaths = avRecentInputText[RITT_FilePath];
+
+		if (vRecentFilePaths.size() > 0) {
+			int FilePathsTail = aRecentInputTextTail[RITT_FilePath];
+			memcpy(aFilePathToLoad, vRecentFilePaths[FilePathsTail].aText, sizeof(RecentInputText::aText));
+						
+			SelectedTargetMode = TM_StaticText;
+			PendingModeChange = TMCR_RecentSelected;
+		}
+		
+	} else if (LastTargetMode == TM_StreamLastModifiedFileFromFolder) {
+		ImVector<RecentInputText>& vRecentStreamPaths = avRecentInputText[RITT_StreamPath];
+
+		if (vRecentStreamPaths.size() > 0) {
+			int StreamPathsTail = aRecentInputTextTail[RITT_StreamPath];
+			memcpy(aFolderQueryName, vRecentStreamPaths[StreamPathsTail].aText, sizeof(RecentInputText::aText));
+						
+			SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
+			PendingModeChange = TMCR_RecentSelected;
+		}
+		
+	}
+
+	ImVector<RecentInputText>& vRecentFilters = avRecentInputText[RITT_Filter];
+	if (vRecentFilters.size() > 0)
+	{
+		int FiltersTail = aRecentInputTextTail[RITT_Filter];
+
+		memcpy(Filter.aInputBuf, vRecentFilters[FiltersTail].aText, sizeof(RecentInputText::aText));
+		Filter.Build(&vDefaultColors);
+
+		EnableMask = 0xFFFFFFFF;
+			
+		bAlreadyCached = false;
+		FiltredLinesCount = 0;
+	}
+	
+}
+
 void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 	
 	FileContent File = pPlatformCtx->pReadFileFunc(SETTINGS_NAME);
 	if (File.pFile)
 	{
 		cJSON * pJsonRoot = cJSON_ParseWithLength((char*)File.pFile, File.Size);
+
+		cJSON * pLastSelectedTargetMode = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "last_selected_target_mode");
+		TargetMode LastSelectedTargetMode = pLastSelectedTargetMode ? (TargetMode)pLastSelectedTargetMode->valuedouble : TM_StaticText;
+		
+		cJSON * pShouldRememberLastSession = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "should_remember_last_session");
+		if (pShouldRememberLastSession)
+			bShouldRememberLastSession = cJSON_IsTrue(pShouldRememberLastSession);
 		
 		cJSON * pIsMtEnabled = cJSON_GetObjectItemCaseSensitive(pJsonRoot, "is_multithread_enabled");
 		if (pIsMtEnabled)
@@ -461,9 +513,11 @@ void CrazyLog::LoadSettings(PlatformContext* pPlatformCtx) {
 				RecentInputTextTail = RecentInputTextCount -1;
 		}
 		
-		
 		free(pJsonRoot);
 		pPlatformCtx->pFreeFileContentFunc(&File);
+
+		if (bShouldRememberLastSession)
+			RestoreLastSession(LastSelectedTargetMode, pPlatformCtx);
 	}
 	else
 	{
@@ -2098,7 +2152,11 @@ void CrazyLog::DrawMainBar(float DeltaTime, PlatformContext* pPlatformCtx)
 			}
 			
 			ImGui::Separator();
-			
+
+			bool bShouldRememberLastSessionChanged = ImGui::Checkbox("Remember last session", &bShouldRememberLastSession);
+			if (bShouldRememberLastSessionChanged)
+				SaveTypeInSettings(pPlatformCtx, "should_remember_last_session", cJSON_True, &bShouldRememberLastSession);
+
 			bool bIsUsingAVXChanged = ImGui::Checkbox("Use AVX Instructions ", &bIsAVXEnabled);
 			if (bIsUsingAVXChanged)
 				SaveTypeInSettings(pPlatformCtx, "is_avx_enabled", cJSON_True, &bIsAVXEnabled);
@@ -2288,7 +2346,6 @@ void CrazyLog::DrawFind(float DeltaTime, PlatformContext* pPlatformCtx) {
 
 void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 {
-	static TargetModeChangeReason PendingModeChange = TMCR_NONE;
 	if (PendingModeChange != TMCR_NONE) {
 		LastChangeReason = PendingModeChange;
 		PendingModeChange = TMCR_NONE;
@@ -2314,6 +2371,9 @@ void CrazyLog::DrawTarget(float DeltaTime, PlatformContext* pPlatformCtx)
 		ImGui::SetTooltip("Start new CrazyTown window.");
 	
 	bool bModeJustChanged = LastChangeReason != TMCR_NONE;
+
+	if (bModeJustChanged)
+		SaveTypeInSettings(pPlatformCtx, "last_selected_target_mode", cJSON_Number, &(int)SelectedTargetMode);
 	
 	if (SelectedTargetMode == TM_StreamLastModifiedFileFromFolder)
 	{
