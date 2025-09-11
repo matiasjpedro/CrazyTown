@@ -390,9 +390,9 @@ void CrazyLog::RestoreLastSession(TargetMode LastTargetMode, PlatformContext* pP
 
 	if (LastTargetMode == TM_StaticText) {
 		ImVector<RecentInputText>& vRecentFilePaths = avRecentInputText[RITT_FilePath];
+		int FilePathsTail = aRecentInputTextTail[RITT_FilePath];
 
-		if (vRecentFilePaths.size() > 0) {
-			int FilePathsTail = aRecentInputTextTail[RITT_FilePath];
+		if (FilePathsTail != -1) {
 			memcpy(aFilePathToLoad, vRecentFilePaths[FilePathsTail].aText, sizeof(RecentInputText::aText));
 						
 			SelectedTargetMode = TM_StaticText;
@@ -401,9 +401,9 @@ void CrazyLog::RestoreLastSession(TargetMode LastTargetMode, PlatformContext* pP
 		
 	} else if (LastTargetMode == TM_StreamLastModifiedFileFromFolder) {
 		ImVector<RecentInputText>& vRecentStreamPaths = avRecentInputText[RITT_StreamPath];
+		int StreamPathsTail = aRecentInputTextTail[RITT_StreamPath];
 
-		if (vRecentStreamPaths.size() > 0) {
-			int StreamPathsTail = aRecentInputTextTail[RITT_StreamPath];
+		if (StreamPathsTail != -1) {
 			memcpy(aFolderQueryName, vRecentStreamPaths[StreamPathsTail].aText, sizeof(RecentInputText::aText));
 						
 			SelectedTargetMode = TM_StreamLastModifiedFileFromFolder;
@@ -413,10 +413,9 @@ void CrazyLog::RestoreLastSession(TargetMode LastTargetMode, PlatformContext* pP
 	}
 
 	ImVector<RecentInputText>& vRecentFilters = avRecentInputText[RITT_Filter];
-	if (vRecentFilters.size() > 0)
+	int FiltersTail = aRecentInputTextTail[RITT_Filter];
+	if (FiltersTail != -1)
 	{
-		int FiltersTail = aRecentInputTextTail[RITT_Filter];
-
 		memcpy(Filter.aInputBuf, vRecentFilters[FiltersTail].aText, sizeof(RecentInputText::aText));
 		Filter.Build(&vDefaultColors);
 
