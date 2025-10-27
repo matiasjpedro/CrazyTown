@@ -997,7 +997,7 @@ void CrazyLog::Draw(float DeltaTime, PlatformContext* pPlatformCtx, const char* 
 	OutputTextLineHeight = ImGui::GetTextLineHeightWithSpacing();
 
 	bool bWantsToCopy = false;
-	if (bIsCtrlressed && ImGui::IsKeyReleased(ImGuiKey_C) && !Io.WantTextInput)
+	if (bIsCtrlressed && ImGui::IsKeyPressed(ImGuiKey_C) && !Io.WantTextInput)
 		bWantsToCopy = true;
 	
 	if (ImGui::BeginChild("Output", ImVec2(0, -25), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ExtraFlags))
