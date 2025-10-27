@@ -26,7 +26,7 @@
 
 #define SAVE_ENABLE_MASK 0
 
-static float g_Version = 1.36f;
+static float g_Version = 1.37f;
 static char g_NullTerminator = '\0';
 static char g_LineEndTerminator = '\n';
 
